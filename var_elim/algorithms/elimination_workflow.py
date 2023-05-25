@@ -37,9 +37,8 @@ import pyomo.environ as pyo
 from pyomo.core.expr.visitor import replace_expressions
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
-
-from distill import create_instance
-from algorithms.replace import define_variable_from_constraint
+from var_elim.distill import create_instance
+from var_elim.algorithms.replace import define_variable_from_constraint
 
 import matplotlib.pyplot as plt
 
