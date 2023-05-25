@@ -63,14 +63,14 @@ def choose_var_con_pair(m, cuid_var, cuid_con):
     
     #Possible issues we could run into in terms of error throwing:::
     #The replace function asserts if the variable participates linearly in the constraint or not 
-    #But we do block traingularization first to find the elimination order 
+    #But we do block triangularization first to find the elimination order 
     #and that won't work if there is no perfect matching
     return var_list, con_list
 
 
 def define_elimination_order(igraph, var_list, con_list):
     """
-    Find elimination order using block triangularize from incidence graph interface
+    Finds elimination order using block triangularize from incidence graph interface
     """
     
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
@@ -85,6 +85,10 @@ def define_elimination_order(igraph, var_list, con_list):
 
 
 def var_elimination_routine(m, igraph, var_order, con_order):
+    """
+    Does the actual elimination by defining expression from constraint, defines 
+    susbtitution map and replaces the variable in every adjacent constraint
+    """
     
     for var, con in zip(var_order, con_order):
         #Get expression for the variable from constraint
@@ -112,14 +116,17 @@ def main():
     cuid_con = []
     for t in m.t:
         cuid_var.append('rr[{}]'.format(t))
-        cuid_var.append('L[{}]'.format(t))
+        cuid_var.append('V[{}]'.format(t))
         cuid_var.append('FL[{}]'.format(t))
         cuid_con.append('reflux_ratio[{}]'.format(t))
         cuid_con.append('vapor_column[{}]'.format(t))
         cuid_con.append('flowrate_stripping[{}]'.format(t))
         
-        if t!= 1:
-            for n in m.S_TRAYS:
+       
+        for n in m.S_TRAYS:
+            cuid_var.append('y[{},{}]'.format(n, t))
+            cuid_con.append('mole_frac_balance[{},{}]'.format(n,t))
+            if t!= 1:
                 cuid_var.append('dx[{}, {}]'.format(n,t))
                 cuid_con.append('diffeq[{},{}]'.format(n, t))
             
