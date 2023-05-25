@@ -17,15 +17,6 @@
 #
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
-#  ___________________________________________________________________________
-#
-#  Pyomo: Python Optimization Modeling Objects
-#  Copyright 2017 National Technology and Engineering Solutions of Sandia, LLC
-#  Under the terms of Contract DE-NA0003525 with National Technology and
-#  Engineering Solutions of Sandia, LLC, the U.S. Government retains certain
-#  rights in this software.
-#  This software is distributed under the 3-clause BSD License.
-#  ___________________________________________________________________________
 
 """
 Created on Wed May 24 09:28:28 2023
@@ -83,7 +74,7 @@ def define_elimination_order(igraph, var_list, con_list):
     return var_order, con_order
 
 
-def var_elimination_routine(m, igraph, var_order, con_order):
+def eliminate_variables(m, igraph, var_order, con_order):
     """
     Does the actual elimination by defining expression from constraint, defines 
     susbtitution map and replaces the variable in every adjacent constraint
