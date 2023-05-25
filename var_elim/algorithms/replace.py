@@ -73,20 +73,15 @@ def define_variable_from_constraint(variable, constraint):
     # =>
     # var := (1/coef) * (upper - const - sum(coef * other_vars) - nonlinear)
     
-    if repn.nonlinear_expr is None:
-        var_expr = (1 / coef) * (
-            constraint.upper  # Either constraint.upper or constraint.lower would work
-            - repn.constant
-            - linear_subexpr
-        )
-    else:
-        var_expr = (1 / coef) * (
-            constraint.upper  # Either constraint.upper or constraint.lower would work
-            - repn.constant
-            - linear_subexpr
-            - repn.nonlinear_expr
-        )
-        
+    nonlinear_expr = repn.nonlinear_expr if repn.nonlinear_expr is not None else 0.0
+   
+    var_expr = (1 / coef) * (
+        constraint.upper  # Either constraint.upper or constraint.lower would work
+        - repn.constant
+        - linear_subexpr
+        - nonlinear_expr
+    )
+   
     return var_expr
 
 
