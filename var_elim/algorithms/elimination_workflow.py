@@ -83,7 +83,7 @@ def eliminate_variables(m, igraph, var_order, con_order):
     for var, con in zip(var_order, con_order):
         #Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
-        
+        con.deactivate()
         #Build substitution map
         substitution_map = {id(var): var_expr}
         
@@ -92,7 +92,7 @@ def eliminate_variables(m, igraph, var_order, con_order):
         
         adj_cons = igraph.get_adjacent_to(var)
         for ad_con in adj_cons:
-            if ad_con.name != con.name: 
+            if ad_con is not con: 
                 new_expr = replace_expressions(ad_con.expr, substitution_map)
                 ad_con.set_value(new_expr)
     return m
@@ -123,10 +123,6 @@ def main():
     #Creating the incidence graph
     #NOTE: We cannon deactivate the constraints before making the igraph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
-    
-    #Deactivating constraints which are used for variable elimination
-    for con in con_list:
-        con.deactivate()
     
     #Get ordered variable and corresponding constraints list
     var_order, con_order = define_elimination_order(igraph, var_list, con_list)
