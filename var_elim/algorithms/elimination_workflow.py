@@ -136,7 +136,7 @@ def main():
     plt.spy(imat)
     
     #Variable elimination
-    m_reduced = var_elimination_routine(m, igraph, var_order, con_order)
+    m_reduced = eliminate_variables(m, igraph, var_order, con_order)
     ipopt = pyo.SolverFactory('ipopt')
     ipopt.solve(m_reduced, tee= True)
     
