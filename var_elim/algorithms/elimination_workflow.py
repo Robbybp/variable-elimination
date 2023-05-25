@@ -25,53 +25,15 @@ Created on Wed May 24 09:28:28 2023
 """
 
 import pyomo.environ as pyo
-from pyomo.core.expr.visitor import replace_expressions
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
 from var_elim.distill import create_instance
-from var_elim.algorithms.replace import define_variable_from_constraint
+from var_elim.algorithms.replace import (
+    define_elimination_order,
+    eliminate_variables
+)
+                                         
 import matplotlib.pyplot as plt
-
-
-def define_elimination_order(igraph, var_list, con_list):
-    """
-    Finds elimination order using block triangularize from incidence graph interface
-    """
-    
-    var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
-    
-    for vb, cb in zip(var_blocks, con_blocks):
-        assert len(vb) == 1
-        assert len(cb) == 1 
-    
-    var_order = sum(var_blocks, [])
-    con_order = sum(con_blocks, [])
-    return var_order, con_order
-
-
-def eliminate_variables(m, igraph, var_order, con_order):
-    """
-    Does the actual elimination by defining expression from constraint, defines 
-    susbtitution map and replaces the variable in every adjacent constraint
-    """
-    
-    for var, con in zip(var_order, con_order):
-        #Get expression for the variable from constraint
-        var_expr = define_variable_from_constraint(var, con)
-        con.deactivate()
-        #Build substitution map
-        substitution_map = {id(var): var_expr}
-        
-        #Get constraints in which the variable appears
-        #This will have the deactivated constraints too
-        
-        adj_cons = igraph.get_adjacent_to(var)
-        for ad_con in adj_cons:
-            if ad_con is not con: 
-                new_expr = replace_expressions(ad_con.expr, substitution_map)
-                ad_con.set_value(new_expr)
-    return m
-
 
 def main():
     m = create_instance()
