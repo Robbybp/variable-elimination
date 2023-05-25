@@ -30,32 +30,7 @@ from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
 from var_elim.distill import create_instance
 from var_elim.algorithms.replace import define_variable_from_constraint
-
 import matplotlib.pyplot as plt
-
-import copy
-
-
-def choose_var_con_pair(m, cuid_var, cuid_con):
-    """
-    Pick some logical variables and constraints which can be eliminated
-    """
-    var_list = []
-    con_list = []
-    
-    for cuid in cuid_var:
-        var_list.append(m.find_component(cuid))
-    
-    for cuid in cuid_con:
-        con_list.append(m.find_component(cuid))
-        
-    assert len(var_list) == len(con_list)
-    
-    #Possible issues we could run into in terms of error throwing:::
-    #The replace function asserts if the variable participates linearly in the constraint or not 
-    #But we do block triangularization first to find the elimination order 
-    #and that won't work if there is no perfect matching
-    return var_list, con_list
 
 
 def define_elimination_order(igraph, var_list, con_list):
@@ -102,27 +77,26 @@ def main():
     m = create_instance()
     
     #Cuids of variables and constraints that can be used for elimination
-    cuid_var = []
-    cuid_con = []
+    var_list= []
+    con_list = []
     for t in m.t:
-        cuid_var.append('rr[{}]'.format(t))
-        cuid_var.append('L[{}]'.format(t))
-        cuid_var.append('FL[{}]'.format(t))
-        cuid_con.append('reflux_ratio[{}]'.format(t))
-        cuid_con.append('vapor_column[{}]'.format(t))
-        cuid_con.append('flowrate_stripping[{}]'.format(t))
+        var_list.append(m.rr[t])
+        var_list.append(m.L[t])
+        var_list.append(m.FL[t])
+        con_list.append(m.reflux_ratio[t])
+        con_list.append(m.vapor_column[t])
+        con_list.append(m.flowrate_stripping[t])
         
         if t!= 1:
             for n in m.S_TRAYS:
-                cuid_var.append('dx[{}, {}]'.format(n,t))
-                cuid_con.append('diffeq[{},{}]'.format(n, t))
-            
-    #Actual variables and constraints from the model
-    var_list, con_list = choose_var_con_pair(m, cuid_var, cuid_con)
+                var_list.append(m.dx[n, t])
+                con_list.append(m.diffeq[n,t])
     
     #Creating the incidence graph
     #NOTE: We cannon deactivate the constraints before making the igraph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
+    var_dmp, _ = igraph.dulmage_mendelsohn(var_list, con_list)
+    assert not var_dmp.unmatched
     
     #Get ordered variable and corresponding constraints list
     var_order, con_order = define_elimination_order(igraph, var_list, con_list)
