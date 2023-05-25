@@ -116,17 +116,14 @@ def main():
     cuid_con = []
     for t in m.t:
         cuid_var.append('rr[{}]'.format(t))
-        cuid_var.append('V[{}]'.format(t))
+        cuid_var.append('L[{}]'.format(t))
         cuid_var.append('FL[{}]'.format(t))
         cuid_con.append('reflux_ratio[{}]'.format(t))
         cuid_con.append('vapor_column[{}]'.format(t))
         cuid_con.append('flowrate_stripping[{}]'.format(t))
         
-       
-        for n in m.S_TRAYS:
-            cuid_var.append('y[{},{}]'.format(n, t))
-            cuid_con.append('mole_frac_balance[{},{}]'.format(n,t))
-            if t!= 1:
+        if t!= 1:
+            for n in m.S_TRAYS:
                 cuid_var.append('dx[{}, {}]'.format(n,t))
                 cuid_con.append('diffeq[{},{}]'.format(n, t))
             
