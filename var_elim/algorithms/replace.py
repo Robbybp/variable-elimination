@@ -21,6 +21,7 @@
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
+from pyomo.core.expr.visitor import replace_expressions
 
 
 def define_variable_from_constraint(variable, constraint):
@@ -83,6 +84,52 @@ def define_variable_from_constraint(variable, constraint):
     )
    
     return var_expr
+
+def define_elimination_order(igraph, var_list, con_list):
+    """
+    Returns elimination order using block triangularize from incidence graph interface
+    
+    """
+    
+    var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
+    
+    for vb, cb in zip(var_blocks, con_blocks):
+        assert len(vb) == 1
+        assert len(cb) == 1 
+    
+    var_order = sum(var_blocks, [])
+    con_order = sum(con_blocks, [])
+    return var_order, con_order
+
+
+def eliminate_variables(m, igraph, var_order, con_order):
+    """
+    Does the actual elimination by defining expression from constraint, defines 
+    susbtitution map and replaces the variable in every adjacent constraint
+    
+    Returns
+    -------
+    Reduced Model
+    
+    """
+    
+    for var, con in zip(var_order, con_order):
+        #Get expression for the variable from constraint
+        var_expr = define_variable_from_constraint(var, con)
+        con.deactivate()
+        #Build substitution map
+        substitution_map = {id(var): var_expr}
+        
+        #Get constraints in which the variable appears
+        #This will have the deactivated constraints too
+        
+        adj_cons = igraph.get_adjacent_to(var)
+        for ad_con in adj_cons:
+            if ad_con is not con: 
+                new_expr = replace_expressions(ad_con.expr, substitution_map)
+                ad_con.set_value(new_expr)
+    return m
+
 
 
 if __name__ == "__main__":
