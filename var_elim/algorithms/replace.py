@@ -104,9 +104,9 @@ def define_elimination_order(igraph, var_list, con_list):
 
 def eliminate_variables(m, igraph, var_order, con_order):
     """
-    Does the actual elimination by defining expression from constraint, defines 
-    susbtitution map and replaces the variable in every adjacent constraint
-    
+    Does the actual elimination by defining variable from constraint, eliminates
+    the constraint used for variable definition, defines susbtitution map and
+    replaces the variable in every adjacent constraint
     Returns
     -------
     Reduced Model
