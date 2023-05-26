@@ -18,7 +18,8 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
-import unittest
+import pytest
+import math
 import pyomo.environ as pyo
 from pyomo.common.collections import ComponentSet
 from pyomo.core.expr.visitor import identify_variables
@@ -32,7 +33,7 @@ from var_elim.algorithms.replace import (
 ipopt_avail = pyo.SolverFactory("ipopt").available()
 
 
-class TestReplacementSimpleModel(unittest.TestCase):
+class TestReplacementSimpleModel:
     def _make_simple_model(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1)
@@ -62,23 +63,23 @@ class TestReplacementSimpleModel(unittest.TestCase):
 
         new_igraph = IncidenceGraphInterface(m)
         # Make sure new model has the correct size
-        self.assertEqual(len(new_igraph.constraints), 1)
-        self.assertEqual(len(new_igraph.variables), 2)
+        assert len(new_igraph.constraints) == 1
+        assert len(new_igraph.variables) == 2
 
-        self.assertIs(new_igraph.constraints[0], m.eq3)
+        assert new_igraph.constraints[0] is m.eq3
 
         # Make sure proper replacement happened here
-        self.assertEqual(
-            ComponentSet(identify_variables(m.eq3.expr)),
-            ComponentSet(m.y[:]),
+        assert (
+            ComponentSet(identify_variables(m.eq3.expr))
+            == ComponentSet(m.y[:])
         )
         # Make sure no replacement happened here
-        self.assertEqual(
-            ComponentSet(identify_variables(m.obj)),
-            ComponentSet(m.y[:]),
+        assert (
+            ComponentSet(identify_variables(m.obj))
+            == ComponentSet(m.y[:])
         )
 
-    @unittest.skipUnless(ipopt_avail, "Ipopt is not available")
+    @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
     def test_same_solution(self):
         m1 = self._make_simple_model()
 
@@ -99,11 +100,11 @@ class TestReplacementSimpleModel(unittest.TestCase):
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
 
-        self.assertAlmostEqual(m1.y[1].value, m2.y[1].value)
-        self.assertAlmostEqual(m1.y[2].value, m2.y[2].value)
+        assert math.isclose(m1.y[1].value, m2.y[1].value)
+        assert math.isclose(m1.y[2].value, m2.y[2].value)
 
 
-class TestReplacementInObjective(unittest.TestCase):
+class TestReplacementInObjective:
     def _make_model(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1)
@@ -133,29 +134,29 @@ class TestReplacementInObjective(unittest.TestCase):
 
         new_igraph = IncidenceGraphInterface(m)
         # Make sure new model has the correct size
-        self.assertEqual(len(new_igraph.constraints), 1)
-        self.assertEqual(len(new_igraph.variables), 2)
+        assert len(new_igraph.constraints) == 1
+        assert len(new_igraph.variables) == 2
 
-        self.assertIs(new_igraph.constraints[0], m.eq3)
+        assert new_igraph.constraints[0] is m.eq3
 
         # Make sure proper replacement happened here
-        self.assertEqual(
-            ComponentSet(identify_variables(m.eq3.expr)),
-            ComponentSet(m.y[:]),
+        assert (
+            ComponentSet(identify_variables(m.eq3.expr))
+            == ComponentSet(m.y[:])
         )
         # Make sure no replacement happened here
-        self.assertEqual(
-            ComponentSet(identify_variables(m.obj)),
-            ComponentSet(m.y[:]),
+        assert (
+            ComponentSet(identify_variables(m.obj))
+            == ComponentSet(m.y[:])
         )
 
         # Make sure proper replacement happened in objective
-        self.assertEqual(
-            ComponentSet(identify_variables(m.obj)),
-            ComponentSet(m.y[:]),
+        assert (
+            ComponentSet(identify_variables(m.obj))
+            == ComponentSet(m.y[:])
         )
 
-    @unittest.skipUnless(ipopt_avail, "Ipopt is not available")
+    @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
     def test_same_solution(self):
         m1 = self._make_model()
 
@@ -176,10 +177,10 @@ class TestReplacementInObjective(unittest.TestCase):
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
 
-        self.assertAlmostEqual(m1.y[1].value, m2.y[1].value)
-        self.assertAlmostEqual(m1.y[2].value, m2.y[2].value)
-        self.assertAlmostEqual(pyo.value(m1.obj), pyo.value(m2.obj))
+        assert math.isclose(m1.y[1].value, m2.y[1].value)
+        assert math.isclose(m1.y[2].value, m2.y[2].value)
+        assert math.isclose(pyo.value(m1.obj), pyo.value(m2.obj))
 
 
 if __name__ == "__main__":
-    unittest.main()
+    pytest.main()
