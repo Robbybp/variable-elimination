@@ -96,9 +96,6 @@ def define_elimination_order(var_list, con_list, igraph=None):
     if igraph is None:
         igraph = IncidenceGraphInterface()
 
-    var_dmp, _ = igraph.dulmage_mendelsohn(var_list, con_list)
-    assert not var_dmp.unmatched
-
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
     for vb, cb in zip(var_blocks, con_blocks):
         assert len(vb) == 1
