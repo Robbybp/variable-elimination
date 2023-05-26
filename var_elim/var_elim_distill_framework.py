@@ -57,18 +57,16 @@ def main():
     #Creating the incidence graph
     #NOTE: We cannon deactivate the constraints before making the igraph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
-    var_dmp, _ = igraph.dulmage_mendelsohn(var_list, con_list)
-    assert not var_dmp.unmatched
     
     #Get ordered variable and corresponding constraints list
-    var_order, con_order = define_elimination_order(igraph, var_list, con_list)
+    var_order, con_order = define_elimination_order(var_list, con_list, igraph = igraph)
     
     #Sanity check: Plots the ordered matrix 
     imat = get_structural_incidence_matrix(var_order, con_order)
     plt.spy(imat)
     
     #Variable elimination
-    m_reduced = eliminate_variables(m, igraph, var_order, con_order)
+    m_reduced = eliminate_variables(m, var_order, con_order, igraph = igraph)
     ipopt = pyo.SolverFactory('ipopt')
     ipopt.solve(m_reduced, tee= True)
     

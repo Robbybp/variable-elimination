@@ -55,11 +55,10 @@ class TestReplacementSimpleModel(unittest.TestCase):
         vars_to_elim = [m.x[1], m.x[2]]
         cons_to_elim = [m.eq1, m.eq2]
 
-        igraph = IncidenceGraphInterface(m)
         var_order, con_order = define_elimination_order(
-            igraph, vars_to_elim, cons_to_elim
+            vars_to_elim, cons_to_elim
         )
-        eliminate_variables(m, igraph, var_order, con_order)
+        eliminate_variables(m, var_order, con_order)
 
         new_igraph = IncidenceGraphInterface(m)
         # Make sure new model has the correct size
@@ -92,11 +91,10 @@ class TestReplacementSimpleModel(unittest.TestCase):
         vars_to_elim = [m2.x[1], m2.x[2]]
         cons_to_elim = [m2.eq1, m2.eq2]
 
-        igraph = IncidenceGraphInterface(m2)
         var_order, con_order = define_elimination_order(
-            igraph, vars_to_elim, cons_to_elim
+            vars_to_elim, cons_to_elim
         )
-        eliminate_variables(m2, igraph, var_order, con_order)
+        eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
@@ -128,11 +126,10 @@ class TestReplacementInObjective(unittest.TestCase):
         vars_to_elim = [m.x[1], m.x[2]]
         cons_to_elim = [m.eq1, m.eq2]
 
-        igraph = IncidenceGraphInterface(m)
         var_order, con_order = define_elimination_order(
-            igraph, vars_to_elim, cons_to_elim
+            vars_to_elim, cons_to_elim
         )
-        eliminate_variables(m, igraph, var_order, con_order)
+        eliminate_variables(m, var_order, con_order)
 
         new_igraph = IncidenceGraphInterface(m)
         # Make sure new model has the correct size
@@ -171,11 +168,10 @@ class TestReplacementInObjective(unittest.TestCase):
         vars_to_elim = [m2.x[1], m2.x[2]]
         cons_to_elim = [m2.eq1, m2.eq2]
 
-        igraph = IncidenceGraphInterface(m2)
         var_order, con_order = define_elimination_order(
-            igraph, vars_to_elim, cons_to_elim
+            vars_to_elim, cons_to_elim
         )
-        eliminate_variables(m2, igraph, var_order, con_order)
+        eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
