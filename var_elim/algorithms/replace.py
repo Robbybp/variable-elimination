@@ -108,13 +108,14 @@ def define_elimination_order(var_list, con_list, igraph = None):
 
 def eliminate_variables(m, var_order, con_order, igraph = None):
     """
-    Does the actual elimination by defining variable from constraint, eliminates
-    the constraint used for variable definition, defines susbtitution map and
-    replaces the variable in every adjacent constraint
+    Does the actual elimination by defining variable from constraint, deactivating
+    the constraint used for variable definition, and replacing the variable in
+    every adjacent constraint
+
     Returns
     -------
     Reduced Model
-    
+
     """
     if igraph is None:
         igraph = IncidenceGraphInterface(m, include_inequality = False)
