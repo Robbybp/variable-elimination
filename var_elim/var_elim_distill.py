@@ -17,15 +17,6 @@
 #
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
-#  ___________________________________________________________________________
-#
-#  Pyomo: Python Optimization Modeling Objects
-#  Copyright 2017 National Technology and Engineering Solutions of Sandia, LLC
-#  Under the terms of Contract DE-NA0003525 with National Technology and
-#  Engineering Solutions of Sandia, LLC, the U.S. Government retains certain
-#  rights in this software.
-#  This software is distributed under the 3-clause BSD License.
-#  ___________________________________________________________________________
 
 """
 Created on Tue May 23 10:39:34 2023
@@ -34,7 +25,7 @@ Created on Tue May 23 10:39:34 2023
 """
 
 import pyomo.environ as pyo
-from distill import create_instance
+from var_elim.distill import create_instance
 from pyomo.core.expr.visitor import replace_expressions
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
@@ -146,7 +137,9 @@ def var_elem():
     print([var.name for var in var_order])
     print([con.name for con in con_order])
     return m, var_list, con_list
-m, var_list, con_list = var_elem()
+
+if __name__ == "__main__":
+    m, var_list, con_list = var_elem()
    
    
    
