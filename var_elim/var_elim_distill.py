@@ -1,5 +1,23 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#  ___________________________________________________________________________
+#
+#  Variable Elimination: Research code for variable elimination in NLPs
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
+#  ___________________________________________________________________________
+
 """
 Created on Tue May 23 10:39:34 2023
 
@@ -7,8 +25,11 @@ Created on Tue May 23 10:39:34 2023
 """
 
 import pyomo.environ as pyo
-from distill import create_instance
+from var_elim.distill import create_instance
 from pyomo.core.expr.visitor import replace_expressions
+from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
+import matplotlib.pyplot as plt
 
 def replacement_of_dx_vars(m, n, t):
     #A function to give the right substitution map from the diffeq constraints
@@ -51,7 +72,12 @@ def var_elem():
     #Create distillation column instance and solve without var elem
     m = create_instance()
     ipopt = pyo.SolverFactory('ipopt')
-    #ipopt.solve(m, tee=True)
+    
+    
+    #Generate igraph
+    igraph = IncidenceGraphInterface(m, include_inequality=False)
+    cons = [con.name for con in igraph.get_adjacent_to(m.rr[1])]
+    print(cons)
    
     for t in m.t:
         #Eliminate rr variable --> replace with u1
@@ -94,9 +120,26 @@ def var_elem():
     #Solve model again with the eliminated variables
     ipopt.solve(m, tee= True)
    
-    #
-    return m
-m = var_elem()
+    #A list of vars and cons for elimination
+    var_list = [m.rr[2], m.dx[2,2], m.L[2]]
+    con_list = [m.diffeq[2,2], m.vapor_column[2], m.reflux_ratio[2]]
+    
+    var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
+    for vb, cb in zip(var_blocks, con_blocks):
+        assert len(vb) == 1
+        assert len(cb) == 1 
+    
+    var_order = sum(var_blocks, [])
+    con_order = sum(con_blocks, [])
+    imat = get_structural_incidence_matrix(var_order, con_order)
+    plt.spy(imat)
+    
+    print([var.name for var in var_order])
+    print([con.name for con in con_order])
+    return m, var_list, con_list
+
+if __name__ == "__main__":
+    m, var_list, con_list = var_elem()
    
    
    
