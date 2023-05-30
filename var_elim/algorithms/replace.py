@@ -19,6 +19,8 @@
 #  ___________________________________________________________________________
 
 from pyomo.core.base.objective import Objective
+from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.set import Any
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
@@ -105,6 +107,28 @@ def define_elimination_order(var_list, con_list, igraph=None):
     return var_order, con_order
 
 
+def add_bounds_to_expr(var, var_expr, bound_cons):
+    """
+    This function takes in a variable, the expression for variable replacement 
+    and an indexed constraint list. It updates the list with inequality constraints
+    on the expression if the variables replaced were bounded 
+    """
+    if var.ub is None and var.lb is None:
+        pass
+    elif var.lb is not None and var.ub is None:
+        con_name = var.name + "_lb"
+        bound_cons[con_name] =  var_expr >= var.lb
+    elif var.ub is not None and var.lb is None:
+        con_name = var.name + "_ub"
+        bound_cons[con_name] =  var_expr <= var.ub
+    else:
+        con_name = var.name + "_lb"
+        bound_cons[con_name] =  var_expr >= var.lb
+        
+        con_name = var.name + "_ub"
+        bound_cons[con_name] =  var_expr <= var.ub
+        
+
 def eliminate_variables(m, var_order, con_order, igraph=None):
     """
     Does the actual elimination by defining variable from constraint, deactivating
@@ -131,6 +155,9 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
                 var_obj_map[var].append(obj)
             else:
                 var_obj_map[var] = [obj]
+    
+    #List of indexed constraints for adding bounds on replacement expressions
+    m.bound_cons = Constraint(Any)
 
     if igraph is None:
         igraph = IncidenceGraphInterface(m, include_inequality=False)
@@ -139,6 +166,7 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         # Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
+        add_bounds_to_expr(var, var_expr, m.bound_cons)
 
         # Build substitution map
         substitution_map = {id(var): var_expr}
@@ -150,6 +178,7 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             if ad_con is not con:
                 new_expr = replace_expressions(ad_con.expr, substitution_map)
                 ad_con.set_value(new_expr)
+               
 
         if var in var_obj_map:
             for obj in var_obj_map[var]:
