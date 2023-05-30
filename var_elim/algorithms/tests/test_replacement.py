@@ -144,12 +144,7 @@ class TestReplacementInObjective:
             ComponentSet(identify_variables(m.eq3.expr))
             == ComponentSet(m.y[:])
         )
-        # Make sure no replacement happened here
-        assert (
-            ComponentSet(identify_variables(m.obj))
-            == ComponentSet(m.y[:])
-        )
-
+      
         # Make sure proper replacement happened in objective
         assert (
             ComponentSet(identify_variables(m.obj))
