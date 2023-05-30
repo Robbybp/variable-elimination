@@ -5,7 +5,7 @@
 #  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
 #
 #  This program was produced under U.S. Government contract 89233218CNA000001
-#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  for Los Alamos National Laboratory (LANL), which i"s operated by Triad
 #  National Security, LLC for the U.S. Department of Energy/National Nuclear
 #  Security Administration. All rights in the program are reserved by Triad
 #  National Security, LLC, and the U.S. Department of Energy/National Nuclear
@@ -42,18 +42,21 @@ def main():
     var_list= []
     con_list = []
     for t in m.t:
-        var_list.append(m.rr[t])
+        var_list.append(m.u1[t])
         var_list.append(m.L[t])
         var_list.append(m.FL[t])
         con_list.append(m.reflux_ratio[t])
         con_list.append(m.vapor_column[t])
         con_list.append(m.flowrate_stripping[t])
         
-        if t!= 1:
-            for n in m.S_TRAYS:
-                var_list.append(m.dx[n, t])
+       
+        for n in m.S_TRAYS:
+            var_list.append(m.y[n,t])
+            con_list.append(m.mole_frac_balance[n,t])
+            if t!= 1:
+                var_list.append(m.dx[n,t])
                 con_list.append(m.diffeq[n,t])
-    
+
     #Creating the incidence graph
     #NOTE: We cannon deactivate the constraints before making the igraph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
@@ -69,6 +72,7 @@ def main():
     m_reduced = eliminate_variables(m, var_order, con_order, igraph = igraph)
     ipopt = pyo.SolverFactory('ipopt')
     ipopt.solve(m_reduced, tee= True)
+
     
 if __name__ == "__main__":
     main()
