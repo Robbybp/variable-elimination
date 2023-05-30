@@ -110,8 +110,11 @@ def define_elimination_order(var_list, con_list, igraph=None):
 def add_bounds_to_expr(var, var_expr, bound_cons):
     """
     This function takes in a variable, the expression for variable replacement 
-    and an indexed constraint list. It updates the list with inequality constraints
-    on the expression if the variables replaced were bounded 
+    and an indexed constraint list - bound_cons. It updates the list with inequality 
+    constraints on the expression if the variables replaced were bounded 
+    
+    Each constraint added to the bound_cons list is indexed by var_name_ub or 
+    var_name_lb depending upon whihc bound it adds to the expression
     """
     if var.ub is None and var.lb is None:
         pass
@@ -159,8 +162,11 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     #List of indexed constraints for adding bounds on replacement expressions
     m.bound_cons = Constraint(Any)
 
+    #Including inequalities in this incidence graph replaces variables in the 
+    #adjacent inequality constraints too. If the user supplies an igraph,
+    #it needs to have the inequality constraints included
     if igraph is None:
-        igraph = IncidenceGraphInterface(m, include_inequality=False)
+        igraph = IncidenceGraphInterface(m, include_inequality=True)
 
     for var, con in zip(var_order, con_order):
         # Get expression for the variable from constraint
