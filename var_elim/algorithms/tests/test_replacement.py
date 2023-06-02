@@ -176,17 +176,22 @@ class TestReplacementInObjective:
         assert math.isclose(m1.y[2].value, m2.y[2].value)
         assert math.isclose(pyo.value(m1.obj), pyo.value(m2.obj))
 
+
 class TestReplacementWithBounds:
     def _make_simple_model(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1, bounds = (-5, 5))
         m.y = pyo.Var([1, 2], initialize=1)
 
+        # Set bounds on eliminated variables, one of which will be active.
+        m.x[2].setlb(2)
+        m.x[2].setub(5)
+
         m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
         m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
         m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
 
-        m.y[1].setlb(1.0)
+        m.y[1].setlb(0.1)
         m.y[2].setlb(0.5)
 
         m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
@@ -203,14 +208,15 @@ class TestReplacementWithBounds:
             vars_to_elim, cons_to_elim
         )
         eliminate_variables(m, var_order, con_order)
-        
+
         #Make sure new model has correct number of constraints
         new_igraph = IncidenceGraphInterface(m, include_inequality=True)
-        
+
         assert len(new_igraph.constraints) == 5
-        
-        #I want to check that the correct expressions have the correct bounds 
-        
+        assert len(new_igraph.variables) == 2
+
+        #I want to check that the correct expressions have the correct bounds
+
     @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
     def test_same_solution(self):
         m1 = self._make_simple_model()
@@ -218,6 +224,9 @@ class TestReplacementWithBounds:
         solver = pyo.SolverFactory("ipopt")
         res = solver.solve(m1, tee=False)
         pyo.assert_optimal_termination(res)
+
+        # Assert that x[2] is near its bound.
+        assert math.isclose(m1.x[2].value, m1.x[2].lb)
 
         m2 = self._make_simple_model()
 
@@ -234,7 +243,10 @@ class TestReplacementWithBounds:
 
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
-        
+
+        # TODO: Assert that the inequality created by x[2] >= 2.0
+        # is active
+
 
 class TestReplacementInInequalities:
     def _make_simple_model(self):
@@ -253,29 +265,28 @@ class TestReplacementInInequalities:
         m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
 
         return m
-    
+
     def test_simple_replacement(self):
         m = self._make_simple_model()
 
         vars_to_elim = [m.x[1], m.x[2]]
         cons_to_elim = [m.eq1, m.eq2]
-        
+
         var_order, con_order = define_elimination_order(
             vars_to_elim, cons_to_elim
         )
         eliminate_variables(m, var_order, con_order)
-        
+
         #Make sure new model has correct number of constraints
         new_igraph = IncidenceGraphInterface(m, include_inequality=True)
-        
+
         assert len(new_igraph.constraints) == 6
-        
+
         # Make sure proper replacement happened here
         assert (
             ComponentSet(identify_variables(m.eq4.expr))
             == ComponentSet(m.y[:])
         )
-      
 
     @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
     def test_same_solution(self):
