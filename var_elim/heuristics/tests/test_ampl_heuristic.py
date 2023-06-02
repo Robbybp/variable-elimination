@@ -55,7 +55,7 @@ class TestAmplHeuristic:
         m.x = pyo.Var([1, 2], initialize=1)
         m.y = pyo.Var([1, 2], initialize=1)
 
-        m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2 + m.x[2]**3)
+        m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2 + m.x[2]**3 - 4*m.x[1])
         m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
         m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
 
