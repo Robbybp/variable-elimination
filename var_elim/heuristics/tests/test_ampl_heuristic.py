@@ -30,8 +30,6 @@ from var_elim.algorithms.replace import (
 )
 from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
 
-
-
 ipopt_avail = pyo.SolverFactory("ipopt").available()
 
 
@@ -97,6 +95,29 @@ class TestAmplHeuristic:
         pyo.assert_optimal_termination(res)
 
         m2 = self._make_simple_model()
+        
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_ampl(m2)
+
+        var_order, con_order = define_elimination_order(
+            vars_to_elim, cons_to_elim
+        )
+        eliminate_variables(m2, var_order, con_order)
+
+        solver.solve(m2, tee=False)
+        pyo.assert_optimal_termination(res)
+
+        assert math.isclose(m1.y[1].value, m2.y[1].value)
+        assert math.isclose(m1.y[2].value, m2.y[2].value)
+        
+    @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
+    def test_same_solution_complex(self):
+        m1 = self._make_complex_model()
+
+        solver = pyo.SolverFactory("ipopt")
+        res = solver.solve(m1, tee=False)
+        pyo.assert_optimal_termination(res)
+
+        m2 = self._make_complex_model()
         
         vars_to_elim, cons_to_elim = identify_vars_for_elim_ampl(m2)
 
