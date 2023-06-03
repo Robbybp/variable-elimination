@@ -162,6 +162,9 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     #List of indexed constraints for adding bounds on replacement expressions
     m.bound_cons = Constraint(Any)
 
+    var_lb_map = ComponentMap()
+    var_ub_map = ComponentMap()
+
     #Including inequalities in this incidence graph replaces variables in the 
     #adjacent inequality constraints too. If the user supplies an igraph,
     #it needs to have the inequality constraints included
@@ -173,6 +176,15 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
         add_bounds_to_expr(var, var_expr, m.bound_cons)
+
+        # TODO: These names should be constructed from a function or
+        # returned from add_bounds_to_expr
+        lb_name = var.name + "_lb"
+        ub_name = var.name + "_ub"
+        if lb_name in m.bound_cons:
+            var_lb_map[var] = m.bound_cons[lb_name]
+        if ub_name in m.bound_cons:
+            var_ub_map[var] = m.bound_cons[ub_name]
 
         # Build substitution map
         substitution_map = {id(var): var_expr}
@@ -190,7 +202,8 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             for obj in var_obj_map[var]:
                 new_expr = replace_expressions(obj.expr, substitution_map)
                 obj.set_value(new_expr)
-    return m
+
+    return m, var_lb_map, var_ub_map
 
 
 if __name__ == "__main__":

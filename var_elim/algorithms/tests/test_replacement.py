@@ -236,7 +236,7 @@ class TestReplacementWithBounds:
         var_order, con_order = define_elimination_order(
             vars_to_elim, cons_to_elim
         )
-        eliminate_variables(m2, var_order, con_order)
+        _, var_lb_map, var_ub_map = eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
@@ -244,8 +244,11 @@ class TestReplacementWithBounds:
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
 
-        # TODO: Assert that the inequality created by x[2] >= 2.0
-        # is active
+        x2_lb_con = var_lb_map[m2.x[2]]
+        assert math.isclose(
+            pyo.value(x2_lb_con.body),
+            pyo.value(x2_lb_con.lower),
+        )
 
 
 class TestReplacementInInequalities:
