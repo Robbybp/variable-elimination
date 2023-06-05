@@ -173,9 +173,11 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     if igraph is None:
         igraph = IncidenceGraphInterface(m, include_inequality=True)
 
+    var_expr_map = ComponentMap()
     for var, con in zip(var_order, con_order):
         # Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
+        var_expr_map[var] = var_expr
         con.deactivate()
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
         if lb_expr is not None:
@@ -209,7 +211,7 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
                 new_expr = replace_expressions(obj.expr, substitution_map)
                 obj.set_value(new_expr)
 
-    return m, var_lb_map, var_ub_map
+    return m, var_expr_map, var_lb_map, var_ub_map
 
 
 if __name__ == "__main__":
