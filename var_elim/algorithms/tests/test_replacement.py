@@ -260,7 +260,7 @@ class TestReplacementInInequalities:
         m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
         m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
         m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
-        m.eq4 = pyo.Constraint(expr = m.x[1]**2 + m.x[2]**2 >= 1)
+        m.eq4 = pyo.Constraint(expr = m.x[1] + m.x[2] >= 3)
 
         m.y[1].setlb(1.0)
         m.y[2].setlb(0.5)
@@ -311,7 +311,8 @@ class TestReplacementInInequalities:
    
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
-   
+    
+        assert math.isclose(pyo.value(m1.eq4.body), pyo.value(m1.eq4.lb), rel_tol = 1e-6)
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
         
