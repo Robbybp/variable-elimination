@@ -32,7 +32,7 @@ from var_elim.algorithms.replace import (
     define_elimination_order,
     eliminate_variables
 )
-from var_elim.algorithms.ampl_heuristic import identify_vars_for_elim_ampl
+#from var_elim.algorithms.ampl_heuristic import identify_vars_for_elim_ampl
                                         
 import matplotlib.pyplot as plt
 
@@ -75,7 +75,7 @@ def main():
     plt.spy(mat[0:20, 0:20])
     
     #Variable elimination
-    m_reduced = eliminate_variables(m, var_order, con_order, igraph = igraph)
+    m_reduced, _, _ = eliminate_variables(m, var_order, con_order, igraph = igraph)
     ipopt = pyo.SolverFactory('ipopt')
     ipopt.solve(m_reduced, tee= True)
     return m_reduced
