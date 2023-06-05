@@ -20,12 +20,15 @@
 
 from pyomo.core.base.objective import Objective
 from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.expression import Expression
 from pyomo.core.base.set import Any
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
 from pyomo.core.expr.visitor import replace_expressions, identify_variables
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.common.modeling import unique_component_name
+
 
 
 def define_variable_from_constraint(variable, constraint):
@@ -107,7 +110,7 @@ def define_elimination_order(var_list, con_list, igraph=None):
     return var_order, con_order
 
 
-def add_bounds_to_expr(var, var_expr, bound_cons):
+def add_bounds_to_expr(var, var_expr):
     """
     This function takes in a variable, the expression for variable replacement 
     and an indexed constraint list - bound_cons. It updates the list with inequality 
@@ -117,20 +120,18 @@ def add_bounds_to_expr(var, var_expr, bound_cons):
     var_name_lb depending upon whihc bound it adds to the expression
     """
     if var.ub is None and var.lb is None:
-        pass
+        lb_expr = None
+        ub_expr = None
     elif var.lb is not None and var.ub is None:
-        con_name = var.name + "_lb"
-        bound_cons[con_name] =  var_expr >= var.lb
+        lb_expr = var_expr >= var.lb
+        ub_expr = None
     elif var.ub is not None and var.lb is None:
-        con_name = var.name + "_ub"
-        bound_cons[con_name] =  var_expr <= var.ub
+        lb_expr = None
+        ub_expr = var_expr <= var.ub
     else:
-        con_name = var.name + "_lb"
-        bound_cons[con_name] =  var_expr >= var.lb
-        
-        con_name = var.name + "_ub"
-        bound_cons[con_name] =  var_expr <= var.ub
-        
+        lb_expr = var_expr >= var.lb
+        ub_expr = var_expr <= var.ub
+    return lb_expr, ub_expr
 
 def eliminate_variables(m, var_order, con_order, igraph=None):
     """
@@ -160,7 +161,8 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
                 var_obj_map[var] = [obj]
     
     #List of indexed constraints for adding bounds on replacement expressions
-    m.bound_cons = Constraint(Any)
+    m.replaced_variable_bounds = Constraint(Any)
+    #m.add_component(unique_component_name(m, "replaced_variable_bounds"), Constraint(Any))
 
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
@@ -175,16 +177,20 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         # Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
-        add_bounds_to_expr(var, var_expr, m.bound_cons)
+        lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
+        if lb_expr is not None:
+            m.replaced_variable_bounds[var.name + '_lb'] = lb_expr
+        if ub_expr is not None:
+            m.replaced_variable_bounds[var.name + '_ub'] = ub_expr
 
         # TODO: These names should be constructed from a function or
         # returned from add_bounds_to_expr
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
-        if lb_name in m.bound_cons:
-            var_lb_map[var] = m.bound_cons[lb_name]
-        if ub_name in m.bound_cons:
-            var_ub_map[var] = m.bound_cons[ub_name]
+        if lb_name in m.replaced_variable_bounds:
+            var_lb_map[var] = m.replaced_variable_bounds[lb_name]
+        if ub_name in m.replaced_variable_bounds:
+            var_ub_map[var] = m.replaced_variable_bounds[ub_name]
 
         # Build substitution map
         substitution_map = {id(var): var_expr}
