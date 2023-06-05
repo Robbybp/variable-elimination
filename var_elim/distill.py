@@ -210,6 +210,18 @@ def main():
     solver = pyo.SolverFactory("ipopt")
     solver.solve(model, tee=True)
 
+    from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+
+    igraph = IncidenceGraphInterface(model)
+    print(f"N. variables: {len(igraph.variables)}")
+    print(f"N. constraints: {len(igraph.constraints)}")
+
+    model.u1[:].fix()
+
+    igraph = IncidenceGraphInterface(model)
+    print(f"N. variables: {len(igraph.variables)}")
+    print(f"N. constraints: {len(igraph.constraints)}")
+
 
 if __name__ == "__main__":
     main()
