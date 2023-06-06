@@ -32,27 +32,28 @@ from var_elim.algorithms.replace import (
     define_elimination_order,
     eliminate_variables
 )
-                                         
+from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
 import matplotlib.pyplot as plt
 
 def main():
     m = create_instance()
     
     #Cuids of variables and constraints that can be used for elimination
-    var_list= []
-    con_list = []
-    for t in m.t:
-        var_list.append(m.rr[t])
-        var_list.append(m.L[t])
-        var_list.append(m.FL[t])
-        con_list.append(m.reflux_ratio[t])
-        con_list.append(m.vapor_column[t])
-        con_list.append(m.flowrate_stripping[t])
+    # var_list= []
+    # con_list = []
+    # for t in m.t:
+    #     var_list.append(m.rr[t])
+    #     var_list.append(m.L[t])
+    #     var_list.append(m.FL[t])
+    #     con_list.append(m.reflux_ratio[t])
+    #     con_list.append(m.vapor_column[t])
+    #     con_list.append(m.flowrate_stripping[t])
         
-        if t!= 1:
-            for n in m.S_TRAYS:
-                var_list.append(m.dx[n, t])
-                con_list.append(m.diffeq[n,t])
+    #     if t!= 1:
+    #         for n in m.S_TRAYS:
+    #             var_list.append(m.dx[n, t])
+    #             con_list.append(m.diffeq[n,t])
+    var_list, con_list = identify_vars_for_elim_ampl(m)
     
     #Creating the incidence graph
     #NOTE: We cannon deactivate the constraints before making the igraph
