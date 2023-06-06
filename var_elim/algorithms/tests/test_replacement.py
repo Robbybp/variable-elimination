@@ -286,5 +286,15 @@ class TestReplacementInInequalities:
         assert math.isclose(m1.y[2].value, m2.y[2].value)
 
 
+class TestExceptions:
+    def test_discrete_variable(self):
+        m = pyo.ConcreteModel()
+        m.y = pyo.Var([1, 2], domain=pyo.Binary)
+        m.eq = pyo.Constraint(expr=m.y[1] == 1 - m.y[2])
+        msg = "Cannot eliminate discrete variable"
+        with pytest.raises(RuntimeError, match=msg):
+            eliminate_variables(m, [m.y[1]], [m.eq])
+
+
 if __name__ == "__main__":
     pytest.main()

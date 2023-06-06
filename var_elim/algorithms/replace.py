@@ -144,6 +144,12 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     Reduced Model
 
     """
+    for var in var_order:
+        if var.domain is Integers or var.domain is Binary:
+            raise RuntimeError(
+                f"Cannot eliminate discrete variable {var.name}"
+            )
+
     # TODO: This would not be necessary if IncidenceGraphInterface supported
     # objectives as nodes.
     #
