@@ -161,8 +161,10 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
                 var_obj_map[var] = [obj]
     
     #List of indexed constraints for adding bounds on replacement expressions
-    #m.replaced_variable_bounds = Constraint(Any)
-    m.add_component(unique_component_name(m, "replaced_variable_bounds"), Constraint(Any))
+    m.add_component(
+        unique_component_name(m, "replaced_variable_bounds"),
+        Constraint(Any),
+    )
 
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
