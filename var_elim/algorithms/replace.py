@@ -21,7 +21,7 @@
 from pyomo.core.base.objective import Objective
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.expression import Expression
-from pyomo.core.base.set import Set
+from pyomo.core.base.set import Set, Integers, Binary
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
@@ -152,8 +152,10 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     objectives = list(m.component_data_objects(Objective, active=True))
     var_obj_map = ComponentMap()
     for obj in objectives:
-        # NOTE: Punting on include_fixed for now. Not 100% sure how fixed
-        # variables should be handled.
+        # We do not need include_fixed here. These variables do not determine
+        # the variables that will be replaced. Variables in the objective
+        # with a coefficient of zero will not be a problem either (the replaced
+        # expression will just have a coefficient of zero).
         for var in identify_variables(obj.expr):
             if var in var_obj_map:
                 var_obj_map[var].append(obj)
