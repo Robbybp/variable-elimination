@@ -18,11 +18,16 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+from pyomo.core.base.objective import Objective
+from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.expression import Expression
+from pyomo.core.base.set import Set, Integers, Binary
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
-from pyomo.core.expr.visitor import replace_expressions
+from pyomo.core.expr.visitor import replace_expressions, identify_variables
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.common.modeling import unique_component_name
 
 
 def define_variable_from_constraint(variable, constraint):
@@ -104,6 +109,30 @@ def define_elimination_order(var_list, con_list, igraph=None):
     return var_order, con_order
 
 
+def add_bounds_to_expr(var, var_expr):
+    """
+    This function takes in a variable, the expression for variable replacement
+    and an indexed constraint list - bound_cons. It updates the list with inequality
+    constraints on the expression if the variables replaced were bounded
+
+    Each constraint added to the bound_cons list is indexed by var_name_ub or
+    var_name_lb depending upon whihc bound it adds to the expression
+    """
+    if var.ub is None and var.lb is None:
+        lb_expr = None
+        ub_expr = None
+    elif var.lb is not None and var.ub is None:
+        lb_expr = var_expr >= var.lb
+        ub_expr = None
+    elif var.ub is not None and var.lb is None:
+        lb_expr = None
+        ub_expr = var_expr <= var.ub
+    else:
+        lb_expr = var_expr >= var.lb
+        ub_expr = var_expr <= var.ub
+    return lb_expr, ub_expr
+
+
 def eliminate_variables(m, var_order, con_order, igraph=None):
     """
     Does the actual elimination by defining variable from constraint, deactivating
@@ -115,13 +144,66 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     Reduced Model
 
     """
+    for var in var_order:
+        if var.domain is Integers or var.domain is Binary:
+            raise RuntimeError(
+                f"Cannot eliminate discrete variable {var.name}"
+            )
+
+    # TODO: This would not be necessary if IncidenceGraphInterface supported
+    # objectives as nodes.
+    #
+    # This would get slightly simpler if we only support single-objective
+    # problems...
+    objectives = list(m.component_data_objects(Objective, active=True))
+    var_obj_map = ComponentMap()
+    for obj in objectives:
+        # We do not need include_fixed here. These variables do not determine
+        # the variables that will be replaced. Variables in the objective
+        # with a coefficient of zero will not be a problem either (the replaced
+        # expression will just have a coefficient of zero).
+        for var in identify_variables(obj.expr):
+            if var in var_obj_map:
+                var_obj_map[var].append(obj)
+            else:
+                var_obj_map[var] = [obj]
+
+    # Set that will store names of bounds on replacement expressions
+    bound_con_set = Set(initialize=[])
+    m.add_component(
+        unique_component_name(m, "replaced_variable_bounds_set"), bound_con_set
+    )
+    # Constraint that will store bounds on replacement expressions
+    bound_con = Constraint(bound_con_set)
+    m.add_component(
+        unique_component_name(m, "replaced_variable_bounds"), bound_con
+    )
+
+    var_lb_map = ComponentMap()
+    var_ub_map = ComponentMap()
+
+    # Including inequalities in this incidence graph replaces variables in the
+    # adjacent inequality constraints too. If the user supplies an igraph,
+    # it needs to have the inequality constraints included
     if igraph is None:
-        igraph = IncidenceGraphInterface(m, include_inequality=False)
+        igraph = IncidenceGraphInterface(m, include_inequality=True)
 
     for var, con in zip(var_order, con_order):
         # Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
+        lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
+
+        lb_name = var.name + "_lb"
+        ub_name = var.name + "_ub"
+        if lb_expr is not None:
+            bound_con_set.add(lb_name)
+            bound_con[lb_name] = lb_expr
+            var_lb_map[var] = bound_con[lb_name]
+        if ub_expr is not None:
+            bound_con_set.add(ub_name)
+            bound_con[ub_name] = ub_expr
+            var_ub_map[var] = bound_con[ub_name]
 
         # Build substitution map
         substitution_map = {id(var): var_expr}
@@ -133,7 +215,13 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             if ad_con is not con:
                 new_expr = replace_expressions(ad_con.expr, substitution_map)
                 ad_con.set_value(new_expr)
-    return m
+
+        if var in var_obj_map:
+            for obj in var_obj_map[var]:
+                new_expr = replace_expressions(obj.expr, substitution_map)
+                obj.set_value(new_expr)
+
+    return m, var_lb_map, var_ub_map
 
 
 if __name__ == "__main__":
