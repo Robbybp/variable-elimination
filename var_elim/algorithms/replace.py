@@ -30,7 +30,6 @@ from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.common.modeling import unique_component_name
 
 
-
 def define_variable_from_constraint(variable, constraint):
     """Get the expression that defines the variable according to the
     constraint.
@@ -112,11 +111,11 @@ def define_elimination_order(var_list, con_list, igraph=None):
 
 def add_bounds_to_expr(var, var_expr):
     """
-    This function takes in a variable, the expression for variable replacement 
-    and an indexed constraint list - bound_cons. It updates the list with inequality 
-    constraints on the expression if the variables replaced were bounded 
-    
-    Each constraint added to the bound_cons list is indexed by var_name_ub or 
+    This function takes in a variable, the expression for variable replacement
+    and an indexed constraint list - bound_cons. It updates the list with inequality
+    constraints on the expression if the variables replaced were bounded
+
+    Each constraint added to the bound_cons list is indexed by var_name_ub or
     var_name_lb depending upon whihc bound it adds to the expression
     """
     if var.ub is None and var.lb is None:
@@ -132,6 +131,7 @@ def add_bounds_to_expr(var, var_expr):
         lb_expr = var_expr >= var.lb
         ub_expr = var_expr <= var.ub
     return lb_expr, ub_expr
+
 
 def eliminate_variables(m, var_order, con_order, igraph=None):
     """
@@ -159,8 +159,8 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
                 var_obj_map[var].append(obj)
             else:
                 var_obj_map[var] = [obj]
-    
-    #List of indexed constraints for adding bounds on replacement expressions
+
+    # List of indexed constraints for adding bounds on replacement expressions
     m.add_component(
         unique_component_name(m, "replaced_variable_bounds"),
         Constraint(Any),
@@ -169,9 +169,9 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
 
-    #Including inequalities in this incidence graph replaces variables in the 
-    #adjacent inequality constraints too. If the user supplies an igraph,
-    #it needs to have the inequality constraints included
+    # Including inequalities in this incidence graph replaces variables in the
+    # adjacent inequality constraints too. If the user supplies an igraph,
+    # it needs to have the inequality constraints included
     if igraph is None:
         igraph = IncidenceGraphInterface(m, include_inequality=True)
 
@@ -181,9 +181,9 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         con.deactivate()
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
         if lb_expr is not None:
-            m.replaced_variable_bounds[var.name + '_lb'] = lb_expr
+            m.replaced_variable_bounds[var.name + "_lb"] = lb_expr
         if ub_expr is not None:
-            m.replaced_variable_bounds[var.name + '_ub'] = ub_expr
+            m.replaced_variable_bounds[var.name + "_ub"] = ub_expr
 
         # TODO: These names should be constructed from a function or
         # returned from add_bounds_to_expr
@@ -204,7 +204,6 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             if ad_con is not con:
                 new_expr = replace_expressions(ad_con.expr, substitution_map)
                 ad_con.set_value(new_expr)
-               
 
         if var in var_obj_map:
             for obj in var_obj_map[var]:
