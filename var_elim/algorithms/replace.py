@@ -21,7 +21,7 @@
 from pyomo.core.base.objective import Objective
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.expression import Expression
-from pyomo.core.base.set import Any
+from pyomo.core.base.set import Set
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
@@ -160,10 +160,15 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             else:
                 var_obj_map[var] = [obj]
 
-    # List of indexed constraints for adding bounds on replacement expressions
+    # Set that will store names of bounds on replacement expressions
+    bound_con_set = Set(initialize=[])
     m.add_component(
-        unique_component_name(m, "replaced_variable_bounds"),
-        Constraint(Any),
+        unique_component_name(m, "replaced_variable_bounds_set"), bound_con_set
+    )
+    # Constraint that will store bounds on replacement expressions
+    bound_con = Constraint(bound_con_set)
+    m.add_component(
+        unique_component_name(m, "replaced_variable_bounds"), bound_con
     )
 
     var_lb_map = ComponentMap()
@@ -180,19 +185,17 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
-        if lb_expr is not None:
-            m.replaced_variable_bounds[var.name + "_lb"] = lb_expr
-        if ub_expr is not None:
-            m.replaced_variable_bounds[var.name + "_ub"] = ub_expr
 
-        # TODO: These names should be constructed from a function or
-        # returned from add_bounds_to_expr
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
-        if lb_name in m.replaced_variable_bounds:
-            var_lb_map[var] = m.replaced_variable_bounds[lb_name]
-        if ub_name in m.replaced_variable_bounds:
-            var_ub_map[var] = m.replaced_variable_bounds[ub_name]
+        if lb_expr is not None:
+            bound_con_set.add(lb_name)
+            bound_con[lb_name] = lb_expr
+            var_lb_map[var] = bound_con[lb_name]
+        if ub_expr is not None:
+            bound_con_set.add(ub_name)
+            bound_con[ub_name] = ub_expr
+            var_ub_map[var] = bound_con[ub_name]
 
         # Build substitution map
         substitution_map = {id(var): var_expr}
