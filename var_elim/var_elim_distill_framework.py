@@ -44,28 +44,11 @@ def main():
     var_list, con_list = identify_vars_for_elim_ampl(m)
     var_list= []
     con_list = []
-    for t in m.t:
-        #These set of variables when eliminated cause the degrees of freedom to decrease by 1
-        var_list.append(m.rr[t])
-        var_list.append(m.L[t])
-        var_list.append(m.V[t])
-        var_list.append(m.FL[t])
-        con_list.append(m.reflux_ratio[t])
-        con_list.append(m.flowrate_rectification[t])
-        con_list.append(m.vapor_column[t])
-        con_list.append(m.flowrate_stripping[t])
-        
-       
-        # for n in m.S_TRAYS:
-        #     var_list.append(m.y[n,t])
-        #     con_list.append(m.mole_frac_balance[n,t])
-        #     if t!= 1:
-        #         var_list.append(m.dx[n,t])
-        #         con_list.append(m.diffeq[n,t])
     
-
-    #Creating the incidence graph
-    #NOTE: We cannon deactivate the constraints before making the igraph
+    #Using AMPL heuristic for elimination
+    var_list, con_list = identify_vars_for_elim_ampl(m)
+    
+    #Make incidece graph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
     
     #Get ordered variable and corresponding constraints list
