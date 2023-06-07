@@ -17,17 +17,11 @@
 #
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
-
-"""
-Created on Fri May 26 13:57:13 2023
-
-@author:  sakshi
-"""
-
 from pyomo.environ import Constraint
 from var_elim.distill import create_instance
 from pyomo.core.expr.visitor import identify_variables
 from pyomo.repn import generate_standard_repn
+from pyomo.core.base.set import Integers, Binary
 
 def identify_vars_for_elim_ampl(m):
     """
@@ -51,7 +45,7 @@ def identify_vars_for_elim_ampl(m):
     #Identify variables of the type ===> coef*v (+/-) expr = 0
     var_list = []
     con_list = []
-    defining_var_ids = []
+    defining_var_ids = set([])
     for c in cons:
         #gets all vars in order from left to right in the constraint expression
         expr_vars = list(identify_variables(c.expr))
@@ -62,13 +56,16 @@ def identify_vars_for_elim_ampl(m):
         
         #If the first variable in the constraint expression hasn't appeared in 
         #the rhs of a defining constraint and is linear, add it to var_list
-
-        if id(expr_vars[0]) not in defining_var_ids:
-            if expr_vars[0] is linear_vars[0]:
+        if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
+            pass
+        elif expr_vars[0].lb is not None or expr_vars[0].ub is not None:
+            pass
+        elif id(expr_vars[0]) not in defining_var_ids:
+            if expr_vars[0] is linear_vars[0] and expr_vars[0].lb is None and expr_vars[0].ub is None:
                 var_list.append(expr_vars[0])
                 con_list.append(c)
                 for var in expr_vars:
-                    defining_var_ids.append(id(var))
+                    defining_var_ids.add(id(var))
                     
                     #This will add all vars from the expression to the defining vars list
                     #This works because we anyways don't want to eliminate the same var twice 
