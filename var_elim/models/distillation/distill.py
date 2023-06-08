@@ -34,7 +34,6 @@ from pyomo.dae import *
 from pyomo.util.subsystems import TemporarySubsystemManager
 from pyomo.util.calc_var_value import calculate_variable_from_constraint
 from pyomo.common.timing import HierarchicalTimer
-from pyomo.contrib.fbbt.fbbt import fbbt
 
 def make_model(horizon=1500, vol=1.6, x_Feed=0.5):
 
@@ -207,7 +206,6 @@ def create_instance():
 
 def main():
     model = create_instance()
-    new_var_bounds = fbbt(model)
     solver = pyo.SolverFactory("ipopt")
     solver.options["print_timing_statistics"] = "yes"
     solver.solve(model, tee=True)
