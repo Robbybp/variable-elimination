@@ -28,8 +28,6 @@ from var_elim.algorithms.replace import (
 )
 
 from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
-
-import matplotlib.pyplot as plt
 import time
 
 def main():
@@ -56,6 +54,7 @@ def main():
     #Variable elimination
     t0 = time.time()
     m_reduced, _, _ = eliminate_variables(m, var_order, con_order, igraph = igraph)
+    #new_var_bounds = fbbt(m_reduced)
     t1 = time.time() - t0
     
     print("Time to eliminate the variables = ", t1)
