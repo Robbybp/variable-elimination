@@ -24,9 +24,8 @@ from pyomo.repn import generate_standard_repn
 from pyomo.core.base.set import Integers, Binary
 
 def identify_vars_for_elim_ampl(m):
-    """
-    This module implements the AMPL preprocessor's strategy for variable
-    elimination. 
+    """Identify defined variables and defining constraints via the heuristic
+    from the AMPL preprocessor
 
     Parameters
     ----------
