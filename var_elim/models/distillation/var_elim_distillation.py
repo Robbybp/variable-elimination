@@ -33,9 +33,6 @@ import time
 def main():
     m = create_instance()
     
-    var_list= []
-    con_list = []
-    
     #Using AMPL heuristic for elimination
     t0 = time.time()
     var_list, con_list = identify_vars_for_elim_ampl(m)
