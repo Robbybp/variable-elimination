@@ -374,6 +374,7 @@ def make_dynamic_model(horizon=24.0, ntfe= 24, eta=0.7):
     m.fs.nodes[0].supplies[0].state[:].flow_mol.setlb(1000.0)
     m.fs.nodes[0].supplies[0].state[:].flow_mol.setub(1e+10)
     m.fs.pipeline[:].control_volume.pressure[:,:].setlb(0)
+    m.fs.pipeline[:].control_volume.flow_mass[:,:].setlb(0)
     m.fs.compressor[:].power.setub(60000)
     m.fs.compressor[:].power[t0].setub(None)
     
