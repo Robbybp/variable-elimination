@@ -24,14 +24,14 @@ from pyomo.repn import generate_standard_repn
 from pyomo.core.base.set import Integers, Binary
 from pyomo.common.collections import ComponentSet
 
+
 def identify_vars_for_elim_ampl(m):
-    """
-    This module implements the AMPL preprocessor's strategy for variable
-    elimination. 
+    """Identify defined variables and defining constraints via the heuristic
+    from the AMPL preprocessor
 
     Parameters
     ----------
-    m : Pyomo Model 
+    m : Pyomo Model
 
     Returns
     -------
@@ -39,27 +39,29 @@ def identify_vars_for_elim_ampl(m):
     con_list : List of constraints used to eliminate the variables
 
     """
-    
-    #Get constraint data in the order in which constraints are written
-    cons = list(m.component_data_objects(Constraint, active = True))
-    
-    #Identify variables of the type ===> coef*v (+/-) expr = 0
+
+    # Get constraint data in the order in which constraints are written
+    cons = list(m.component_data_objects(Constraint, active=True))
+
+    # Identify variables of the type ===> coef*v (+/-) expr = 0
     var_list = []
     con_list = []
     defining_var_ids = set()
     for c in cons:
-        #gets all vars in order from left to right in the constraint expression
+        # gets all vars in order from left to right in the constraint expression
         expr_vars = list(identify_variables(c.expr))
-        
-        #gets linear vars in the constraint expression
+
+        # gets linear vars in the constraint expression
         repn = generate_standard_repn(c.body, compute_values=False, quadratic=False)
         linear_vars = ComponentSet(repn.linear_vars)
-        
-        #If the first variable in the constraint expression hasn't appeared in 
-        #the rhs of a defining constraint and is linear, add it to var_list
+
+        nonlinear_vars = ComponentSet(repn.nonlinear_vars)
+
         if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
             pass
         elif expr_vars[0].lb is not None or expr_vars[0].ub is not None:
+            pass
+        elif expr_vars[0] in nonlinear_vars:
             pass
         elif id(expr_vars[0]) not in defining_var_ids:
             if expr_vars[0] in linear_vars:
@@ -67,9 +69,9 @@ def identify_vars_for_elim_ampl(m):
                 con_list.append(c)
                 for var in expr_vars:
                     defining_var_ids.add(id(var))
-                    
-                    #This will add all vars from the expression to the defining vars list
-                    #This works because we anyways don't want to eliminate the same var twice 
-                    #using 2 different constraints
-        
+
+                    # This will add all vars from the expression to the defining vars list
+                    # This works because we anyways don't want to eliminate the same var twice
+                    # using 2 different constraints
+
     return var_list, con_list
