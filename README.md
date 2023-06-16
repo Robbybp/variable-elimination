@@ -16,3 +16,9 @@ Then functionality can be imported in Python:
 from var_elim.distill import create_instance
 model = create_instance()
 ```
+
+# Dependencies
+This repository depends directly on the following Python packages:
+- Pyomo: `pip install pyomo`
+- IDAES: `pip install idaes-pse`
+- Egret: `pip install gridx-egret`
