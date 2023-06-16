@@ -176,23 +176,6 @@ def add_objective(instance):
 
     instance.OBJ = pyo.Objective(rule=obj_rule)
 
-    # Calculate setpoint for the reduced space.
-    # Reduced space objective must not use algebraic variables.
-    t0 = instance.t.first()
-    to_reset = [instance.y[1, t0], instance.x[1, t0]]
-    with TemporarySubsystemManager(to_reset=to_reset):
-        instance.y[1, t0].set_value(pyo.value(instance.y1_ref))
-        calculate_variable_from_constraint(
-            instance.x[1, t0],
-            instance.mole_frac_balance[1, t0],
-        )
-        instance.x1_ref = pyo.Param(initialize=instance.x[1, t0].value)
-
-    def rs_obj_rule(m):
-        return m.alpha * sum(
-            (m.x[1, i] - m.x1_ref) ** 2 for i in m.t if i != 1
-        ) + m.rho * sum((m.u1[i] - m.u1_ref) ** 2 for i in m.t if i != 1)
-
 
 def create_instance():
     model = make_model()
