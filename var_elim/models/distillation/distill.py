@@ -35,7 +35,7 @@ from pyomo.util.subsystems import TemporarySubsystemManager
 from pyomo.util.calc_var_value import calculate_variable_from_constraint
 from pyomo.common.timing import HierarchicalTimer
 
-def make_model(horizon=1500, vol=1.6, x_Feed=0.5):
+def make_model(horizon=52, vol=1.6, x_Feed=0.5):
 
     model = AbstractModel()
 
@@ -151,10 +151,10 @@ def make_model(horizon=1500, vol=1.6, x_Feed=0.5):
     return model
 
 
-def discretize_model(instance):
+def discretize_model(instance, nfe=50):
     # Discretize using Finite Difference Approach
     discretizer = pyo.TransformationFactory("dae.finite_difference")
-    discretizer.apply_to(instance, nfe=400, scheme="BACKWARD")
+    discretizer.apply_to(instance, nfe=nfe, scheme="BACKWARD")
 
     # Discretize using Orthogonal Collocation
     # discretizer = TransformationFactory('dae.collocation')
@@ -177,18 +177,18 @@ def add_objective(instance):
     instance.OBJ = pyo.Objective(rule=obj_rule)
 
 
-def create_instance():
-    model = make_model()
+def create_instance(horizon=52, vol=1.6, x_Feed=0.5, nfe=50):
+    model = make_model(horizon=horizon, vol=vol, x_Feed=x_Feed)
     file_dir = os.path.dirname(__file__)
     fname = os.path.join(file_dir, "distill.dat")
     instance = model.create_instance(fname)
-    discretize_model(instance)
+    discretize_model(instance, nfe=nfe)
     add_objective(instance)
     return instance
 
 
 def main():
-    model = create_instance()
+    model = create_instance(horizon=1500, nfe=400)
     solver = pyo.SolverFactory("ipopt")
     solver.options["print_timing_statistics"] = "yes"
     solver.solve(model, tee=True)

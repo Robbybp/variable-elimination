@@ -31,7 +31,7 @@ from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
 import time
     
 def main():
-    m = create_instance()
+    m = create_instance(horizon=1500, nfe=400)
     
     #Using AMPL heuristic for elimination
     t0 = time.time()
