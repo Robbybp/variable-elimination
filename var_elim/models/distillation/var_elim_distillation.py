@@ -37,7 +37,7 @@ def main():
     t0 = time.time()
     var_list, con_list = identify_vars_for_elim_min_degree(m)
     t1 = time.time() - t0
-    print("Time for max degree heuristic = ", t1)
+    print("Time for min degree heuristic = ", t1)
     
     #Make incidece graph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
