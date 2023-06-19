@@ -80,17 +80,21 @@ class TestMinDegreeHeuristic:
         
         return m
     
-    def test_replacement_vars_simple3(self):
-        m = self._make_simple_model3()
+    def _make_simple_model4(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2], initialize=1)
+        m.y = pyo.Var([1, 2], initialize=1)
+        m.z = pyo.Var(initialize = 1)
 
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_min_degree(m)
+        m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
+        m.eq2 = pyo.Constraint(expr=m.x[2] == m.y[2]**2 + m.z)
+        m.eq3 = pyo.Constraint(expr = m.x[2]*m.y[1] == 2)
+        m.y[1].setlb(1.0)
+        m.y[2].setlb(0.5)
+
+        m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
         
-        assert len(vars_to_elim) == 2
-        assert len(cons_to_elim) == 2
-        assert m.x[1] in ComponentSet(vars_to_elim)
-        assert m.x[2] in ComponentSet(vars_to_elim)
-        assert m.eq1 in ComponentSet(cons_to_elim)
-        assert m.eq3 in ComponentSet(cons_to_elim)
+        return m
     
     
     def test_replacement_vars_simple(self):
@@ -115,6 +119,31 @@ class TestMinDegreeHeuristic:
         assert len(vars_to_elim) == 1
         assert len(cons_to_elim) == 1
         assert m.x[2] in ComponentSet(vars_to_elim)        
+        
+    
+    def test_replacement_vars_simple3(self):
+        m = self._make_simple_model3()
+
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_min_degree(m)
+        
+        assert len(vars_to_elim) == 2
+        assert len(cons_to_elim) == 2
+        assert m.x[1] in ComponentSet(vars_to_elim)
+        assert m.x[2] in ComponentSet(vars_to_elim)
+        assert m.eq1 in ComponentSet(cons_to_elim)
+        assert m.eq3 in ComponentSet(cons_to_elim)
+        
+    def test_replacement_vars_simple4(self):
+        m = self._make_simple_model4()
+
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_min_degree(m)
+        
+        assert len(vars_to_elim) == 2
+        assert len(cons_to_elim) == 2
+        assert m.x[1] in ComponentSet(vars_to_elim)
+        assert m.z in ComponentSet(vars_to_elim)
+        assert m.eq1 in ComponentSet(cons_to_elim)
+        assert m.eq2 in ComponentSet(cons_to_elim)
         
         
     @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
@@ -164,6 +193,30 @@ class TestMinDegreeHeuristic:
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
         assert math.isclose(m1.x[1].value, m2.x[1].value)
+        
+    @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
+    def test_same_solution_simple4(self):
+        m1 = self._make_simple_model4()
+
+        solver = pyo.SolverFactory("ipopt")
+        res = solver.solve(m1, tee=False)
+        pyo.assert_optimal_termination(res)
+
+        m2 = self._make_simple_model4()
+        
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_min_degree(m2)
+
+        var_order, con_order = define_elimination_order(
+            vars_to_elim, cons_to_elim
+        )
+        eliminate_variables(m2, var_order, con_order)
+
+        solver.solve(m2, tee=False)
+        pyo.assert_optimal_termination(res)
+
+        assert math.isclose(m1.y[1].value, m2.y[1].value)
+        assert math.isclose(m1.y[2].value, m2.y[2].value)
+        assert math.isclose(m1.x[2].value, m2.x[2].value)
         
 if __name__ == "__main__":
     pytest.main()
