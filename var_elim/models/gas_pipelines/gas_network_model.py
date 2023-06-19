@@ -290,7 +290,7 @@ def demand_data_helper():
     return demand
 
 
-def make_dynamic_model(horizon=24.0, ntfe=24, eta=0.7):
+def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     demand = demand_data_helper()
     ipopt = pyo.SolverFactory("ipopt")
     nxfe = 4
