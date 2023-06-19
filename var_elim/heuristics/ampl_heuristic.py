@@ -54,12 +54,15 @@ def identify_vars_for_elim_ampl(m):
         # gets linear vars in the constraint expression
         repn = generate_standard_repn(c.body, compute_values=False, quadratic=False)
         linear_vars = ComponentSet(repn.linear_vars)
+        nonlinear_vars = ComponentSet(repn.nonlinear_vars)
 
         # If the first variable in the constraint expression hasn't appeared in
         # the rhs of a defining constraint and is linear, add it to var_list
         if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
             pass
         elif expr_vars[0].lb is not None or expr_vars[0].ub is not None:
+            pass
+        elif expr_vars[0] in nonlinear_vars:
             pass
         elif id(expr_vars[0]) not in defining_var_ids:
             if expr_vars[0] in linear_vars:
