@@ -18,14 +18,14 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 from pyomo.environ import Constraint
-from var_elim.distill import create_instance
 from pyomo.core.expr.visitor import identify_variables
 from pyomo.repn import generate_standard_repn
 from pyomo.core.base.set import Integers, Binary
 from pyomo.common.collections import ComponentSet
+import random
 
 
-def identify_vars_for_elim_ampl(m):
+def identify_vars_for_elim_ampl(m, randomize = False):
     """Identify defined variables and defining constraints via the heuristic
     from the AMPL preprocessor
 
@@ -39,9 +39,13 @@ def identify_vars_for_elim_ampl(m):
     con_list : List of constraints used to eliminate the variables
 
     """
-
-    # Get constraint data in the order in which constraints are written
-    cons = list(m.component_data_objects(Constraint, active=True))
+    if randomize == True:
+        #Randomize constraint order
+        cons = list(m.component_data_objects(Constraint, active=True))
+        random.shuffle(cons)
+    else:
+        # Get constraint data in the order in which constraints are written
+        cons = list(m.component_data_objects(Constraint, active=True))
 
     # Identify variables of the type ===> coef*v (+/-) expr = 0
     var_list = []
@@ -54,10 +58,9 @@ def identify_vars_for_elim_ampl(m):
         # gets linear vars in the constraint expression
         repn = generate_standard_repn(c.body, compute_values=False, quadratic=False)
         linear_vars = ComponentSet(repn.linear_vars)
+
         nonlinear_vars = ComponentSet(repn.nonlinear_vars)
 
-        # If the first variable in the constraint expression hasn't appeared in
-        # the rhs of a defining constraint and is linear, add it to var_list
         if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
             pass
         elif expr_vars[0].lb is not None or expr_vars[0].ub is not None:
