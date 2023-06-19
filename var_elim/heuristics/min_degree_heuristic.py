@@ -65,34 +65,34 @@ def identify_vars_for_elim_min_degree(m):
     linear_vars = ComponentSet(linear_igraph.variables)
     linear_cons = ComponentSet(linear_igraph.constraints)
 
-    # Get the degree of variables from the full graph
-    for var in igraph.variables:
+    # Get the degree of linear variables from the full graph
+    #We should just look at vars and cons in the linear graph 
+    #but get adjacency from the full graph
+    for var in linear_vars:
         adj_cons = igraph.get_adjacent_to(var)
         adj_cons_map[var] = adj_cons
         degree_map_var[var] = len(adj_cons)
 
-    # Get the degree of constraints from the full graph
-    for con in igraph.constraints:
+    # Get the degree of linear constraints from the full graph
+    for con in linear_cons:
         adj_vars = igraph.get_adjacent_to(con)
         adj_vars_map[con] = adj_vars
         degree_map_con[con] = len(adj_vars)
 
     # Sort the degree map of the variables
     sorted_vars = ComponentMap(sorted(degree_map_var.items(), key=lambda item: item[1]))
-    # import pdb;pdb.set_trace()
+
     for var in sorted_vars:
         if id(var) not in defining_var_ids and var in linear_vars:
             degree_adj_cons = ComponentMap()
             for con in adj_cons_map[var]:
                 if id(con) not in defining_con_ids and con in linear_cons:
-                    # We still need a check that the linear var doesn't also appear nonlinearly in the constraint
+                    # We still need a check that the var doesn't appear nonlinearly in the constraint
                     # Generating the repn here will call it much fewer times than anywhere else
                     repn = generate_standard_repn(
                         con.body, compute_values=False, quadratic=False
                     )
-                    if var in ComponentSet(repn.nonlinear_vars):
-                        pass
-                    else:
+                    if var not in ComponentSet(repn.nonlinear_vars):
                         degree_adj_cons[con] = degree_map_con[con]
 
             # If variable appears linearly atleast in one constraint then find
@@ -108,7 +108,5 @@ def identify_vars_for_elim_min_degree(m):
                 defining_con_ids.add(id(defining_con))
                 var_list.append(var)
                 con_list.append(defining_con)
-            else:
-                pass
-
+          
     return var_list, con_list
