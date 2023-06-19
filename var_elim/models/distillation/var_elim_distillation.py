@@ -27,7 +27,7 @@ from var_elim.algorithms.replace import (
     eliminate_variables
 )
 
-from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
+from var_elim.heuristics.min_degree_heuristic import identify_vars_for_elim_min_degree
 import time
     
 def main():
@@ -35,11 +35,9 @@ def main():
     
     #Using AMPL heuristic for elimination
     t0 = time.time()
-    var_list, con_list = identify_vars_for_elim_ampl(m, randomize=True)
+    var_list, con_list = identify_vars_for_elim_min_degree(m)
     t1 = time.time() - t0
-    elim_vars = len(var_list)
-    elim_cons = len(con_list)
-    print("Time for ampl heuristic = ", t1)
+    print("Time for max degree heuristic = ", t1)
     
     #Make incidece graph
     igraph = IncidenceGraphInterface(m, include_inequality = False)
@@ -58,17 +56,13 @@ def main():
     
     print("Time to eliminate the variables = ", t1)
     ipopt = pyo.SolverFactory('ipopt')
-    ipopt.options["print_timing_statistics"] = "yes"
+    #ipopt.options["print_timing_statistics"] = "yes"
     ipopt.solve(m_reduced, tee= True)
-    return m_reduced, elim_vars, elim_cons
+    return m_reduced
     
     
-if __name__ == "__main__":
-    variables_eliminated = []
-    constraints_eliminated = []
-    for i in range(0,10):
-        m_reduced, elim_vars, elim_cons = main()
-        variables_eliminated.append(elim_vars)
-        constraints_eliminated.append(elim_cons)
+if __name__ == "__main__": 
+    m_reduced = main()
+    
  
 
