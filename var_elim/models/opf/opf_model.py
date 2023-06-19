@@ -23,18 +23,24 @@ from egret.parsers.matpower_parser import create_ModelData
 from egret.models.acopf import create_psv_acopf_model
 
 
+DIRNAME = os.path.dirname(__file__)
+
+
+datafile_dict = {
+    "ieee118": os.path.join(DIRNAME, "pglib_opf_case118_ieee.m"),
+    "goc4917": os.path.join(DIRNAME, "pglib_opf_case4917_goc.m"),
+    "goc10000": os.path.join(DIRNAME, "pglib_opf_case10000_goc.m"),
+}
+
+
 def get_model_from_file(fname):
     model_data = create_ModelData(fname)
     model, _ = create_psv_acopf_model(model_data)
     return model
 
 
-def make_model(fname=None):
-    if fname is None:
-        dirname = os.path.dirname(__file__)
-        # By default, build model corresponding to 5k-bus OPF model
-        # from grid optimization competition
-        fname = os.path.join(dirname, "pglib_opf_case4917_goc.m")
+def make_model(instance_id="goc4917"):
+    fname = datafile_dict[instance_id]
     return get_model_from_file(fname)
 
 
