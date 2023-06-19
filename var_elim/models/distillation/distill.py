@@ -35,7 +35,6 @@ from pyomo.util.subsystems import TemporarySubsystemManager
 from pyomo.util.calc_var_value import calculate_variable_from_constraint
 from pyomo.common.timing import HierarchicalTimer
 
-
 def make_model(horizon=52, vol=1.6, x_Feed=0.5):
 
     model = AbstractModel()
@@ -152,10 +151,10 @@ def make_model(horizon=52, vol=1.6, x_Feed=0.5):
     return model
 
 
-def discretize_model(instance):
+def discretize_model(instance, nfe=50):
     # Discretize using Finite Difference Approach
     discretizer = pyo.TransformationFactory("dae.finite_difference")
-    discretizer.apply_to(instance, nfe=50, scheme="BACKWARD")
+    discretizer.apply_to(instance, nfe=nfe, scheme="BACKWARD")
 
     # Discretize using Orthogonal Collocation
     # discretizer = TransformationFactory('dae.collocation')
@@ -177,37 +176,21 @@ def add_objective(instance):
 
     instance.OBJ = pyo.Objective(rule=obj_rule)
 
-    # Calculate setpoint for the reduced space.
-    # Reduced space objective must not use algebraic variables.
-    t0 = instance.t.first()
-    to_reset = [instance.y[1, t0], instance.x[1, t0]]
-    with TemporarySubsystemManager(to_reset=to_reset):
-        instance.y[1, t0].set_value(pyo.value(instance.y1_ref))
-        calculate_variable_from_constraint(
-            instance.x[1, t0],
-            instance.mole_frac_balance[1, t0],
-        )
-        instance.x1_ref = pyo.Param(initialize=instance.x[1, t0].value)
 
-    def rs_obj_rule(m):
-        return m.alpha * sum(
-            (m.x[1, i] - m.x1_ref) ** 2 for i in m.t if i != 1
-        ) + m.rho * sum((m.u1[i] - m.u1_ref) ** 2 for i in m.t if i != 1)
-
-
-def create_instance():
-    model = make_model()
+def create_instance(horizon=52, vol=1.6, x_Feed=0.5, nfe=50):
+    model = make_model(horizon=horizon, vol=vol, x_Feed=x_Feed)
     file_dir = os.path.dirname(__file__)
     fname = os.path.join(file_dir, "distill.dat")
     instance = model.create_instance(fname)
-    discretize_model(instance)
+    discretize_model(instance, nfe=nfe)
     add_objective(instance)
     return instance
 
 
 def main():
-    model = create_instance()
+    model = create_instance(horizon=1500, nfe=400)
     solver = pyo.SolverFactory("ipopt")
+    solver.options["print_timing_statistics"] = "yes"
     solver.solve(model, tee=True)
 
 
