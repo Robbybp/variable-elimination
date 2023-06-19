@@ -59,7 +59,7 @@ def identify_vars_for_elim_min_degree(m):
     # Generate incidence graph with active constraints
     igraph = IncidenceGraphInterface(m, active=True)
 
-    # Generate linear icidence graph to identify variables appearing linearly
+    # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
     linear_igraph = IncidenceGraphInterface(m, linear_only=True)
     linear_vars = ComponentSet(linear_igraph.variables)
