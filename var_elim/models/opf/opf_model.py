@@ -32,7 +32,7 @@ def get_model_from_file(fname):
 def make_model(fname=None):
     if fname is None:
         dirname = os.path.dirname(__file__)
-        # By default, build model corresponding to 10k-bus OPF model
+        # By default, build model corresponding to 5k-bus OPF model
         # from grid optimization competition
         fname = os.path.join(dirname, "pglib_opf_case4917_goc.m")
     return get_model_from_file(fname)
