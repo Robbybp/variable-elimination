@@ -24,7 +24,7 @@ from pyomo.core.expr.visitor import identify_variables
 from pyomo.repn import generate_standard_repn
 
 
-def identify_vars_for_elim_min_degree(m):
+def identify_vars_for_elim_min_degree(m, eliminate_linear_cons_only = False):
     """
     Identify variables for elimination and constraints to eliminate the variables
     using a minimum degree heuristic
@@ -57,11 +57,11 @@ def identify_vars_for_elim_min_degree(m):
     degree_map_con = ComponentMap()
 
     # Generate incidence graph with active constraints
-    igraph = IncidenceGraphInterface(m, active=True)
+    igraph = IncidenceGraphInterface(m, active=True, include_inequality= True)
 
     # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
-    linear_igraph = IncidenceGraphInterface(m, linear_only=True)
+    linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
     linear_vars = ComponentSet(linear_igraph.variables)
     linear_cons = ComponentSet(linear_igraph.constraints)
 
@@ -92,9 +92,15 @@ def identify_vars_for_elim_min_degree(m):
                     repn = generate_standard_repn(
                         con.body, compute_values=False, quadratic=False
                     )
-                    if var not in ComponentSet(repn.nonlinear_vars):
-                        degree_adj_cons[con] = degree_map_con[con]
+                    
+                    if eliminate_linear_cons_only == True:
+                        if len(repn.nonlinear_vars) == 0:
+                            degree_adj_cons[con] = degree_map_con[con]
+                    else:
+                        if var not in ComponentSet(repn.nonlinear_vars):
+                            degree_adj_cons[con] = degree_map_con[con]
 
+                    
             # If variable appears linearly atleast in one constraint then find
             # the defining constraint
             if len(degree_adj_cons) != 0:
@@ -108,5 +114,5 @@ def identify_vars_for_elim_min_degree(m):
                 defining_con_ids.add(id(defining_con))
                 var_list.append(var)
                 con_list.append(defining_con)
-          
+               
     return var_list, con_list
