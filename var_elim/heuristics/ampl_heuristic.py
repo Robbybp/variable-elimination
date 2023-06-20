@@ -25,7 +25,10 @@ from pyomo.common.collections import ComponentSet
 import random
 
 
-def identify_vars_for_elim_ampl(m, randomize = False):
+def identify_vars_for_elim_ampl(m, 
+                                randomize = False, 
+                                eliminate_bounded_vars = False, 
+                                eliminate_linear_cons_only = False):
     """Identify defined variables and defining constraints via the heuristic
     from the AMPL preprocessor
 
@@ -63,9 +66,11 @@ def identify_vars_for_elim_ampl(m, randomize = False):
 
         if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
             pass
-        elif expr_vars[0].lb is not None or expr_vars[0].ub is not None:
+        elif eliminate_bounded_vars is False and (expr_vars[0].lb is not None or expr_vars[0].ub is not None):
             pass
         elif expr_vars[0] in nonlinear_vars:
+            pass
+        elif eliminate_linear_cons_only is True and len(nonlinear_vars) != 0:
             pass
         elif id(expr_vars[0]) not in defining_var_ids:
             if expr_vars[0] in linear_vars:
