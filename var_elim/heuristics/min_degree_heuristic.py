@@ -24,7 +24,9 @@ from pyomo.core.expr.visitor import identify_variables
 from pyomo.repn import generate_standard_repn
 
 
-def identify_vars_for_elim_min_degree(m, eliminate_linear_cons_only = False):
+def identify_vars_for_elim_min_degree(m,
+                                      eliminate_bounded_vars = False,
+                                      eliminate_linear_cons_only = False):
     """
     Identify variables for elimination and constraints to eliminate the variables
     using a minimum degree heuristic
@@ -83,7 +85,9 @@ def identify_vars_for_elim_min_degree(m, eliminate_linear_cons_only = False):
     sorted_vars = ComponentMap(sorted(degree_map_var.items(), key=lambda item: item[1]))
 
     for var in sorted_vars:
-        if id(var) not in defining_var_ids and var in linear_vars:
+        if eliminate_bounded_vars is False and (var.lb is not None or var.ub is not None):
+            pass
+        elif id(var) not in defining_var_ids and var in linear_vars:
             degree_adj_cons = ComponentMap()
             for con in adj_cons_map[var]:
                 if id(con) not in defining_con_ids and con in linear_cons:
