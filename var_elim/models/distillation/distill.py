@@ -190,7 +190,6 @@ def create_instance(horizon=52, vol=1.6, x_Feed=0.5, nfe=50):
 def main():
     model = create_instance(horizon=1500, nfe=400)
     solver = pyo.SolverFactory("ipopt")
-    solver.options["print_timing_statistics"] = "yes"
     solver.solve(model, tee=True)
 
 
