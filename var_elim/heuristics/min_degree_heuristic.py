@@ -91,6 +91,8 @@ def identify_vars_for_elim_min_degree(m,
         if eliminate_bounded_vars is False and (var.lb is not None or var.ub is not None):
             pass
         elif id(var) not in defining_var_ids and var in linear_vars:
+            # This maps constraints that are valid for elimination to their degree.
+            # It is used to both define the valid constraints store their degrees.
             degree_adj_cons = ComponentMap()
             for con in adj_cons_map[var]:
                 if id(con) not in defining_con_ids and con in linear_cons:
