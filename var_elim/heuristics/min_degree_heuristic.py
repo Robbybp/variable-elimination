@@ -63,6 +63,9 @@ def identify_vars_for_elim_min_degree(m,
 
     # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
+    # This is simply to narrow down the variables and constraints that are
+    # candidates for replacement so we potentially have to do fewer checks
+    # of standard_repn below.
     linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
     linear_vars = ComponentSet(linear_igraph.variables)
     linear_cons = ComponentSet(linear_igraph.constraints)
