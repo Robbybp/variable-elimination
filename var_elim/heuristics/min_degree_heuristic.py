@@ -77,6 +77,9 @@ def var_major_elimination(m,
 
     # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
+    # This is simply to narrow down the variables and constraints that are
+    # candidates for replacement so we potentially have to do fewer checks
+    # of standard_repn below.
     linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
     linear_vars = ComponentSet(linear_igraph.variables)
     linear_cons = ComponentSet(linear_igraph.constraints)
@@ -102,6 +105,8 @@ def var_major_elimination(m,
         if eliminate_bounded_vars is False and (var.lb is not None or var.ub is not None):
             pass
         elif id(var) not in defining_var_ids and var in linear_vars:
+            # This maps constraints that are valid for elimination to their degree.
+            # It is used to both define the valid constraints store their degrees.
             degree_adj_cons = ComponentMap()
             for con in adj_cons_map[var]:
                 if id(con) not in defining_con_ids and con in linear_cons:
