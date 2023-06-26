@@ -35,7 +35,7 @@ def main():
     
     #Using AMPL heuristic for elimination
     t0 = time.time()
-    var_list, con_list = identify_vars_for_elim_min_degree(m, eliminate_linear_cons_only=True)
+    var_list, con_list = identify_vars_for_elim_min_degree(m, major_elim = "Constraints", eliminate_bounded_vars=True, eliminate_linear_cons_only=False)
     t1 = time.time() - t0
     print("Time for min degree heuristic = ", t1)
     
