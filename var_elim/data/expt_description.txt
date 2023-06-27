@@ -1,0 +1,17 @@
+#Heuristics are ordered as 
+# 0) full model - Non heuristic
+
+# 1) ampl - eliminate_bounded_vars = False, eliminate_linear_only = False
+# 2) ampl - eliminate_bounded_vars = True, eliminate_linear_only = False
+# 3) ampl - eliminate_bounded_vars = False, eliminate_linear_only = True
+# 4) ampl - eliminate_bounded_vars = True, eliminate_linear_only = True
+
+# 5) var_major - eliminate_bounded_vars = False, eliminate_linear_only = False
+# 6) var_major - eliminate_bounded_vars = True, eliminate_linear_only = False
+# 7) var_major - eliminate_bounded_vars = False, eliminate_linear_only = True
+# 8) var_major - eliminate_bounded_vars = True, eliminate_linear_only = True
+
+# 9) con_major - eliminate_bounded_vars = False, eliminate_linear_only = False
+# 10) con_major - eliminate_bounded_vars = True, eliminate_linear_only = False
+# 11) con_major - eliminate_bounded_vars = False, eliminate_linear_only = True
+# 12) con_major - eliminate_bounded_vars = True, eliminate_linear_only = True
