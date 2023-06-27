@@ -102,7 +102,7 @@ def var_major_elimination(m,
     sorted_vars = ComponentMap(sorted(degree_map_var.items(), key=lambda item: item[1]))
 
     for var in sorted_vars:
-        if eliminate_bounded_vars is False and (var.lb is not None or var.ub is not None):
+        if not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
             pass
         elif id(var) not in defining_var_ids and var in linear_vars:
             # This maps constraints that are valid for elimination to their degree.
@@ -116,7 +116,7 @@ def var_major_elimination(m,
                         con.body, compute_values=False, quadratic=False
                     )
                     
-                    if eliminate_linear_cons_only == True:
+                    if eliminate_linear_cons_only:
                         if len(repn.nonlinear_vars) == 0:
                             degree_adj_cons[con] = degree_map_con[con]
                     else:
@@ -202,11 +202,11 @@ def con_major_elimination(m,
     
     for con in sorted_cons:
         if id(con) not in defining_con_ids:
-            #Generating repn here is the best since it'll generate itonly once for each constraint
+            #Generating repn here is the best since it'll generate it only once for each constraint
             repn = generate_standard_repn(
                 con.body, compute_values=False, quadratic=False
             )
-            if eliminate_linear_cons_only == True and len(repn.nonlinear_vars) != 0:
+            if eliminate_linear_cons_only and len(repn.nonlinear_vars) != 0:
                 pass
             else:
                 degree_adj_vars = ComponentMap()
@@ -217,17 +217,17 @@ def con_major_elimination(m,
                         if var not in ComponentSet(repn.nonlinear_vars):
                             degree_adj_vars[var] = degree_map_var[var]
             
-            if len(degree_adj_vars) != 0:
-                defining_var = min(degree_adj_vars.items(), key=lambda item: item[1])[0]
-                
-                # Identify variables in the defining constraint to add to the list
-                # of variables that cannot be eliminated
-                expr_vars = list(identify_variables(con.expr))
-                for v in expr_vars:
-                    defining_var_ids.add(id(v))
-
-                defining_con_ids.add(id(con))
-                var_list.append(defining_var)
-                con_list.append(con)
+                if len(degree_adj_vars) != 0:
+                    defining_var = min(degree_adj_vars.items(), key=lambda item: item[1])[0]
+                    
+                    # Identify variables in the defining constraint to add to the list
+                    # of variables that cannot be eliminated
+                    expr_vars = list(identify_variables(con.expr))
+                    for v in expr_vars:
+                        defining_var_ids.add(id(v))
+    
+                    defining_con_ids.add(id(con))
+                    var_list.append(defining_var)
+                    con_list.append(con)
         
     return var_list, con_list
