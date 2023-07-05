@@ -18,6 +18,7 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+import warnings
 import pyomo.environ as pyo 
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.common.collections import ComponentMap, ComponentSet
@@ -100,7 +101,7 @@ def get_var_con_pairs(m, var_idx_map, con_idx_map):
     return var_list, con_list
     
 
-def identify_vars_for_elim_mip(model):
+def identify_vars_for_elim_mip(model, solver_name = 'gurobi'):
     """Identify defined variables and defining constraints using a mip 
     formulation 
 
@@ -114,6 +115,22 @@ def identify_vars_for_elim_mip(model):
     con_list : List of constraints used to eliminate the variables
 
     """
+    #Picking the solver
+    solver_name_original = solver_name
+    if not pyo.SolverFactory(solver_name).available():
+        if pyo.SolverFactory('cbc').available():
+            solver_name = "cbc"
+        elif pyo.SolverFactory('highs').available():
+            solver_name = "highs"
+        elif pyo.SolverFactory('glpk').available():
+            solver_name = "glpk"
+        else: 
+            raise RuntimeError(
+                "No MIP solver found from GUROBI, CBC, HiGHS, GLPK"
+            )
+    warnings.warn(
+        f"{solver_name_original} not found using {solver_name} instead for the MIP solve"
+        ) 
     
     var_idx_map, con_idx_map, edge_set, linear_edge_set = get_components_from_model(model)
     
@@ -202,7 +219,7 @@ def identify_vars_for_elim_mip(model):
     
     #Objective function
     m.obj = pyo.Objective(expr = -m.Z, sense = pyo.minimize)
-    solver = pyo.SolverFactory('glpk')
+    solver = pyo.SolverFactory(solver_name)
     solver.solve(m, tee = True)
     
     var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
