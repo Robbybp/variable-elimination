@@ -31,9 +31,13 @@ from var_elim.algorithms.replace import (
 from var_elim.mip_formulations.mip_elim import identify_vars_for_elim_mip
 
 ipopt_avail = pyo.SolverFactory("ipopt").available()
-cbc_avail = pyo.SolverFactory("cbc").available()
+mip_solvers = ["gurobi", "cbc", "glpk",]
+for solver_name in mip_solvers:
+    if pyo.SolverFactory(solver_name).available():
+        solver_avail = pyo.SolverFactory(solver_name).available()
+        break
 
-@pytest.mark.skipif(not cbc_avail, reason="cbc is not available")
+@pytest.mark.skipif(not solver_avail, reason="MIP solver is not available")
 class TestMipFormulation1:
     def _make_simple_model(self):
         m = pyo.ConcreteModel()
