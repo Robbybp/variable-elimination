@@ -202,28 +202,8 @@ def identify_vars_for_elim_mip(model):
     
     #Objective function
     m.obj = pyo.Objective(expr = -m.Z, sense = pyo.minimize)
-    
     solver = pyo.SolverFactory('glpk')
-    solver.solve(m, tee= True)
+    solver.solve(m, tee = True)
     
     var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     return var_list, con_list
-
-# m = pyo.ConcreteModel()
-# m.x = pyo.Var([1, 2], initialize=1)
-# m.y = pyo.Var([1, 2], initialize=1)
-
-# m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
-# m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
-# m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
-
-# m.y[1].setlb(1.0)
-# m.y[2].setlb(0.5)
-
-# m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
-# var_list, con_list = identify_vars_for_elim_mip(m)
-# for v in var_list:
-#     print(v.name)
-    
-# for c in con_list:
-#     print(c.name)
