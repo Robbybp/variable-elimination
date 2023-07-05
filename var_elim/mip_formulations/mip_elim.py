@@ -101,7 +101,7 @@ def get_var_con_pairs(m, var_idx_map, con_idx_map):
     return var_list, con_list
     
 
-def identify_vars_for_elim_mip(model, solver_name = 'gurobi'):
+def identify_vars_for_elim_mip(model, solver_name = 'highs'):
     """Identify defined variables and defining constraints using a mip 
     formulation 
 
@@ -118,19 +118,20 @@ def identify_vars_for_elim_mip(model, solver_name = 'gurobi'):
     #Picking the solver
     solver_name_original = solver_name
     if not pyo.SolverFactory(solver_name).available():
-        if pyo.SolverFactory('cbc').available():
-            solver_name = "cbc"
-        elif pyo.SolverFactory('highs').available():
-            solver_name = "highs"
-        elif pyo.SolverFactory('glpk').available():
-            solver_name = "glpk"
-        else: 
-            raise RuntimeError(
-                "No MIP solver found from GUROBI, CBC, HiGHS, GLPK"
-            )
-    warnings.warn(
-        f"{solver_name_original} not found using {solver_name} instead for the MIP solve"
-        ) 
+        solver_name = None
+        mip_solvers = ["gurobi", "cbc", "glpk"]
+        for name in mip_solvers:
+            if pyo.SolverFactory(name).available():
+                solver_name = name
+                break
+    if solver_name is None: 
+        raise RuntimeError(
+            "MIP solver is not available"
+        )
+    if solver_name != solver_name_original:
+        warnings.warn(
+            f"{solver_name_original} not found using {solver_name} instead for the MIP solve"
+            ) 
     
     var_idx_map, con_idx_map, edge_set, linear_edge_set = get_components_from_model(model)
     
@@ -220,7 +221,7 @@ def identify_vars_for_elim_mip(model, solver_name = 'gurobi'):
     #Objective function
     m.obj = pyo.Objective(expr = -m.Z, sense = pyo.minimize)
     solver = pyo.SolverFactory(solver_name)
-    solver.solve(m, tee = True)
+    solver.solve(m, tee = False)
     
     var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     return var_list, con_list
