@@ -31,9 +31,10 @@ from var_elim.algorithms.replace import (
 from var_elim.mip_formulations.mip_elim import identify_vars_for_elim_mip
 
 ipopt_avail = pyo.SolverFactory("ipopt").available()
-glpk_avail = pyo.SolverFactory("glpk").available()
+cbc_avail = pyo.SolverFactory("cbc").available()
 
-class TestAmplHeuristic:
+@pytest.mark.skipif(not cbc_avail, reason="cbc is not available")
+class TestMipFormulation1:
     def _make_simple_model(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1)
@@ -114,8 +115,6 @@ class TestAmplHeuristic:
         assert m.x[1] is vars_to_elim[0]
         assert m.x[2] is vars_to_elim[1]
         
-
-    @pytest.mark.skipif(not glpk_avail, reason="glpk is not available")
     @pytest.mark.skipif(not ipopt_avail, reason="ipopt is not available")
     def test_same_solution_simple(self):
         m1 = self._make_simple_model()
@@ -139,8 +138,6 @@ class TestAmplHeuristic:
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
         
-
-    @pytest.mark.skipif(not glpk_avail, reason="glpk is not available")
     @pytest.mark.skipif(not ipopt_avail, reason="ipopt is not available")
     def test_same_solution_simple2(self):
         m1 = self._make_simple_model2()
