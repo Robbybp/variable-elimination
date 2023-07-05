@@ -101,7 +101,7 @@ def get_var_con_pairs(m, var_idx_map, con_idx_map):
     return var_list, con_list
     
 
-def identify_vars_for_elim_mip(model, solver_name = 'highs'):
+def identify_vars_for_elim_mip(model, solver_name = 'gurobi', tee = False):
     """Identify defined variables and defining constraints using a mip 
     formulation 
 
@@ -221,7 +221,7 @@ def identify_vars_for_elim_mip(model, solver_name = 'highs'):
     #Objective function
     m.obj = pyo.Objective(expr = -m.Z, sense = pyo.minimize)
     solver = pyo.SolverFactory(solver_name)
-    solver.solve(m, tee = False)
+    solver.solve(m, tee = tee)
     
     var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     return var_list, con_list
