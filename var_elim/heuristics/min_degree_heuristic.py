@@ -35,6 +35,8 @@ def identify_vars_for_elim_min_degree(m,
         var_list, con_list = con_major_elimination(m, 
                                                    eliminate_bounded_vars = eliminate_bounded_vars,
                                                    eliminate_linear_cons_only=eliminate_linear_cons_only)
+    else:
+        raise ValueError("major_elim must be 'Variables' or 'Constraints'")
         
     return var_list, con_list
 
