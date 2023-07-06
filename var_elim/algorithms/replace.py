@@ -110,6 +110,11 @@ def define_elimination_order(var_list, con_list, igraph=None):
 
 
 def add_bounds_to_expr(var, var_expr):
+    #Need to change doc string of this function
+    
+    #We cannot write expressions which lead to trivial booleans
+    # Eg. 0 >= -2 or 0 <= 2
+    #Ths can happen when var_expr is a constant and the var lb and ub contain that constant
     """
     This function takes in a variable, the expression for variable replacement
     and an indexed constraint list - bound_cons. It updates the list with inequality
@@ -130,6 +135,7 @@ def add_bounds_to_expr(var, var_expr):
     else:
         lb_expr = var_expr >= var.lb
         ub_expr = var_expr <= var.ub
+    
     return lb_expr, ub_expr
 
 
@@ -196,11 +202,16 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
 
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
-        if lb_expr is not None:
+        if lb_expr is not None and type(lb_expr) is not bool:
+            if lb_expr is False:
+                raise RuntimeError("Lower bound resolved to trivial infeasible constraint")
             bound_con_set.add(lb_name)
             bound_con[lb_name] = lb_expr
             var_lb_map[var] = bound_con[lb_name]
-        if ub_expr is not None:
+            
+        if ub_expr is not None and type(ub_expr) is not bool:
+            if ub_expr is False:
+                raise RuntimeError("Upper bound resolved to trivial infeasible constraint")
             bound_con_set.add(ub_name)
             bound_con[ub_name] = ub_expr
             var_ub_map[var] = bound_con[ub_name]
@@ -214,7 +225,12 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         for ad_con in adj_cons:
             if ad_con is not con:
                 new_expr = replace_expressions(ad_con.expr, substitution_map)
-                ad_con.set_value(new_expr)
+                if new_expr is False:
+                    raise RuntimeError("Replacement expression resolved to trivial infeasible constraint")
+                elif new_expr is True:
+                    ad_con.deactivate()
+                else:
+                    ad_con.set_value(new_expr)
 
         if var in var_obj_map:
             for obj in var_obj_map[var]:
