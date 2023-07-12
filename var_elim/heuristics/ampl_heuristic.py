@@ -24,12 +24,14 @@ from pyomo.core.base.set import Integers, Binary
 from pyomo.common.collections import ComponentSet
 from pyomo.core.expr.current import EqualityExpression
 import random
+from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 
 
 def identify_vars_for_elim_ampl(m, 
                                 randomize = False, 
                                 eliminate_bounded_vars = False, 
-                                eliminate_linear_cons_only = False):
+                                eliminate_linear_cons_only = False,
+                                eliminate_linear_vars_only = False):
     """Identify defined variables and defining constraints via the heuristic
     from the AMPL preprocessor
 
@@ -53,6 +55,12 @@ def identify_vars_for_elim_ampl(m,
     if randomize == True:
         random.shuffle(cons)
    
+    #Generate full incidence graph and linear incidence graph only if 
+    #we need to eliminate only linear vars
+    if eliminate_linear_vars_only:
+        igraph = IncidenceGraphInterface(m, active=True, include_inequality= True)
+        linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
+    
     # Identify variables of the type ===> coef*v (+/-) expr = 0
     var_list = []
     con_list = []
@@ -74,6 +82,8 @@ def identify_vars_for_elim_ampl(m,
         elif expr_vars[0] in nonlinear_vars:
             pass
         elif eliminate_linear_cons_only and len(nonlinear_vars) != 0:
+            pass
+        elif eliminate_linear_vars_only and (len(igraph.get_adjacent_to(expr_vars[0])) != len(linear_igraph.get_adjacent_to(expr_vars[0]))):
             pass
         elif id(expr_vars[0]) not in defining_var_ids:
             if expr_vars[0] in linear_vars:
