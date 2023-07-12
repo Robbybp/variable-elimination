@@ -26,15 +26,18 @@ from pyomo.repn import generate_standard_repn
 def identify_vars_for_elim_min_degree(m, 
                                       major_elim = 'Variables', 
                                       eliminate_bounded_vars = False,
-                                      eliminate_linear_cons_only = False):
+                                      eliminate_linear_cons_only = False,
+                                      eliminate_linear_vars_only = False):
     if major_elim == 'Variables':
         var_list, con_list = var_major_elimination(m, 
                                                    eliminate_bounded_vars = eliminate_bounded_vars,
-                                                   eliminate_linear_cons_only=eliminate_linear_cons_only)
+                                                   eliminate_linear_cons_only=eliminate_linear_cons_only, 
+                                                   eliminate_linear_vars_only = eliminate_linear_vars_only)
     elif major_elim == 'Constraints':
         var_list, con_list = con_major_elimination(m, 
                                                    eliminate_bounded_vars = eliminate_bounded_vars,
-                                                   eliminate_linear_cons_only=eliminate_linear_cons_only)
+                                                   eliminate_linear_cons_only=eliminate_linear_cons_only,
+                                                   eliminate_linear_vars_only=eliminate_linear_vars_only)
     else:
         raise ValueError("major_elim must be 'Variables' or 'Constraints'")
         
@@ -42,7 +45,8 @@ def identify_vars_for_elim_min_degree(m,
 
 def var_major_elimination(m,
                           eliminate_bounded_vars = False,
-                          eliminate_linear_cons_only = False):
+                          eliminate_linear_cons_only = False,
+                          eliminate_linear_vars_only = False):
     """
     Identify variables for elimination and constraints to eliminate the variables
     using a minimum degree heuristic with first sorting on variable degree
@@ -106,6 +110,8 @@ def var_major_elimination(m,
     for var in sorted_vars:
         if not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
             pass
+        elif eliminate_linear_vars_only and (len(adj_cons_map[var]) != len(linear_igraph.get_adjacent_to(var))):
+            pass
         elif id(var) not in defining_var_ids and var in linear_vars:
             # This maps constraints that are valid for elimination to their degree.
             # It is used to both define the valid constraints store their degrees.
@@ -144,7 +150,8 @@ def var_major_elimination(m,
 
 def con_major_elimination(m,
                           eliminate_bounded_vars = False,
-                          eliminate_linear_cons_only = False):
+                          eliminate_linear_cons_only = False,
+                          eliminate_linear_vars_only = False):
     """
     Identify variables for elimination and constraints to eliminate the variables
     using a minimum degree heuristic with first sorting on constraint degree
@@ -214,6 +221,8 @@ def con_major_elimination(m,
                 degree_adj_vars = ComponentMap()
                 for var in adj_vars_map[con]:
                     if not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
+                        pass
+                    elif eliminate_linear_vars_only and (len(adj_cons_map[var]) != len(linear_igraph.get_adjacent_to(var))):
                         pass
                     elif id(var) not in defining_var_ids and var in linear_vars:
                         if var not in ComponentSet(repn.nonlinear_vars):
