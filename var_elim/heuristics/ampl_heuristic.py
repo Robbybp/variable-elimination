@@ -29,7 +29,8 @@ import random
 def identify_vars_for_elim_ampl(m, 
                                 randomize = False, 
                                 eliminate_bounded_vars = False, 
-                                eliminate_linear_cons_only = False):
+                                eliminate_linear_cons_only = False,
+                                constraint_ordering = None):
     """Identify defined variables and defining constraints via the heuristic
     from the AMPL preprocessor
 
@@ -43,15 +44,19 @@ def identify_vars_for_elim_ampl(m,
     con_list : List of constraints used to eliminate the variables
 
     """
-    #Get active equality constraints from the model
-    cons = []
-    for c in m.component_data_objects(Constraint, active=True):
-        if isinstance(c.expr, EqualityExpression):
-            cons.append(c)
-    
-    #Shuffle constraints for randomizing constraint order
-    if randomize == True:
-        random.shuffle(cons)
+    #If we are given a constraint ordering use that 
+    if constraint_ordering is not None:
+        cons = constraint_ordering
+    else:
+        #Get active equality constraints from the model
+        cons = []
+        for c in m.component_data_objects(Constraint, active=True):
+            if isinstance(c.expr, EqualityExpression):
+                cons.append(c)
+        
+        #Shuffle constraints for randomizing constraint order
+        if randomize == True:
+            random.shuffle(cons)
    
     # Identify variables of the type ===> coef*v (+/-) expr = 0
     var_list = []
