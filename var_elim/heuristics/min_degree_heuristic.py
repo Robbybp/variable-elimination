@@ -95,7 +95,7 @@ def var_major_elimination(m,
     if constraint_ordering is not None:
         cons_orig = linear_igraph.constraints
         linear_cons = [c for _,c in sorted(zip(constraint_ordering,cons_orig))]
-        linear_cons_set = ComponentSet(constraint_ordering)
+        linear_cons_set = ComponentSet(linear_cons)
                 
         assert set(linear_cons) == set(cons_orig)
     else:
@@ -208,7 +208,7 @@ def con_major_elimination(m,
     if constraint_ordering is not None:
         cons_orig = linear_igraph.constraints
         linear_cons = [c for _,c in sorted(zip(constraint_ordering, cons_orig))]
-        linear_cons_set = ComponentSet(constraint_ordering)
+        linear_cons_set = ComponentSet(linear_cons)
                 
         assert set(linear_cons) == set(cons_orig)
     else:
