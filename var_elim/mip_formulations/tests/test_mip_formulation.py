@@ -36,9 +36,11 @@ mip_solvers = [
     "cbc",
     "glpk",
 ]
+solver_avail = False
 for solver_name in mip_solvers:
     if pyo.SolverFactory(solver_name).available():
         solver_avail = pyo.SolverFactory(solver_name).available()
+        solver_to_use = solver_name
         break
 
 
@@ -67,8 +69,8 @@ class TestMipFormulation1:
         m.z = pyo.Var(initialize=1)
 
         m.eq1 = pyo.Constraint(expr=m.z == m.x[1] + m.x[2])
-        m.eq2 = pyo.Constraint(expr=m.x[1] == 2 * m.y[1] ** 2 + m.x[2] ** 3)
-        m.eq3 = pyo.Constraint(expr=m.x[2] == 3 * m.y[2] ** 3 + m.x[1])
+        m.eq2 = pyo.Constraint(expr=m.x[1] == -2 * m.y[1] ** 2 + m.x[2] ** 3)
+        m.eq3 = pyo.Constraint(expr=m.x[2] == 1/2 * m.y[2] ** 3 + m.x[1])
         m.eq4 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
 
         m.y[1].setlb(1.0)
@@ -116,7 +118,7 @@ class TestMipFormulation1:
     def test_replacement_vars_simple(self):
         m = self._make_simple_model()
 
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m, solver_name = solver_to_use)
 
         # Make sure correct variables are eliminated
         assert len(vars_to_elim) == 2
@@ -126,15 +128,18 @@ class TestMipFormulation1:
     def test_replacement_vars_complex(self):
         m = self._make_complex_model()
 
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m, solver_name = solver_to_use)
 
         # Make sure correct variables are eliminated
         assert len(vars_to_elim) == 2
+        assert m.z in ComponentSet(vars_to_elim)
+        assert m.x[1] in ComponentSet(vars_to_elim) or m.x[2] in ComponentSet(vars_to_elim)
+        
 
     def test_replacement_vars_simple2(self):
         m = self._make_simple_model2()
 
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m, solver_name = solver_to_use)
 
         assert len(vars_to_elim) == 2
         assert m.x[1] is vars_to_elim[0]
@@ -150,7 +155,7 @@ class TestMipFormulation1:
 
         m2 = self._make_simple_model()
 
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2, solver_name = solver_to_use)
 
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
@@ -171,7 +176,7 @@ class TestMipFormulation1:
 
         m2 = self._make_simple_model2()
 
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2, solver_name = solver_to_use)
 
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
@@ -181,10 +186,35 @@ class TestMipFormulation1:
 
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
+        
+    @pytest.mark.skipif(not ipopt_avail, reason="ipopt is not available")
+    def test_same_solution_complex(self):
+        m1 = self._make_complex_model()
+
+        solver = pyo.SolverFactory("ipopt")
+        res = solver.solve(m1, tee=True)
+        m1.display()
+        pyo.assert_optimal_termination(res)
+
+        m2 = self._make_complex_model()
+
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2, solver_name = solver_to_use)
+
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
+        eliminate_variables(m2, var_order, con_order)
+
+        solver.solve(m2, tee=False)
+        pyo.assert_optimal_termination(res)
+
+        assert math.isclose(m1.y[1].value, m2.y[1].value)
+        assert math.isclose(m1.y[2].value, m2.y[2].value)
+        #Can't assert for x[1] or x[2] as either one of them can be eliminated using the mip but ot both 
+        
+    
 
     def test_nested_replacement(self):
         m = self._make_model_for_nested_replacement()
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m, solver_name = solver_to_use)
 
         assert ComponentSet(vars_to_elim) == ComponentSet(m.x[:])
         assert ComponentSet(cons_to_elim) == ComponentSet([m.eq1, m.eq2, m.eq3, m.eq4])
@@ -197,7 +227,7 @@ class TestMipFormulation1:
         pyo.assert_optimal_termination(res)
 
         m2 = self._make_model_for_nested_replacement()
-        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2)
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2, solver_name = solver_to_use)
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
         solver = pyo.SolverFactory("ipopt")
