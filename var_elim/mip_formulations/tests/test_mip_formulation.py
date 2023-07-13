@@ -97,6 +97,22 @@ class TestMipFormulation1:
 
         return m
 
+    def _make_model_for_nested_replacement(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3, 4], initialize=1)
+        m.y = pyo.Var([1, 2], initialize=1, bounds=(0, 10))
+
+        m.eq1 = pyo.Constraint(expr=m.x[4] == m.x[2] + m.x[1] - m.y[1]**2)
+        m.eq2 = pyo.Constraint(expr=m.x[2] == m.y[1]*m.y[2])
+        m.eq3 = pyo.Constraint(expr=m.x[3] == m.x[1]*m.x[2] + m.x[4])
+        m.eq4 = pyo.Constraint(expr=m.x[1] == m.x[2] - m.y[2])
+        # Note that eq5 cannot be used for elimination.
+        m.eq5 = pyo.Constraint(expr=m.x[1] + m.x[2] + m.x[3] * m.x[4] == 2)
+
+        m.obj = pyo.Objective(expr=m.x[1]**2 + m.x[2]**2 + m.x[3]**2 + m.x[4]**2)
+
+        return m
+
     def test_replacement_vars_simple(self):
         m = self._make_simple_model()
 
@@ -165,6 +181,31 @@ class TestMipFormulation1:
 
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
+
+    def test_nested_replacement(self):
+        m = self._make_model_for_nested_replacement()
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
+
+        assert ComponentSet(vars_to_elim) == ComponentSet(m.x[:])
+        assert ComponentSet(cons_to_elim) == ComponentSet([m.eq1, m.eq2, m.eq3, m.eq4])
+
+    @pytest.mark.skipif(not ipopt_avail, reason="ipopt is not available")
+    def test_same_solution_nested_replacement(self):
+        m1 = self._make_model_for_nested_replacement()
+        solver = pyo.SolverFactory("ipopt")
+        res = solver.solve(m1, tee=True)
+        pyo.assert_optimal_termination(res)
+
+        m2 = self._make_model_for_nested_replacement()
+        vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2)
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
+        eliminate_variables(m2, var_order, con_order)
+        solver = pyo.SolverFactory("ipopt")
+        res = solver.solve(m2, tee=True)
+        pyo.assert_optimal_termination(res)
+
+        for v1, v2 in zip(m1.y[:], m2.y[:]):
+            assert math.isclose(v1.value, v2.value)
 
 
 if __name__ == "__main__":
