@@ -46,7 +46,13 @@ def identify_vars_for_elim_ampl(m,
     """
     #If we are given a constraint ordering use that 
     if constraint_ordering is not None:
-        cons = constraint_ordering
+        cons_orig = []
+        for c in m.component_data_objects(Constraint, active=True):
+            if isinstance(c.expr, EqualityExpression):
+                cons_orig.append(c)
+        
+        cons = [c for _,c in sorted(zip(constraint_ordering,cons_orig))]
+        assert set(cons) == set(cons_orig)
     else:
         #Get active equality constraints from the model
         cons = []
@@ -91,4 +97,4 @@ def identify_vars_for_elim_ampl(m,
                 # This works because we anyways don't want to eliminate the same var twice
                 # using 2 different constraints
 
-    return var_list, con_list
+    return var_list, con_list, cons

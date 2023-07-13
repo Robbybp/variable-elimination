@@ -29,19 +29,19 @@ def identify_vars_for_elim_min_degree(m,
                                       eliminate_linear_cons_only = False,
                                       constraint_ordering = None):
     if major_elim == 'Variables':
-        var_list, con_list = var_major_elimination(m, 
+        var_list, con_list, linear_cons = var_major_elimination(m, 
                                                    eliminate_bounded_vars = eliminate_bounded_vars,
                                                    eliminate_linear_cons_only=eliminate_linear_cons_only,
                                                    constraint_ordering = constraint_ordering)
     elif major_elim == 'Constraints':
-        var_list, con_list = con_major_elimination(m, 
+        var_list, con_list, linear_cons = con_major_elimination(m, 
                                                    eliminate_bounded_vars = eliminate_bounded_vars,
                                                    eliminate_linear_cons_only=eliminate_linear_cons_only,
                                                    constraint_ordering = constraint_ordering)
     else:
         raise ValueError("major_elim must be 'Variables' or 'Constraints'")
         
-    return var_list, con_list
+    return var_list, con_list, linear_cons
 
 def var_major_elimination(m,
                           eliminate_bounded_vars = False,
@@ -87,8 +87,21 @@ def var_major_elimination(m,
     # candidates for replacement so we potentially have to do fewer checks
     # of standard_repn below.
     linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
-    linear_vars = ComponentSet(linear_igraph.variables)
-    linear_cons = ComponentSet(linear_igraph.constraints)
+    linear_vars = linear_igraph.variables
+    linear_vars_set = ComponentSet(linear_igraph.variables)
+    
+    #The sets are necessary to check inclusion. 
+    #The lists are used so that the ordering doesn't change
+    if constraint_ordering is not None:
+        cons_orig = linear_igraph.constraints
+        linear_cons = [c for _,c in sorted(zip(constraint_ordering,cons_orig))]
+        linear_cons_set = ComponentSet(constraint_ordering)
+                
+        assert set(linear_cons) == set(cons_orig)
+    else:
+        linear_cons = linear_igraph.constraints
+        linear_cons_set = ComponentSet(linear_igraph.constraints)
+        
 
     # Get the degree of linear variables from the full graph
     #We should just look at vars and cons in the linear graph 
@@ -110,12 +123,12 @@ def var_major_elimination(m,
     for var in sorted_vars:
         if not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
             pass
-        elif id(var) not in defining_var_ids and var in linear_vars:
+        elif id(var) not in defining_var_ids and var in linear_vars_set:
             # This maps constraints that are valid for elimination to their degree.
             # It is used to both define the valid constraints store their degrees.
             degree_adj_cons = ComponentMap()
             for con in adj_cons_map[var]:
-                if id(con) not in defining_con_ids and con in linear_cons:
+                if id(con) not in defining_con_ids and con in linear_cons_set:
                     # We still need a check that the var doesn't appear nonlinearly in the constraint
                     # Generating the repn here will call it much fewer times than anywhere else
                     repn = generate_standard_repn(
@@ -144,7 +157,7 @@ def var_major_elimination(m,
                 var_list.append(var)
                 con_list.append(defining_con)
                
-    return var_list, con_list
+    return var_list, con_list, linear_cons
 
 def con_major_elimination(m,
                           eliminate_bounded_vars = False,
@@ -187,13 +200,22 @@ def con_major_elimination(m,
     # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
     linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
-    linear_vars = ComponentSet(linear_igraph.variables)
+    linear_vars = linear_igraph.variables
+    linear_vars_set = ComponentSet(linear_igraph.variables)
     
+    #The sets are necessary to check inclusion. 
+    #The lists are used so that the ordering doesn't change
     if constraint_ordering is not None:
-        linear_cons = ComponentSet(constraint_ordering)
+        cons_orig = linear_igraph.constraints
+        linear_cons = [c for _,c in sorted(zip(constraint_ordering, cons_orig))]
+        linear_cons_set = ComponentSet(constraint_ordering)
+                
+        assert set(linear_cons) == set(cons_orig)
     else:
-        linear_cons = ComponentSet(linear_igraph.constraints)
-    import pdb;pdb.set_trace()
+        linear_cons = linear_igraph.constraints
+        linear_cons_set = ComponentSet(linear_igraph.constraints)
+        
+    
     # Get the degree of linear variables from the full graph
     #We should just look at vars and cons in the linear graph 
     #but get adjacency from the full graph
@@ -224,7 +246,7 @@ def con_major_elimination(m,
                 for var in adj_vars_map[con]:
                     if not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
                         pass
-                    elif id(var) not in defining_var_ids and var in linear_vars:
+                    elif id(var) not in defining_var_ids and var in linear_vars_set:
                         if var not in ComponentSet(repn.nonlinear_vars):
                             degree_adj_vars[var] = degree_map_var[var]
             
@@ -241,4 +263,4 @@ def con_major_elimination(m,
                     var_list.append(defining_var)
                     con_list.append(con)
         
-    return var_list, con_list
+    return var_list, con_list, linear_cons
