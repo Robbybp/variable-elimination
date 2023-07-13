@@ -31,11 +31,16 @@ from var_elim.algorithms.replace import (
 from var_elim.mip_formulations.mip_elim import identify_vars_for_elim_mip
 
 ipopt_avail = pyo.SolverFactory("ipopt").available()
-mip_solvers = ["gurobi", "cbc", "glpk",]
+mip_solvers = [
+    "gurobi",
+    "cbc",
+    "glpk",
+]
 for solver_name in mip_solvers:
     if pyo.SolverFactory(solver_name).available():
         solver_avail = pyo.SolverFactory(solver_name).available()
         break
+
 
 @pytest.mark.skipif(not solver_avail, reason="MIP solver is not available")
 class TestMipFormulation1:
@@ -44,81 +49,81 @@ class TestMipFormulation1:
         m.x = pyo.Var([1, 2], initialize=1)
         m.y = pyo.Var([1, 2], initialize=1)
 
-        m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
-        m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
-        m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
+        m.eq1 = pyo.Constraint(expr=m.x[1] == 2 * m.y[1] ** 2)
+        m.eq2 = pyo.Constraint(expr=m.x[2] == 3 * m.y[2] ** 3)
+        m.eq3 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
 
         m.y[1].setlb(1.0)
         m.y[2].setlb(0.5)
 
-        m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
+        m.obj = pyo.Objective(expr=m.y[1] ** 2 + m.y[2] ** 2)
 
         return m
-    
+
     def _make_complex_model(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1)
         m.y = pyo.Var([1, 2], initialize=1)
-        m.z = pyo.Var(initialize= 1)
+        m.z = pyo.Var(initialize=1)
 
         m.eq1 = pyo.Constraint(expr=m.z == m.x[1] + m.x[2])
-        m.eq2 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2 + m.x[2]**3)
-        m.eq3 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3 + m.x[1])
-        m.eq4 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
-        
+        m.eq2 = pyo.Constraint(expr=m.x[1] == 2 * m.y[1] ** 2 + m.x[2] ** 3)
+        m.eq3 = pyo.Constraint(expr=m.x[2] == 3 * m.y[2] ** 3 + m.x[1])
+        m.eq4 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
 
         m.y[1].setlb(1.0)
         m.y[2].setlb(0.5)
         m.z.setlb(0.5)
 
-        m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
+        m.obj = pyo.Objective(expr=m.y[1] ** 2 + m.y[2] ** 2)
 
         return m
-    
+
     def _make_simple_model2(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1)
         m.y = pyo.Var([1, 2], initialize=1)
 
-        m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
-        m.eq2 = pyo.Constraint(expr=m.x[2] == 2*m.y[1]**2 + 3*m.y[2]**3 - 4*m.x[1])
-        m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
+        m.eq1 = pyo.Constraint(expr=m.x[1] == 2 * m.y[1] ** 2)
+        m.eq2 = pyo.Constraint(
+            expr=m.x[2] == 2 * m.y[1] ** 2 + 3 * m.y[2] ** 3 - 4 * m.x[1]
+        )
+        m.eq3 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
 
         m.y[1].setlb(1.0)
         m.y[2].setlb(0.5)
 
-        m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
-        
+        m.obj = pyo.Objective(expr=m.y[1] ** 2 + m.y[2] ** 2)
+
         return m
 
     def test_replacement_vars_simple(self):
         m = self._make_simple_model()
 
         vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
-        
-        #Make sure correct variables are eliminated
+
+        # Make sure correct variables are eliminated
         assert len(vars_to_elim) == 2
         assert m.x[1] is vars_to_elim[0]
         assert m.x[2] is vars_to_elim[1]
-        
+
     def test_replacement_vars_complex(self):
         m = self._make_complex_model()
 
         vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
-        
-        #Make sure correct variables are eliminated
+
+        # Make sure correct variables are eliminated
         assert len(vars_to_elim) == 2
-        
-        
+
     def test_replacement_vars_simple2(self):
         m = self._make_simple_model2()
-        
+
         vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m)
-        
+
         assert len(vars_to_elim) == 2
         assert m.x[1] is vars_to_elim[0]
         assert m.x[2] is vars_to_elim[1]
-        
+
     @pytest.mark.skipif(not ipopt_avail, reason="ipopt is not available")
     def test_same_solution_simple(self):
         m1 = self._make_simple_model()
@@ -128,12 +133,10 @@ class TestMipFormulation1:
         pyo.assert_optimal_termination(res)
 
         m2 = self._make_simple_model()
-        
+
         vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2)
 
-        var_order, con_order = define_elimination_order(
-            vars_to_elim, cons_to_elim
-        )
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
@@ -141,7 +144,7 @@ class TestMipFormulation1:
 
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
-        
+
     @pytest.mark.skipif(not ipopt_avail, reason="ipopt is not available")
     def test_same_solution_simple2(self):
         m1 = self._make_simple_model2()
@@ -151,12 +154,10 @@ class TestMipFormulation1:
         pyo.assert_optimal_termination(res)
 
         m2 = self._make_simple_model2()
-        
+
         vars_to_elim, cons_to_elim = identify_vars_for_elim_mip(m2)
 
-        var_order, con_order = define_elimination_order(
-            vars_to_elim, cons_to_elim
-        )
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
@@ -164,7 +165,7 @@ class TestMipFormulation1:
 
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
-        
- 
+
+
 if __name__ == "__main__":
     pytest.main()
