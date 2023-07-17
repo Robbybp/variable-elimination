@@ -35,7 +35,7 @@ def main():
     
     #Using AMPL heuristic for elimination
     t0 = time.time()
-    var_list, con_list = identify_vars_for_elim_min_degree(m)
+    var_list, con_list = identify_vars_for_elim_min_degree(m, major_elim = "Constraints", eliminate_bounded_vars=True, eliminate_linear_cons_only=False)
     t1 = time.time() - t0
     print("Time for min degree heuristic = ", t1)
     
@@ -47,6 +47,7 @@ def main():
     var_order, con_order = define_elimination_order(var_list, con_list, igraph = igraph)
     t1 = time.time() - t0
 
+    igraph = IncidenceGraphInterface(m, include_inequality = True)
     print("Time for getting elimination order = ", t1)    
     #Variable elimination
     t0 = time.time()
