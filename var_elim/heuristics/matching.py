@@ -19,6 +19,9 @@
 #  ___________________________________________________________________________
 
 import enum
+from pyomo.util.subsystems import (
+    create_subsystem_block, TemporarySubsystemManager
+)
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from var_elim.algorithms.replace import define_elimination_order
 
@@ -60,8 +63,11 @@ def break_algebraic_loop(
 ):
     # TODO: Optional IncidenceGraphInterface argument
     # TODO: break_algebraic_loops function that allows decomposable systems
-    igraph = IncidenceGraphInterface()
-    var_blocks, con_blocks = igraph.block_triangularize(variables, constraints)
+    subsystem = create_subsystem_block(constraints, variables)
+    to_fix = list(subsystem.input_vars[:])
+    with TemporarySubsystemManager(to_fix=to_fix):
+        igraph = IncidenceGraphInterface(subsystem)
+    var_blocks, con_blocks = igraph.block_triangularize()
     if len(var_blocks) != 1:
         # The incidence matrix does not satisfy the strong Hall property.
         raise RuntimeError(
@@ -82,7 +88,7 @@ def generate_elimination_via_matching(m):
     con_list = list(matching.keys())
     var_list = list(matching.values())
 
-    igraph = IncidenceGraphInterface()
+    igraph = IncidenceGraphInterface(m)
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
 
     var_order = []
@@ -96,13 +102,6 @@ def generate_elimination_via_matching(m):
             var_order.extend(reduced_vb)
             con_order.extend(reduced_cb)
 
-    #var_order, con_order = define_elimination_order(var_list, con_list)
-
-    # TODO: If we are not lower triangular in the full incidence graph,
-    # generate a "reduced elimination order" that is lower triangular.
-    # Our assumption is that generated orderings will be "almost lower
-    # triangular".
-
     return var_order, con_order
 
 
@@ -110,4 +109,4 @@ if __name__ == "__main__":
     from var_elim.models.distillation.distill import create_instance
     m = create_instance()
     var_order, con_order = generate_elimination_via_matching(m)
-    import pdb; pdb.set_trace()
+    var_order, con_order = define_elimination_order(var_order, con_order)
