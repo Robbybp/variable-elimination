@@ -24,7 +24,8 @@ from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.common.collections import ComponentMap, ComponentSet
 from pyomo.repn import generate_standard_repn
 from var_elim.models.distillation.distill import create_instance
-
+from var_elim.heuristics.min_degree_heuristic import identify_vars_for_elim_min_degree
+from var_elim.algorithms.replace import define_elimination_order
 def get_components_from_model(m):
     """Return a map of variables to their indices, constraints to their indices, 
     set of edges and set of linear edges
@@ -99,9 +100,29 @@ def get_var_con_pairs(m, var_idx_map, con_idx_map):
         if con_idx_map[con] in con_indices:
             con_list.append(con)
     return var_list, con_list
+
+def warm_start_mip(var_order, con_order, var_idx_map, con_idx_map):
+    y_init = {}
+    var_id = []
+    con_id = []
+    var_name_id_dict = {key.name: var_idx_map[key] for key in var_idx_map.keys()}
+    con_name_id_dict = {key.name: con_idx_map[key] for key in con_idx_map.keys()}
+    for var in var_order:
+        var_id.append(var_name_id_dict[var.name])
+    for con in con_order:
+        con_id.append(con_name_id_dict[con.name])
+        
+    for con in con_idx_map.keys():
+        for var in var_idx_map.keys():
+            y_init[con_idx_map[con], var_idx_map[var]] = 0
+    for i in zip(con_id, var_id):
+        print(i)
+        y_init[i] = 1
+    
+    return y_init
     
 
-def identify_vars_for_elim_mip(model, solver_name = 'gurobi', tee = False):
+def identify_vars_for_elim_mip(model, solver_name = 'gurobi', tee = True, warm_start = False, warm_start_var_order = None, warm_start_con_order = None):
     """Identify defined variables and defining constraints using a mip 
     formulation 
 
@@ -158,11 +179,18 @@ def identify_vars_for_elim_mip(model, solver_name = 'gurobi', tee = False):
     
     #Variables
     m.Z = pyo.Var(domain = pyo.Integers)
-    m.y = pyo.Var(m.I, m.J, domain = pyo.Binary)
+    
+    if warm_start:
+        assert warm_start_var_order is not None
+        assert warm_start_con_order is not None
+        y_init = warm_start_mip(warm_start_var_order, warm_start_con_order, var_idx_map, con_idx_map)
+    else: 
+        y_init = None
+    m.y = pyo.Var(m.I, m.J, initialize = y_init, domain = pyo.Binary)
     m.q = pyo.Var(m.I, m.I, domain = pyo.Binary)
     m.p = pyo.Var(m.J, m.J, domain = pyo.Binary)
     m.z = pyo.Var(m.K, domain = pyo.Binary)
-
+    
     #Constraints
     #Define the objective function
     def _obj_linking_con(m):
@@ -220,8 +248,25 @@ def identify_vars_for_elim_mip(model, solver_name = 'gurobi', tee = False):
     
     #Objective function
     m.obj = pyo.Objective(expr = -m.Z, sense = pyo.minimize)
+    
     solver = pyo.SolverFactory(solver_name)
-    solver.solve(m, tee = tee)
+    
+    if warm_start:
+        #Fix initial y for initialization using warm start
+        m.y.fix()
+        solver.solve(m, tee = tee)
+        #Unfix y to solve further
+        m.y.unfix()
+        solver.options['TimeLimit'] = 300
+        
+    else:
+        solver.options['TimeLimit'] = 1500
+    
+    # m.y.Start = y_init
+    # m.update()
+    
+    solver.solve(m, tee= True, warmstart = warm_start)    
     
     var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     return var_list, con_list
+
