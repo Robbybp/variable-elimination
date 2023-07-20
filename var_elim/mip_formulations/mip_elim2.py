@@ -26,7 +26,7 @@ from pyomo.core.expr.visitor import replace_expressions, identify_variables
 from var_elim.models.distillation.distill import create_instance
 import itertools
 import warnings
-
+from pyomo.contrib.iis import write_iis
 def get_components_from_model(m):
     #All sets are stored as indices of vars and constraints
     #Set C - all constraints with atleast 1 linear variable
@@ -226,8 +226,17 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
     m.y[0, 1].fix(0)
     m.y[2, 0].fix(0)
     m.y[2, 1].fix(1)
+    
     solver = pyo.SolverFactory(solver_name)
+    #write_iis(m, solver = solver, iis_file_name = 'iis_file.txt')
+    
+    
+    # tell gurobi to find an iis table for the infeasible model
+    solver.options['iisfind'] = 1  # tell gurobi to be verbose with output
+
     solver.solve(m, tee = tee)
+    
+    
     print(var_idx_map)
     m.y.pprint()
     m.z_phi.pprint()
