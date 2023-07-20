@@ -165,14 +165,14 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
     m.dummy_edges = pyo.Set(initialize = list(var_idx_map.values()))
     
     #Parameter
-    m.X_size = pyo.Param(initialize=len(var_atleast_once_linear))
+    m.X_size = pyo.Param(initialize=len(var_idx_map))
     
     #Variables
     m.y = pyo.Var(m.X, m.C, initialize = 1, domain = pyo.Binary)
     m.z = pyo.Var(m.directed_edges, domain = pyo.Binary)
     m.z_phi = pyo.Var(m.dummy_edges, domain = pyo.Binary)
-    m.f = pyo.Var(m.directed_edges, domain = pyo.Binary)
-    m.f_phi = pyo.Var(m.dummy_edges, domain = pyo.Binary)
+    m.f = pyo.Var(m.directed_edges, domain = pyo.NonNegativeIntegers)
+    m.f_phi = pyo.Var(m.dummy_edges, domain = pyo.NonNegativeIntegers)
     
     #Constraints
     #Atmost one constraint can be used to eliminate a variable
@@ -197,8 +197,9 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
         for c in m.Cx[i]:
             for j in m.XC[c]:
                 m.map_graph_variables_con.add(m.z[i,j] >= m.y[i,c])
-                
-    #All constraints corresponding to the flow model
+    
+    
+    # #All constraints corresponding to the flow model
     def _flow_con1(m):
         return sum(m.z[i,j] for (i,j) in m.directed_edges) + sum(m.z_phi[i] for i in m.dummy_edges) == m.X_size
     m.flow_con1 = pyo.Constraint(rule = _flow_con1)
@@ -219,14 +220,22 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
         return m.f_phi[i] + sum(m.f[j, i] for j in m.dummy_edges) - sum(m.f[i, j] for j in m.dummy_edges) == 1
     m.flow_con5 = pyo.Constraint(m.dummy_edges, rule = _flow_con5)
     
-    m.obj = pyo.Objective(expr = sum(sum(m.y[x, c] for c in m.Cx[x]) for x in m.X))
+    m.obj = pyo.Objective(expr = -sum(sum(m.y[x, c] for c in m.Cx[x]) for x in m.X))
     
+    m.y[0, 0].fix(1)
+    m.y[0, 1].fix(0)
+    m.y[2, 0].fix(0)
+    m.y[2, 1].fix(1)
     solver = pyo.SolverFactory(solver_name)
-    solver.solve(m, tee = tee, sense = 'Maximize')
+    solver.solve(m, tee = tee)
+    print(var_idx_map)
     m.y.pprint()
+    m.z_phi.pprint()
     m.f_phi.pprint()
     m.f.pprint()
     m.z.pprint()
+   
+    
     import pdb;pdb.set_trace()
     #var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     return var_list, con_list
@@ -236,7 +245,7 @@ m = pyo.ConcreteModel()
 m.x = pyo.Var([1, 2], initialize=1)
 m.y = pyo.Var([1, 2], initialize=1)
 
-m.eq1 = pyo.Constraint(expr=m.x[1] + m.x[2] == 2*m.y[1]**2)
+m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
 m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
 m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
 
