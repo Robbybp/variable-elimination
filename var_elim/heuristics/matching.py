@@ -19,9 +19,7 @@
 #  ___________________________________________________________________________
 
 import enum
-from pyomo.util.subsystems import (
-    create_subsystem_block, TemporarySubsystemManager
-)
+from pyomo.util.subsystems import create_subsystem_block, TemporarySubsystemManager
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from var_elim.algorithms.replace import define_elimination_order
 
@@ -58,9 +56,7 @@ _dispatcher = {
 }
 
 
-def break_algebraic_loop(
-    variables, constraints, matching, method=TearMethod.greedy
-):
+def break_algebraic_loop(variables, constraints, matching, method=TearMethod.greedy):
     # TODO: Optional IncidenceGraphInterface argument
     # TODO: break_algebraic_loops function that allows decomposable systems
     subsystem = create_subsystem_block(constraints, variables)
@@ -75,7 +71,6 @@ def break_algebraic_loop(
             f"Got {len(var_blocks)} strongly connected components."
         )
     return _dispatcher[method](igraph, matching)
-    
 
 
 def generate_elimination_via_matching(m):
@@ -107,6 +102,7 @@ def generate_elimination_via_matching(m):
 
 if __name__ == "__main__":
     from var_elim.models.distillation.distill import create_instance
+
     m = create_instance()
     var_order, con_order = generate_elimination_via_matching(m)
     var_order, con_order = define_elimination_order(var_order, con_order)
