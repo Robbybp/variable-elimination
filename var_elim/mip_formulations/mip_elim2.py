@@ -22,11 +22,11 @@ import pyomo.environ as pyo
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.common.collections import ComponentMap, ComponentSet
 from pyomo.repn import generate_standard_repn
-from pyomo.core.expr.visitor import replace_expressions, identify_variables
-from var_elim.models.distillation.distill import create_instance
+from pyomo.core.expr.visitor import identify_variables
 import itertools
 import warnings
-from pyomo.contrib.iis import write_iis
+from var_elim.mip_formulations.mip_elim import identify_vars_for_elim_mip
+
 def get_components_from_model(m):
     #All sets are stored as indices of vars and constraints
     #Set C - all constraints with atleast 1 linear variable
@@ -73,7 +73,7 @@ def get_components_from_model(m):
     for con in igraph.constraints:
         all_vars_in_cons_aol[con_idx_map[con]] =[var_idx_map[var] for var in identify_variables(con.expr) if var_idx_map[var] in var_atleast_once_linear]
         
-    #Too many returns maybe I should write this a a class(deal with it later)
+    #Too many returns maybe I should write this as a class(deal with it later)
     return linear_cons, var_atleast_once_linear, cons_where_var_linear, linear_vars_in_cons, all_vars_in_cons_aol, var_idx_map, con_idx_map
 
 def get_var_con_pairs(m, var_idx_map, con_idx_map):
@@ -98,11 +98,12 @@ def get_var_con_pairs(m, var_idx_map, con_idx_map):
     
     var_indices = []
     con_indices = []
-    for i in range(0, len(con_idx_map)):
-        for j in range(0, len(var_idx_map)):
-            if pyo.value(m.y[i,j]) == 1:
-                var_indices.append(j)
-                con_indices.append(i)
+    for i in range(0, len(var_idx_map)):
+        for j in range(0, len(con_idx_map)):
+            if (i, j) in m.y_idx_set:
+                if pyo.value(m.y[i,j]) == 1:
+                    var_indices.append(i)
+                    con_indices.append(j)
                 
                 
     for var in var_idx_map:
@@ -116,7 +117,7 @@ def get_var_con_pairs(m, var_idx_map, con_idx_map):
 
 def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):       
     """Identify defined variables and defining constraints using a mip 
-    formulation (Russells)
+    formulation (Russell's formulation)
 
     Parameters
     ----------
@@ -156,20 +157,28 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
     m = pyo.ConcreteModel()
     
     #Sets
-    m.C = pyo.Set(initialize = list(linear_cons))
-    m.X = pyo.Set(initialize = list(var_atleast_once_linear))
-    m.Cx = pyo.Set(cons_where_var_linear.keys(), initialize = cons_where_var_linear)
-    m.Xc = pyo.Set(linear_vars_in_cons.keys(), initialize = linear_vars_in_cons)
-    m.XC = pyo.Set(all_vars_in_cons_aol.keys(), initialize = all_vars_in_cons_aol)
-    m.directed_edges = pyo.Set(initialize = directed_edges_vars)
-    m.dummy_edges = pyo.Set(initialize = list(var_idx_map.values()))
+    m.C = pyo.Set(initialize = list(linear_cons), doc = "All constraints with atleast one linear variable")
+    m.X = pyo.Set(initialize = list(var_atleast_once_linear), doc = "All variables which appear linearly in the model")
+    m.Cx = pyo.Set(cons_where_var_linear.keys(), initialize = cons_where_var_linear, doc = "All  cons where x appears linearly")
+    m.Xc = pyo.Set(linear_vars_in_cons.keys(), initialize = linear_vars_in_cons, doc = "All linear vars in constraint c" )
+    m.XC = pyo.Set(all_vars_in_cons_aol.keys(), initialize = all_vars_in_cons_aol, doc = "All vars that appear linearly atleast once in the model")
+    m.directed_edges = pyo.Set(initialize = directed_edges_vars, doc = "Set of directed edges between vars (includes self edges)")
+    m.dummy_edges = pyo.Set(initialize = list(var_idx_map.values()), doc = "Edges from dummy node to all vars")
     
-    #Parameter
-    m.X_size = pyo.Param(initialize=len(var_idx_map))
+    #Making a set to index y on
+    #y needs to be indexed on linear variables and the constraints in which they appear
+    index_set = []
+    for key in cons_where_var_linear.keys():
+        for item in cons_where_var_linear[key]:
+            index_set.append((key, item))
+    m.y_idx_set = pyo.Set(initialize = index_set)
+   
+    #Parameter for |X|
+    m.X_size = pyo.Param(initialize=len(var_idx_map), doc = "Cardinality of the variable nodes")
     
     #Variables
-    m.y = pyo.Var(m.X, m.C, initialize = 1, domain = pyo.Binary)
-    m.z = pyo.Var(m.directed_edges, domain = pyo.Binary)
+    m.y = pyo.Var(m.y_idx_set, initialize = 1, domain = pyo.Binary)
+    m.z = pyo.Var(m.directed_edges, initialize = 0,domain = pyo.Binary)
     m.z_phi = pyo.Var(m.dummy_edges, domain = pyo.Binary)
     m.f = pyo.Var(m.directed_edges, domain = pyo.NonNegativeIntegers)
     m.f_phi = pyo.Var(m.dummy_edges, domain = pyo.NonNegativeIntegers)
@@ -189,19 +198,20 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
     #We can write this constraint either on all linear vars or on all linear constraints
     #Here it is written on all linear vars first
     #Logic: for each var that appears linearly, look at each constraint in which it
-    #appear linearly and look at the other variables that appear in that constraint.
+    #appears linearly and look at the other variables that appear in that constraint.
     
     m.map_graph_variables_con = pyo.ConstraintList()
-    
+
     for i in m.X:
         for c in m.Cx[i]:
             for j in m.XC[c]:
-                m.map_graph_variables_con.add(m.z[i,j] >= m.y[i,c])
+                if i != j:
+                    m.map_graph_variables_con.add(m.z[i,j] >= m.y[i,c])
     
     
     # #All constraints corresponding to the flow model
     def _flow_con1(m):
-        return sum(m.z[i,j] for (i,j) in m.directed_edges) + sum(m.z_phi[i] for i in m.dummy_edges) == m.X_size
+        return sum(m.z[i,j] for (i,j) in m.directed_edges if i != j) + sum(m.z_phi[i] for i in m.dummy_edges) == m.X_size
     m.flow_con1 = pyo.Constraint(rule = _flow_con1)
      
     def _flow_con2(m, i, j):
@@ -222,46 +232,9 @@ def identify_vars_for_elim_mip2(model, solver_name = 'gurobi', tee = True):
     
     m.obj = pyo.Objective(expr = -sum(sum(m.y[x, c] for c in m.Cx[x]) for x in m.X))
     
-    m.y[0, 0].fix(1)
-    m.y[0, 1].fix(0)
-    m.y[2, 0].fix(0)
-    m.y[2, 1].fix(1)
-    
     solver = pyo.SolverFactory(solver_name)
-    #write_iis(m, solver = solver, iis_file_name = 'iis_file.txt')
-    
-    
-    # tell gurobi to find an iis table for the infeasible model
-    solver.options['iisfind'] = 1  # tell gurobi to be verbose with output
-
     solver.solve(m, tee = tee)
     
+    var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     
-    print(var_idx_map)
-    m.y.pprint()
-    m.z_phi.pprint()
-    m.f_phi.pprint()
-    m.f.pprint()
-    m.z.pprint()
-   
-    
-    import pdb;pdb.set_trace()
-    #var_list, con_list = get_var_con_pairs(m, var_idx_map, con_idx_map)
     return var_list, con_list
-
-    
-m = pyo.ConcreteModel()
-m.x = pyo.Var([1, 2], initialize=1)
-m.y = pyo.Var([1, 2], initialize=1)
-
-m.eq1 = pyo.Constraint(expr=m.x[1] == 2*m.y[1]**2)
-m.eq2 = pyo.Constraint(expr=m.x[2] == 3*m.y[2]**3)
-m.eq3 = pyo.Constraint(expr=m.x[1]*m.x[2] == 1.0)
-
-m.y[1].setlb(1.0)
-m.y[2].setlb(0.5)
-
-m.obj = pyo.Objective(expr=m.y[1]**2 + m.y[2]**2)
-identify_vars_for_elim_mip2(m)
-                
-    
