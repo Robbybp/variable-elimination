@@ -1,0 +1,1 @@
+{"0, num_vars": 5007, "0, num_cons": 4009, "0, num_ineq": 0, "0, ipopt_linsolve": 26.961, "0, nlp_eval_time": 0.209, "0, heuristic_time": null, "0, NZ_eq_jac": 20010, "0, NZ_ineq_jac": 0, "0, NZ_lag_hess": 505506, "0, iter": 41}

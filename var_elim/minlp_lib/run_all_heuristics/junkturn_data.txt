@@ -1,0 +1,1 @@
+{"7, num_vars": null, "7, num_cons": null, "7, num_ineq": null, "7, ipopt_linsolve": null, "7, nlp_eval_time": null, "7, heuristic_time": null, "7, NZ_eq_jac": null, "7, NZ_ineq_jac": null, "7, NZ_lag_hess": null, "7, iter": null}
