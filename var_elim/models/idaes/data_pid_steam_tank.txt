@@ -1,0 +1,28 @@
+#ipopt 3.13.2, pyomo 6.6.1, Linear solver = ma27
+#With full model 
+total_ipopt_secs = 0.135
+NLP_func_evals = 20.534
+num_vars_present = 198
+num_cons_present = 198
+
+#Elimination options: 
+#Eliminate bounded variables = True
+#Eliminate_linear_cons_only = False
+#With reduced model- AMPL heuristic - original constraint ordering
+total_ipopt_secs = 0.076
+NLP_func_evals = 4.751
+num_vars_present = 98
+num_cons_present = 98
+
+#Min degree heuristic
+total_ipopt_secs = 0.1
+NLP_func_evals = 13.192
+num_vars_present = 101
+num_cons_present = 101
+
+
+#Timing data for the distillation model with constraint randomization for AMPL
+total_ipopt_secs = [0.086, 0.084, 0.065, 0.111, 0.114, 0.110, 0.106, 0.096, 0.081, 0.09, 0.092, 0.106]
+NLP_func_eval = [4.310, 5.485, 3.841, 10.40, 15.010, 15.275, 14.611, 15.035, 3.497, 3.985, 4.898, 16.162]
+num_vars_present = [115, 117, 114, 123, 112, 112, 121, 121, 118, 112, 112, 120]
+num_cons_present = [115, 117, 114, 123, 112, 112, 121, 121, 118, 112, 112, 120]
