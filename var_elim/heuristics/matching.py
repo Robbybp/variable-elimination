@@ -76,14 +76,24 @@ def break_algebraic_loop(variables, constraints, matching, method=TearMethod.gre
 def generate_elimination_via_matching(m):
     # TODO: Optional IncidenceGraphInterface argument
     linear_igraph = IncidenceGraphInterface(
-        m, active=True, include_fixed=False, linear_only=True
+        m,
+        active=True,
+        include_fixed=False,
+        include_inequality=False,
+        linear_only=True,
     )
     matching = linear_igraph.maximum_matching()
 
     con_list = list(matching.keys())
     var_list = list(matching.values())
 
-    igraph = IncidenceGraphInterface(m)
+    igraph = IncidenceGraphInterface(
+        m,
+        active=True,
+        include_fixed=False,
+        include_inequality=False,
+        linear_only=False,
+    )
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
 
     var_order = []
