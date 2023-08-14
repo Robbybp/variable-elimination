@@ -219,8 +219,8 @@ class TestMatchingHeuristic:
     def test_same_solution_nested_replacement(self):
         m1 = self._make_model_for_nested_replacement()
         solver = pyo.SolverFactory("ipopt")
-        res = solver.solve(m1, tee=True)
-        pyo.assert_optimal_termination(res)
+        #res = solver.solve(m1, tee=True)
+        #pyo.assert_optimal_termination(res)
 
         m2 = self._make_model_for_nested_replacement()
         vars_to_elim, cons_to_elim = generate_elimination_via_matching(m2)
@@ -241,6 +241,9 @@ class TestMatchingHeuristic:
         calculate_variable_from_constraint(m1.x[4], m1.eq1)
         calculate_variable_from_constraint(m1.x[3], m1.eq3)
         calculate_variable_from_constraint(m1.y[2], m1.eq4)
+
+        solver.solve(m1, tee=True)
+        pyo.assert_optimal_termination(res)
 
         # Now assert the solutions are the same.
         varnames = ["x[1]", "x[2]", "y[1]"]
