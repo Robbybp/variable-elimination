@@ -34,9 +34,15 @@ def break_algebraic_loop_greedy(igraph, matching):
     reduced_system = []
     # Need a nonzero diagonal of linear incidence
     used_constraints = set()
+    var_set = set(id(var) for var in igraph.variables)
     for con in igraph.constraints:
         # We assume that this (var, con) edge is linear
         var = matching[con]
+
+        # My math says that con's matched variable, in any perfect matching, must
+        # be part of this diagonal block. Assert this in case I am wrong.
+        assert id(var) in var_set
+
         if not any(
             # If the variable participates in some constraint that we've seen
             # before, don't use it. This guarantees that incidence matrix is
@@ -46,6 +52,8 @@ def break_algebraic_loop_greedy(igraph, matching):
         ):
             used_constraints.add(id(con))
             reduced_system.append((var, con))
+    # Since each variable was specified by the matching, it is linear in
+    # its associated constraint.
     variables = [var for var, con in reduced_system]
     constraints = [con for var, con in reduced_system]
     return variables, constraints
@@ -100,9 +108,30 @@ def generate_elimination_via_matching(m):
     con_order = []
     for vb, cb in zip(var_blocks, con_blocks):
         if len(vb) == 1:
+            # If v, c is in a 1x1 block in this matching, we know that it is
+            # linear:
+            # - (v, c) is in any perfect matching on this graph
+            # Claim: zip(var_list, con_list) is a perfect matching on this graph.
+            # - var_list, con_list is a perfect matching on the linear subgraph
+            #   on var_list, con_list (almost by definition - it contains every
+            #   node in var_list, con_list)
+            # - Therefore var_list, con_list is a perfect matching on the full
+            #   (linear & nonlinear) subgraph on var_list, con_list. (All we
+            #   did was add edges, we have the same nodes)
+            # Therefore, (v, c) is in var_list, con_list, meaning that (v, c)
+            # is linear.
             var_order.extend(vb)
             con_order.extend(cb)
         else:
+            # We need to ensure that the reduced subsystem is linear.
+            # Is this guaranteed by the fact that the matching is linear?
+            # Yes. We only return variables and constraints that are paired
+            # according to this matching.
+            #
+            # We assume that, for any con in this block, matching[con] is a
+            # variable in this block. I believe this is true (TODO: prove
+            # -- this should follow from uniqueness of strongly connected
+            # components).
             reduced_vb, reduced_cb = break_algebraic_loop(vb, cb, matching)
             var_order.extend(reduced_vb)
             con_order.extend(reduced_cb)
