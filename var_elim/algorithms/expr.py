@@ -51,14 +51,40 @@ def count_model_nodes(
 ):
     if kwds and not amplrepn:
         raise RuntimeError("kwds not supported with amplrepn=False")
+    if amplrepn:
+        subexpression_cache = {}
+        subexpression_order = []
+        external_functions = {}
+        var_map = {}
+        used_named_expressions = set()
+        symbolic_solver_labels = False
+        export_defined_variables = True
+        sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+        visitor = AMPLRepnVisitor(
+            text_nl_template,
+            subexpression_cache,
+            subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
+
     count = 0
     for con in model.component_data_objects(Constraint, active=True):
         if amplrepn:
-            expr_cache = {}
-            count += count_amplrepn_nodes(con.body, expression_cache=expr_cache, **kwds)
+            expr_cache = subexpression_cache
+            count += count_amplrepn_nodes(
+                con.body,
+                visitor=visitor,
+                #expression_cache=expr_cache,
+                **kwds,
+            )
         else:
             count += count_nodes(con.body)
-    
+
     if amplrepn:
         expr_ids = list(expr_cache)
         while expr_ids:
@@ -66,12 +92,19 @@ def count_model_nodes(
             # Why is there sometimes a third object in expr_cache?
             e_obj, repn, _ = expr_cache[e_id]
 
-            new_expr_cache = {}
             # NOTE: The named expression subtree will replace at least one node
             # in each nonlinear constraint where it appears. We don't attempt
             # to account for this.
+
+            # Re-set subexpression cache so we know which expressions are the
+            # new ones.
+            visitor.subexpression_cache = {}
+            new_expr_cache = visitor.subexpression_cache
             count += count_amplrepn_nodes(
-                e_obj.expr, expression_cache=new_expr_cache, **kwds
+                e_obj.expr,
+                visitor=visitor,
+                #expression_cache=new_expr_cache,
+                **kwds,
             )
             for new_e_id in new_expr_cache:
                 if new_e_id not in expr_cache:
@@ -89,6 +122,7 @@ def count_amplrepn_nodes(
     export_defined_variables=True,
     expression_cache=None,
     linear_only=False,
+    visitor=None
 ):
     """
     Use export_defined_variables=False to descend into named expressions while
@@ -98,24 +132,25 @@ def count_amplrepn_nodes(
     with the named expressions found in the provided expr.
 
     """
-    local_subexpression_cache = {}
-    subexpression_order = []
-    external_functions = {}
-    var_map = {}
-    used_named_expressions = set()
-    symbolic_solver_labels = False
-    sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-    visitor = AMPLRepnVisitor(
-        text_nl_template,
-        local_subexpression_cache,
-        subexpression_order,
-        external_functions,
-        var_map,
-        used_named_expressions,
-        symbolic_solver_labels,
-        export_defined_variables,
-        sorter,
-    )
+    if visitor is None:
+        local_subexpression_cache = {}
+        subexpression_order = []
+        external_functions = {}
+        var_map = {}
+        used_named_expressions = set()
+        symbolic_solver_labels = False
+        sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+        visitor = AMPLRepnVisitor(
+            text_nl_template,
+            local_subexpression_cache,
+            subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
     AMPLRepn.ActiveVisitor = visitor
     try:
         repn = visitor.walk_expression((expr, None, 0, 1.0))
