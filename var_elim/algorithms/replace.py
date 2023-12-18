@@ -187,6 +187,7 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
 
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
+    var_exprs = []
 
     # Including inequalities in this incidence graph replaces variables in the
     # adjacent inequality constraints too. If the user supplies an igraph,
@@ -216,6 +217,8 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             bound_con[ub_name] = ub_expr
             var_ub_map[var] = bound_con[ub_name]
 
+        var_exprs.append((var, var_expr))
+
         # Build substitution map
         substitution_map = {id(var): var_expr}
 
@@ -237,7 +240,7 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
                 new_expr = replace_expressions(obj.expr, substitution_map)
                 obj.set_value(new_expr)
 
-    return m, var_lb_map, var_ub_map
+    return m, var_exprs, var_lb_map, var_ub_map
 
 
 if __name__ == "__main__":
