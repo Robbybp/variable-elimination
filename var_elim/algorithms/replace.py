@@ -27,6 +27,7 @@ from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
 from pyomo.core.expr.visitor import replace_expressions, identify_variables
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.common.modeling import unique_component_name
 
 
@@ -98,7 +99,9 @@ def define_elimination_order(var_list, con_list, igraph=None):
 
     """
     if igraph is None:
-        igraph = IncidenceGraphInterface()
+        # Use ampl_repn here as we don't want spurious nonzeros to mistakenly
+        # induce an algebraic loop
+        igraph = IncidenceGraphInterface(method=IncidenceMethod.ampl_repn)
 
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
     for vb, cb in zip(var_blocks, con_blocks):
@@ -193,7 +196,13 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     # adjacent inequality constraints too. If the user supplies an igraph,
     # it needs to have the inequality constraints included
     if igraph is None:
-        igraph = IncidenceGraphInterface(m, include_inequality=True)
+        igraph = IncidenceGraphInterface(
+            m,
+            include_inequality=True,
+            # Use ampl_repn as we don't want to do extra work due to spurious
+            # nonzeros (and introduce more spurious nonzeros).
+            method=IncidenceMethod.ampl_repn,
+        )
 
     for var, con in zip(var_order, con_order):
         # Get expression for the variable from constraint

@@ -32,9 +32,13 @@ def expr_filter(
     affine=None,
     equal_coefficients=None,
 ):
+    # This function does not actually need the expressions generated
+    # by standard repn. TODO: explore using ampl_repn for consistency.
     repn = generate_standard_repn(
         expr,
-        compute_values=False,
+        # We compute values here to try to filter out zero terms in nonlinear
+        # subexpression.
+        compute_values=True,
         quadratic=False,
     )
     con_is_affine = (len(repn.nonlinear_vars) == 0)
