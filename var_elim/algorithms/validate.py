@@ -22,6 +22,7 @@ from pyomo.core.expr import value as pyo_value
 from pyomo.core.base.var import Var
 from idaes.core.util.model_statistics import large_residuals_set
 
+
 def validate_solution(
     model,
     eliminated_var_exprs,
@@ -38,7 +39,6 @@ def validate_solution(
     vars_violating_bounds = []
     for var in model.component_data_objects(Var):
         if var.value is None:
-            print(f"WARNING: uninitialized variable {var.name}")
             continue
         if var.ub is not None:
             ub_diff = pyo_value(var.value - var.ub)
