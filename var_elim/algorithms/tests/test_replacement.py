@@ -212,7 +212,7 @@ class TestReplacementWithBounds:
         cons_to_elim = [m2.eq1, m2.eq2]
 
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
-        _, var_lb_map, var_ub_map = eliminate_variables(m2, var_order, con_order)
+        _, var_exprs, var_lb_map, var_ub_map = eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
