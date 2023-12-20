@@ -142,7 +142,13 @@ def add_bounds_to_expr(var, var_expr):
     return lb_expr, ub_expr
 
 
-def eliminate_variables(m, var_order, con_order, igraph=None):
+def eliminate_variables(
+    m,
+    var_order,
+    con_order,
+    igraph=None,
+    use_named_expressions=False,
+):
     """
     Does the actual elimination by defining variable from constraint, deactivating
     the constraint used for variable definition, and replacing the variable in
@@ -189,14 +195,15 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
     )
 
     # Set that will store names of replaced variables
-    elim_var_set = Set(initialize=[])
-    m.add_component(
-        unique_component_name(m, "replaced_variable_set"), elim_var_set
-    )
-    elim_var_expr = Expression(elim_var_set)
-    m.add_component(
-        unique_component_name(m, "eliminated_variable_expressions"), elim_var_expr
-    )
+    if use_named_expressions:
+        elim_var_set = Set(initialize=[])
+        m.add_component(
+            unique_component_name(m, "replaced_variable_set"), elim_var_set
+        )
+        elim_var_expr = Expression(elim_var_set)
+        m.add_component(
+            unique_component_name(m, "eliminated_variable_expressions"), elim_var_expr
+        )
 
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
@@ -218,9 +225,13 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         # Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
-        elim_var_set.add(var.name)
-        elim_var_expr[var.name] = var_expr
-        lb_expr, ub_expr = add_bounds_to_expr(var, elim_var_expr[var.name])
+
+        if use_named_expressions:
+            elim_var_set.add(var.name)
+            elim_var_expr[var.name] = var_expr
+            var_expr = elim_var_expr[var.name]
+
+        lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
 
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
@@ -238,7 +249,7 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             bound_con[ub_name] = ub_expr
             var_ub_map[var] = bound_con[ub_name]
 
-        var_exprs.append((var, elim_var_expr[var.name]))
+        var_exprs.append((var, var_expr))
 
         # Build substitution map
         substitution_map = {id(var): var_expr}
