@@ -18,8 +18,10 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+from pyomo.core.expr.base import ExpressionBase
 from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.objective import Objective
 from pyomo.core.base.expression import Expression
 from pyomo.repn.plugins.nl_writer import AMPLRepnVisitor, AMPLRepn, text_nl_template
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
@@ -38,6 +40,7 @@ class NodeCounter(StreamBasedExpressionVisitor):
     def beforeChild(self, parent, child, idx):
         if (
             not self._descend_into_named_expressions
+            and isinstance(child, ExpressionBase)
             and child.is_named_expression_type()
         ):
             # Because we will not enter the child node, we need to update
@@ -55,8 +58,8 @@ class NodeCounter(StreamBasedExpressionVisitor):
         return self._count
 
 
-def count_nodes(expr):
-    visitor = NodeCounter()
+def count_nodes(expr, **kwds):
+    visitor = NodeCounter(**kwds)
     return visitor.walk_expression(expr)
 
 
@@ -65,8 +68,11 @@ def count_model_nodes(
     amplrepn=False,
     **kwds,
 ):
+    descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
     if kwds and not amplrepn:
-        raise RuntimeError("kwds not supported with amplrepn=False")
+        raise RuntimeError(
+            "kwds (other than descend_into_named_expressions) not supported with amplrepn=False"
+        )
     if amplrepn:
         subexpression_cache = {}
         subexpression_order = []
@@ -89,17 +95,23 @@ def count_model_nodes(
         )
 
     count = 0
-    for con in model.component_data_objects(Constraint, active=True):
+    component_exprs = (
+        [con.body for con in model.component_data_objects(Constraint, active=True)]
+        + [obj.expr for obj in model.component_data_objects(Objective, active=True)]
+    )
+    for expr in component_exprs:
         if amplrepn:
             expr_cache = subexpression_cache
             count += count_amplrepn_nodes(
-                con.body,
+                expr,
                 visitor=visitor,
                 #expression_cache=expr_cache,
                 **kwds,
             )
         else:
-            count += count_nodes(con.body)
+            count += count_nodes(
+                expr, descend_into_named_expressions=descend_into_named_expressions
+            )
 
     if amplrepn:
         expr_ids = list(expr_cache)
@@ -192,9 +204,11 @@ def count_amplrepn_nodes(
         # ever referenced in the nonlinear portion of the constraint expression.
 
         if repn.nonlinear is not None:
-            # Add one node for the (+) that connects the linear and nonlinear
-            # subexpressions
-            count += 1
+            if count > 0:
+                # Add one node for the (+) that connects the linear and nonlinear
+                # subexpressions. This is only necessary if we have some constant
+                # or linear subexpression.
+                count += 1
             # Each line is a new node in the nonlinear expression
             count += repn.nonlinear[0].count("\n")
 

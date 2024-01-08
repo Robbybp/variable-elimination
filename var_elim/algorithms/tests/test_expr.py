@@ -69,7 +69,7 @@ class TestAmplNodeCounter:
         m.eq = pyo.Constraint(pyo.Integers)
         m.subexpr = pyo.Expression(pyo.Integers)
 
-        # 7 nodes (somehow)
+        # 6 nodes (somehow)
         m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
 
         # 14 nodes in body (somehow)
@@ -79,10 +79,15 @@ class TestAmplNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 30
+        assert n_nodes == 29
 
         n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
         assert n_linear_nodes == 14
+
+        m.obj = pyo.Objective(expr=m.x[3]**2 + m.subexpr[1]**2)
+        n_nodes = count_model_nodes(m, amplrepn=True)
+        # I count 7 nodes in the objective, but somehow the nl repn contains 8 nodes
+        assert n_nodes == 36
 
     def test_count_nodes_nested_expr(self):
         m = pyo.ConcreteModel()
@@ -90,7 +95,7 @@ class TestAmplNodeCounter:
         m.eq = pyo.Constraint(pyo.Integers)
         m.subexpr = pyo.Expression(pyo.Integers)
 
-        # 7 nodes (somehow)
+        # 6 nodes
         m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
 
         # I count 7 nodes, all nonlinear
@@ -103,7 +108,7 @@ class TestAmplNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 40
+        assert n_nodes == 38
 
         n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
         assert n_linear_nodes == 14
