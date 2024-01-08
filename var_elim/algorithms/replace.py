@@ -259,7 +259,12 @@ def eliminate_variables(
         adj_cons = igraph.get_adjacent_to(var)
         for ad_con in adj_cons:
             if ad_con is not con:
-                new_expr = replace_expressions(ad_con.expr, substitution_map)
+                new_expr = replace_expressions(
+                    ad_con.expr,
+                    substitution_map,
+                    descend_into_named_expressions=True,
+                    remove_named_expressions=False,
+                )
                 if new_expr is False:
                     raise RuntimeError("Replacement expression resolved to trivial infeasible constraint")
                 elif new_expr is True:
@@ -269,7 +274,12 @@ def eliminate_variables(
 
         if var in var_obj_map:
             for obj in var_obj_map[var]:
-                new_expr = replace_expressions(obj.expr, substitution_map)
+                new_expr = replace_expressions(
+                    obj.expr,
+                    substitution_map,
+                    descend_into_named_expressions=True,
+                    remove_named_expressions=False,
+                )
                 obj.set_value(new_expr)
 
     return m, var_exprs, var_lb_map, var_ub_map
