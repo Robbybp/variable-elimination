@@ -18,7 +18,7 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
-from pyomo.core.expr.base import ExpressionBase
+from pyomo.core.expr.numvalue import NumericValue
 from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.objective import Objective
@@ -40,7 +40,7 @@ class NodeCounter(StreamBasedExpressionVisitor):
     def beforeChild(self, parent, child, idx):
         if (
             not self._descend_into_named_expressions
-            and isinstance(child, ExpressionBase)
+            and isinstance(child, NumericValue)
             and child.is_named_expression_type()
         ):
             # Because we will not enter the child node, we need to update
