@@ -45,7 +45,7 @@ def validate_solution(
             if ub_diff > tolerance:
                 vars_violating_bounds.append((var, var.ub, ub_diff))
         if var.lb is not None:
-            lb_diff = pyo.value(var.value - var.lb)
+            lb_diff = pyo_value(var.value - var.lb)
             if lb_diff < - tolerance:
                 vars_violating_bounds.append((var, var.lb, lb_diff))
 
