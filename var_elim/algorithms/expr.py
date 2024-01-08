@@ -32,9 +32,14 @@ class NodeCounter(StreamBasedExpressionVisitor):
     def __init__(self, descend_into_named_expressions=True):
         super().__init__()
         self._descend_into_named_expressions = descend_into_named_expressions
+        # Note that these are only used if we are not descending
+        # These are intended to store the named expression objects so we can
+        # count their nodes later.
+        self.named_expressions = []
+        self.named_expr_map = {}
 
     def initializeWalker(self, expr):
-        self._count = 0
+        self.count = 0
         return True, expr
 
     def beforeChild(self, parent, child, idx):
@@ -45,17 +50,20 @@ class NodeCounter(StreamBasedExpressionVisitor):
         ):
             # Because we will not enter the child node, we need to update
             # the count here.
-            self._count += 1
+            self.count += 1
+            if id(child) not in self.named_expr_map:
+                self.named_expr_map[id(child)] = child
+                self.named_expressions.append(child)
             return False, None
         else:
             return True, None
 
     def enterNode(self, node):
-        self._count += 1
+        self.count += 1
         return None
 
     def finalizeResult(self, result):
-        return self._count
+        return self.count
 
 
 def count_nodes(expr, **kwds):
@@ -68,7 +76,12 @@ def count_model_nodes(
     amplrepn=False,
     **kwds,
 ):
-    descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
+    # TODO: Separate functions for amplrepn vs. Pyomo (that can be called by this
+    # function for convenience).
+    #
+    # When counting nodes for the entire model, I think we always want to consider
+    # named expressions independently.
+    #descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
     if kwds and not amplrepn:
         raise RuntimeError(
             "kwds (other than descend_into_named_expressions) not supported with amplrepn=False"
@@ -93,6 +106,8 @@ def count_model_nodes(
             export_defined_variables,
             sorter,
         )
+    else:
+        visitor = NodeCounter(descend_into_named_expressions=False)
 
     count = 0
     component_exprs = (
@@ -109,9 +124,10 @@ def count_model_nodes(
                 **kwds,
             )
         else:
-            count += count_nodes(
-                expr, descend_into_named_expressions=descend_into_named_expressions
-            )
+            count += visitor.walk_expression(expr)
+            #count += count_nodes(
+            #    expr, descend_into_named_expressions=descend_into_named_expressions
+            #)
 
     if amplrepn:
         expr_ids = list(expr_cache)
@@ -141,6 +157,31 @@ def count_model_nodes(
                     expr_cache[new_e_id] = new_expr_cache[new_e_id]
                     # Push to the top of our stack
                     expr_ids.append(new_e_id)
+    else:
+        # This is the stack of expressions we still need to process.
+        expr_stack = list(visitor.named_expressions)
+        # This is the set of all expressions that have ever been added to the
+        # stack.
+        encountered_expr_ids = set(visitor.named_expr_map)
+        while expr_stack:
+            named_expr = expr_stack.pop()
+
+            # Walk expression to count nodes in this named expression.
+            # Additionally, this adds any new named expressions
+            count += visitor.walk_expression(named_expr.expr)
+
+            # Add new expressions to the "global set"
+            for e_id, new_expr in visitor.named_expr_map.items():
+                if e_id not in encountered_expr_ids:
+                    # encountered_expr_ids stays in-sync with the visitor's set
+                    # of expressions, but we need to maintain these two sets
+                    # so we know which expressions to add to the stack.
+                    # We could just re-construct (or clear) the visitor, but then
+                    # we need to maintain a separate count. Can consider this for
+                    # performance later.
+                    encountered_expr_ids.add(e_id)
+                    # need to link the id to the actual expression
+                    expr_stack.append(new_expr)
 
     return count
 
