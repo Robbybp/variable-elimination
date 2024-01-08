@@ -27,9 +27,25 @@ from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
 
 class NodeCounter(StreamBasedExpressionVisitor):
 
+    def __init__(self, descend_into_named_expressions=True):
+        super().__init__()
+        self._descend_into_named_expressions = descend_into_named_expressions
+
     def initializeWalker(self, expr):
         self._count = 0
         return True, expr
+
+    def beforeChild(self, parent, child, idx):
+        if (
+            not self._descend_into_named_expressions
+            and child.is_named_expression_type()
+        ):
+            # Because we will not enter the child node, we need to update
+            # the count here.
+            self._count += 1
+            return False, None
+        else:
+            return True, None
 
     def enterNode(self, node):
         self._count += 1
