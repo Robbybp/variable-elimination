@@ -23,7 +23,9 @@ from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.objective import Objective
 from pyomo.core.base.expression import Expression
-from pyomo.repn.plugins.nl_writer import AMPLRepnVisitor, AMPLRepn, text_nl_template
+from pyomo.repn.plugins.nl_writer import (
+    AMPLRepnVisitor, AMPLRepn, text_nl_template, NLFragment
+)
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
 
 
@@ -133,8 +135,14 @@ def count_model_nodes(
         expr_ids = list(expr_cache)
         while expr_ids:
             e_id = expr_ids.pop()
-            # Why is there sometimes a third object in expr_cache?
+
             e_obj, repn, _ = expr_cache[e_id]
+            if isinstance(e_obj, NLFragment):
+                # NLFragment objects store the nonlinear portion of a named
+                # expression, as linear and nonlinear portions are written
+                # separately in the nl file. We skip this, as we will encounter
+                # and process the full named expression later.
+                continue
 
             # NOTE: The named expression subtree will replace at least one node
             # in each nonlinear constraint where it appears. We don't attempt
@@ -168,6 +176,12 @@ def count_model_nodes(
 
             # Walk expression to count nodes in this named expression.
             # Additionally, this adds any new named expressions
+            #
+            # Clear named expressions so we know which ones were discovered
+            # this iteration. This avoids quadratic scaling as we build up
+            # lots of named expressions.
+            visitor.named_expr_map.clear()
+            visitor.named_expressions = []
             count += visitor.walk_expression(named_expr.expr)
 
             # Add new expressions to the "global set"
