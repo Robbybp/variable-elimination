@@ -142,6 +142,12 @@ def count_model_nodes(
                 # expression, as linear and nonlinear portions are written
                 # separately in the nl file. We skip this, as we will encounter
                 # and process the full named expression later.
+                #
+                # Add 1 to account for the indirection that occurs between
+                # the first and second portions of the subexpression.
+                # This is for done for consistency with how we count subexpressions
+                # elsewhere.
+                count += 1
                 continue
 
             # NOTE: The named expression subtree will replace at least one node

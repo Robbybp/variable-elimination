@@ -188,21 +188,22 @@ class TestAmplNodeCounter:
         # to take derivatives.
         #
         # Linear: 11 nodes, nonlinear: 11 nodes (and the plus to combine them)
-        # Total: 23 nodes
+        # Then we add 1 to account for the indirection required to access the
+        # NLFragment.
+        # Total: 24 nodes
         m.subexpr[2] = m.subexpr[1] + 3*m.x[2] + (1 - m.x[3])**2 * m.subexpr[1]
         # Similarly, linear portions of common subexpressions are "lifted" into
         # the constraints.
         # Linear: 11 nodes. Nonlinear: 2 nodes.
-        # Total: 14 nodes
+        # Total: 15 nodes
         m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
         # Linear: 7 nodes. Nonlinear: 7 nodes.
-        # Total: 15 nodes
+        # Total: 16 nodes
         m.eq[2] = m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 67
+        assert n_nodes == 70
 
 
 if __name__ == "__main__":
-    #pytest.main([__file__])
-    TestAmplNodeCounter().test_count_nodes_nlfragment()
+    pytest.main([__file__])
