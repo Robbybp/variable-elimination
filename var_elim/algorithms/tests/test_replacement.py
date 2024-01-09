@@ -288,15 +288,23 @@ class TestReplacementInInequalities:
 
 
 class TestReplaceWithNamedExpressions:
-    def _make_simple_model(self):
+    def _make_simple_model(self, named_expressions=False):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2], initialize=1, bounds=(-5, 5))
         m.y = pyo.Var([1, 2], initialize=1)
 
         m.eq1 = pyo.Constraint(expr=m.x[1] == 2 * m.y[1] ** 2)
         m.eq2 = pyo.Constraint(expr=m.x[2] == 3 * m.y[2] ** 3)
-        m.eq3 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
-        m.eq4 = pyo.Constraint(expr=m.x[1] + m.x[2] >= 3)
+
+        if named_expressions:
+            m.subexpr = pyo.Expression(pyo.Integers)
+            m.subexpr[1] = m.x[1] * m.x[2]
+            m.subexpr[2] = m.x[1] + m.x[2]
+            m.eq3 = pyo.Constraint(expr=m.subexpr[1] == 1.0)
+            m.eq4 = pyo.Constraint(expr=m.subexpr[2] >= 3.0)
+        else:
+            m.eq3 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
+            m.eq4 = pyo.Constraint(expr=m.x[1] + m.x[2] >= 3)
 
         m.y[1].setlb(1.0)
         m.y[2].setlb(0.5)
@@ -346,6 +354,33 @@ class TestReplaceWithNamedExpressions:
         for con in violated_cons:
             print(con.name)
         assert valid
+
+    def test_replace_in_named_expressions(self):
+        m = self._make_simple_model(named_expressions=True)
+
+        # Sanity check that these are named expressions before
+        # any elimination
+        assert m.eq3.body.ctype is pyo.Expression
+        assert m.eq4.body.ctype is pyo.Expression
+
+        vars_to_elim = [m.x[1], m.x[2]]
+        cons_to_elim = [m.eq1, m.eq2]
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
+        eliminate_variables(m, var_order, con_order)
+
+        # Make sure named expressions are still used by constraints
+        assert m.eq3.body.ctype is pyo.Expression
+        assert m.eq4.body.ctype is pyo.Expression
+
+        # Make sure replacement has happened in the named expressions
+        assert (
+            ComponentSet(identify_variables(m.subexpr[1].expr))
+            == ComponentSet([m.y[1], m.y[2]])
+        )
+        assert (
+            ComponentSet(identify_variables(m.subexpr[2].expr))
+            == ComponentSet([m.y[1], m.y[2]])
+        )
 
 
 class TestExceptions:
