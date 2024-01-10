@@ -183,6 +183,12 @@ def create_instance(horizon=52, vol=1.6, x_Feed=0.5, nfe=50):
     fname = os.path.join(file_dir, "distill.dat")
     instance = model.create_instance(fname)
     discretize_model(instance, nfe=nfe)
+
+    # Fix control variable at initial condition. For backward difference,
+    # it does not effect the rest of the model, and does not participate
+    # in the objective, so it has an undefined solution.
+    instance.u1[1].fix()
+
     add_objective(instance)
     return instance
 
