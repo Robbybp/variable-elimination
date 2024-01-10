@@ -185,7 +185,7 @@ def create_instance(horizon=52, vol=1.6, x_Feed=0.5, nfe=50):
     discretize_model(instance, nfe=nfe)
 
     # Fix control variable at initial condition. For backward difference,
-    # it does not effect the rest of the model, and does not participate
+    # it does not affect the rest of the model, and does not participate
     # in the objective, so it has an undefined solution.
     instance.u1[1].fix()
 
