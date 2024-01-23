@@ -20,7 +20,7 @@
 
 from pyomo.core.base.constraint import Constraint
 from pyomo.repn import generate_standard_repn
-from pyomo.core.expr import EqualityExpression
+from pyomo.core.expr import EqualityExpression, value as pyo_value
 from pyomo.util.subsystems import create_subsystem_block
 from var_elim.heuristics.matching import generate_elimination_via_matching
 
@@ -59,10 +59,10 @@ def expr_filter(
         # It also arguably doesn't make sense if we have any nonlinear variables.
         # Note that we only care whether the *magnitude* of the coefficients is
         # equal. This flag could probably use a better name...
-        coef = repn.linear_coefs[0]
+        coef = pyo_value(repn.linear_coefs[0])
         if (
             equal_coefficients
-            != all(abs(c) == abs(coef) for c in repn.linear_coefs)
+            != all(abs(pyo_value(c)) == abs(coef) for c in repn.linear_coefs)
         ):
             return False
     if degree is not None:
@@ -101,15 +101,65 @@ def filter_constraints(
     ))
 
 
-def get_trivial_constraint_elimination(model):
+def get_trivial_constraint_elimination(model, allow_affine=False):
+    if allow_affine:
+        # None is the correct argument to the filter to skip the affine-ness
+        # check altogether.
+        affine = None
+    else:
+        # This enforces that constraints must be linear but not affine
+        affine = False
     trivial_cons = filter_constraints(
         model,
         degree=2,
         linear=True,
-        affine=False,
+        affine=affine,
         equal_coefficients=True,
     )
     temp_block = create_subsystem_block(trivial_cons)
+    return generate_elimination_via_matching(temp_block)
+
+
+# TODO: Does this *really* need to be its own function? It just omits the
+# equal_coefficients flag from get_trivial_constraint_elimination.
+def get_linear_degree_two_elimination(model, allow_affine=False):
+    if allow_affine:
+        # None is the correct argument to the filter to skip the affine-ness
+        # check altogether.
+        affine = None
+    else:
+        # This enforces that constraints must be linear but not affine
+        affine = False
+    trivial_cons = filter_constraints(
+        model,
+        degree=2,
+        linear=True,
+        affine=affine,
+    )
+    temp_block = create_subsystem_block(trivial_cons)
+    return generate_elimination_via_matching(temp_block)
+
+
+def get_degree_one_elimination(model):
+    # If we are eliminating a constraint with degree one, it must be linear.
+    # We always allow affine constraints here, as otherwise we would only
+    # replace constraints of the form x = 0.
+    # These eliminations have the nice property of reducing the number of
+    # nonzeros in the Jacobian.
+    d1_cons = filter_constraints(model, linear=True, degree=1)
+    temp_block = create_subsystem_block(d1_cons)
+    return generate_elimination_via_matching(temp_block)
+
+
+def get_degree_two_elimination(model):
+    """Get elimination order that considers all degree-two constraints
+
+    These include nonlinear constraints, although, as always, nonlinear
+    variable-constraint incidence will not be considered for the elimination.
+
+    """
+    d2_cons = filter_constraints(model, degree=2)
+    temp_block = create_subsystem_block(d2_cons)
     return generate_elimination_via_matching(temp_block)
 
 
