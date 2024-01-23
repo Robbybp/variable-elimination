@@ -52,6 +52,66 @@ class TestNodeCounter:
         n_nodes = count_nodes(m.eq_pf_branch["1"].body)
         assert n_nodes == 21
 
+    def test_count_nodes_no_descend(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
+
+        # 6 nodes
+        m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
+        # 13 nodes in body: sum(linear(monomials), negation(expr))
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[1] == 1.5
+        # 9 nodes
+        m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
+
+        n_nodes = count_nodes(m.eq[1].body, descend_into_named_expressions=False)
+        assert n_nodes == 13
+
+        # Note that the named subexpression still occupys a node even when
+        # we descend into it.
+        n_nodes = count_nodes(m.eq[1].body, descend_into_named_expressions=True)
+        assert n_nodes == 19
+
+        n_nodes = count_nodes(m.eq[2].body, descend_into_named_expressions=False)
+        assert n_nodes == 9
+
+        n_nodes = count_nodes(m.eq[2].body, descend_into_named_expressions=True)
+        assert n_nodes == 15
+
+    def test_count_nodes_model(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
+
+        # 6 nodes
+        m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
+        # 13 nodes in body: sum(linear(monomials), negation(expr))
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[1] == 1.5
+        # 9 nodes
+        m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
+
+        n_nodes = count_model_nodes(m, amplrepn=False)
+        assert n_nodes == 28
+
+    def test_count_nodes_nested_expr(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
+        # 6 nodes
+        m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
+        # 9 nodes: product(power(linear(1, monomial), 2), expr)
+        m.subexpr[2] = (1 - m.x[3])**2 * m.subexpr[1]
+        # 13 nodes
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
+        # 10 nodes: sum(monomial, product(pow, expr), expr)
+        m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
+
+        n_nodes = count_model_nodes(m, amplrepn=False)
+        assert n_nodes == 38
+
 
 class TestAmplNodeCounter:
 
