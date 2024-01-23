@@ -42,6 +42,10 @@ StructuralResults = namedtuple(
 )
 
 
+# TODO: Command line argument
+USE_NAMED_EXPRESSIONS = True
+
+
 def get_structural_results(model, elim_callback):
     timer = TicTocTimer()
 
@@ -133,7 +137,7 @@ def matching_elim_callback(model):
     ub = len(matching)
     var_elim, con_elim = generate_elimination_via_matching(model)
     var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-    eliminate_variables(model, var_elim, con_elim)
+    eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
     results = ElimResults(ub)
     return results
 
@@ -143,7 +147,7 @@ def d1_elim_callback(model):
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
         break
@@ -155,14 +159,14 @@ def d2_elim_callback(model):
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
 
         var_elim, con_elim = get_degree_two_elimination(model)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             continue
 
@@ -177,14 +181,14 @@ def trivial_elim_callback(model):
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
 
         var_elim, con_elim = get_trivial_constraint_elimination(model, allow_affine=True)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             continue
 
@@ -199,7 +203,7 @@ def linear_d2_elim_callback(model):
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
 
@@ -208,7 +212,7 @@ def linear_d2_elim_callback(model):
         )
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim)
+            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             continue
 
@@ -228,7 +232,7 @@ def solve_original(m, tee=True):
 def solve_reduced(m, tee=True):
     var_elim, con_elim = generate_elimination_via_matching(m)
     var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-    eliminate_variables(m, var_elim, con_elim)
+    eliminate_variables(m, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
     solver = pyo.SolverFactory("ipopt")
     #solver.options["print_timing_statistics"] = "yes"
     solver.solve(m, tee=tee)
