@@ -85,9 +85,7 @@ def count_model_nodes(
     # named expressions independently.
     #descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
     if kwds and not amplrepn:
-        raise RuntimeError(
-            "kwds (other than descend_into_named_expressions) not supported with amplrepn=False"
-        )
+        raise RuntimeError("kwds not supported with amplrepn=False")
     visitor = NodeCounter(descend_into_named_expressions=False)
 
     count = 0
