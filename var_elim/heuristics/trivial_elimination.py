@@ -50,7 +50,7 @@ def expr_filter(
     if affine is not None:
         # This specifically checks whether the constraint is affine,
         # i.e. "affine and not linear"
-        con_is_linear = (con_is_affine and (repn.constant == 0))
+        con_is_linear = (con_is_affine and pyo_value(repn.constant == 0))
         if affine != (con_is_affine and not con_is_linear):
             # We fail the affine check
             return False
