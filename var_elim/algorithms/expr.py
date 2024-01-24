@@ -18,29 +18,58 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+from pyomo.core.expr.numvalue import NumericValue
 from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.objective import Objective
 from pyomo.core.base.expression import Expression
-from pyomo.repn.plugins.nl_writer import AMPLRepnVisitor, AMPLRepn, text_nl_template
+from pyomo.repn.plugins.nl_writer import (
+    AMPLRepnVisitor, AMPLRepn, text_nl_template, NLFragment
+)
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
 
 
 class NodeCounter(StreamBasedExpressionVisitor):
 
+    def __init__(self, descend_into_named_expressions=True):
+        super().__init__()
+        self._descend_into_named_expressions = descend_into_named_expressions
+        # Note that these are only used if we are not descending
+        # These are intended to store the named expression objects so we can
+        # count their nodes later.
+        self.named_expressions = []
+        self.named_expr_map = {}
+
     def initializeWalker(self, expr):
-        self._count = 0
+        self.count = 0
         return True, expr
 
+    def beforeChild(self, parent, child, idx):
+        if (
+            not self._descend_into_named_expressions
+            and isinstance(child, NumericValue)
+            and child.is_named_expression_type()
+        ):
+            # Because we will not enter the child node, we need to update
+            # the count here.
+            self.count += 1
+            if id(child) not in self.named_expr_map:
+                self.named_expr_map[id(child)] = child
+                self.named_expressions.append(child)
+            return False, None
+        else:
+            return True, None
+
     def enterNode(self, node):
-        self._count += 1
+        self.count += 1
         return None
 
     def finalizeResult(self, result):
-        return self._count
+        return self.count
 
 
-def count_nodes(expr):
-    visitor = NodeCounter()
+def count_nodes(expr, **kwds):
+    visitor = NodeCounter(**kwds)
     return visitor.walk_expression(expr)
 
 
@@ -49,6 +78,8 @@ def count_model_nodes(
     amplrepn=False,
     **kwds,
 ):
+    # TODO: Separate functions for amplrepn vs. Pyomo (that can be called by this
+    # function for convenience).
     if kwds and not amplrepn:
         raise RuntimeError("kwds not supported with amplrepn=False")
     if amplrepn:
@@ -71,19 +102,25 @@ def count_model_nodes(
             export_defined_variables,
             sorter,
         )
+    else:
+        visitor = NodeCounter(descend_into_named_expressions=False)
 
     count = 0
-    for con in model.component_data_objects(Constraint, active=True):
+    component_exprs = (
+        [con.body for con in model.component_data_objects(Constraint, active=True)]
+        + [obj.expr for obj in model.component_data_objects(Objective, active=True)]
+    )
+    for expr in component_exprs:
         if amplrepn:
             expr_cache = subexpression_cache
             count += count_amplrepn_nodes(
-                con.body,
+                expr,
                 visitor=visitor,
                 #expression_cache=expr_cache,
                 **kwds,
             )
         else:
-            count += count_nodes(con.body)
+            count += visitor.walk_expression(expr)
 
     if amplrepn:
         expr_ids = list(expr_cache)
@@ -91,6 +128,10 @@ def count_model_nodes(
             e_id = expr_ids.pop()
             # Why is there sometimes a third object in expr_cache?
             e_obj, repn, _ = expr_cache[e_id]
+
+            if isinstance(e_obj, NLFragment):
+                count += 1
+                continue
 
             # NOTE: The named expression subtree will replace at least one node
             # in each nonlinear constraint where it appears. We don't attempt
@@ -113,6 +154,38 @@ def count_model_nodes(
                     expr_cache[new_e_id] = new_expr_cache[new_e_id]
                     # Push to the top of our stack
                     expr_ids.append(new_e_id)
+    
+    else:
+        # This is the stack of expressions we still need to process.
+        expr_stack = list(visitor.named_expressions)
+        # This is the set of all expressions that have ever been added to the
+        # stack.
+        encountered_expr_ids = set(visitor.named_expr_map)
+        while expr_stack:
+            named_expr = expr_stack.pop()
+
+            # Walk expression to count nodes in this named expression.
+            # Additionally, this adds any new named expressions
+            #
+            # Clear named expressions so we know which ones were discovered
+            # this iteration. This avoids quadratic scaling as we build up
+            # lots of named expressions.
+            visitor.named_expr_map.clear()
+            visitor.named_expressions = []
+            count += visitor.walk_expression(named_expr.expr)
+
+            # Add new expressions to the "global set"
+            for e_id, new_expr in visitor.named_expr_map.items():
+                if e_id not in encountered_expr_ids:
+                    # encountered_expr_ids stays in-sync with the visitor's set
+                    # of expressions, but we need to maintain these two sets
+                    # so we know which expressions to add to the stack.
+                    # We could just re-construct (or clear) the visitor, but then
+                    # we need to maintain a separate count. Can consider this for
+                    # performance later.
+                    encountered_expr_ids.add(e_id)
+                    # need to link the id to the actual expression
+                    expr_stack.append(new_expr)
 
     return count
 
@@ -188,5 +261,4 @@ def count_amplrepn_nodes(
             and repn.named_exprs # Is not an empty set
         ):
             expression_cache.update(local_subexpression_cache)
-
     return count
