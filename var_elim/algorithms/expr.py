@@ -129,6 +129,10 @@ def count_model_nodes(
             # Why is there sometimes a third object in expr_cache?
             e_obj, repn, _ = expr_cache[e_id]
 
+            if isinstance(e_obj, NLFragment):
+                count += 1
+                continue
+
             # NOTE: The named expression subtree will replace at least one node
             # in each nonlinear constraint where it appears. We don't attempt
             # to account for this.
