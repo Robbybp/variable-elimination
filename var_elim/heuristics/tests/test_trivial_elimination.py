@@ -40,6 +40,8 @@ ipopt_avail = pyo.SolverFactory("ipopt").available()
 def _make_model():
     m = pyo.ConcreteModel()
     m.x = pyo.Var([1, 2, 3], initialize=1.0)
+    m.y = pyo.Var(initialize = 0)
+    m.y.fix(0)
     m.eq1 = pyo.Constraint(expr=m.x[1] == m.x[2])
     m.eq2 = pyo.Constraint(expr=m.x[1] == -m.x[2] + 1)
     m.eq3 = pyo.Constraint(expr=m.x[1] == 2*m.x[3])
@@ -48,6 +50,7 @@ def _make_model():
     m.eq6 = pyo.Constraint(expr=m.x[1] - m.x[1] + 2*m.x[3] == 0)
     m.eq7 = pyo.Constraint(expr=m.x[2] + m.x[2]**3 + m.x[1] == 0)
     m.eq8 = pyo.Constraint(expr=0*m.x[2]**3 + m.x[1] == 0)
+    m.eq9 = pyo.Constraint(expr= m.y*m.x[1] == m.x[2]**2)
     return m
 
 
