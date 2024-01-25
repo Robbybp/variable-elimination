@@ -31,6 +31,11 @@ from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.common.modeling import unique_component_name
 
 
+from pyomo.common.timing import HierarchicalTimer
+
+TIMER = HierarchicalTimer()
+
+
 def define_variable_from_constraint(variable, constraint):
     """Get the expression that defines the variable according to the
     constraint.
@@ -159,6 +164,8 @@ def eliminate_variables(
     Reduced Model
 
     """
+    timer = TIMER
+    timer.start("eliminate_variables")
     for var in var_order:
         if var.domain is Integers or var.domain is Binary:
             raise RuntimeError(
@@ -212,6 +219,7 @@ def eliminate_variables(
     # Including inequalities in this incidence graph replaces variables in the
     # adjacent inequality constraints too. If the user supplies an igraph,
     # it needs to have the inequality constraints included
+    timer.start("linear_igraph")
     if igraph is None:
         igraph = IncidenceGraphInterface(
             m,
@@ -220,10 +228,13 @@ def eliminate_variables(
             # nonzeros (and introduce more spurious nonzeros).
             method=IncidenceMethod.ampl_repn,
         )
+    timer.stop("linear_igraph")
 
     for var, con in zip(var_order, con_order):
         # Get expression for the variable from constraint
+        timer.start("define_variable")
         var_expr = define_variable_from_constraint(var, con)
+        timer.stop("define_variable")
         con.deactivate()
 
         if use_named_expressions:
@@ -231,7 +242,9 @@ def eliminate_variables(
             elim_var_expr[var.name] = var_expr
             var_expr = elim_var_expr[var.name]
 
+        timer.start("add_bounds")
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
+        timer.stop("add_bounds")
 
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
@@ -259,12 +272,14 @@ def eliminate_variables(
         adj_cons = igraph.get_adjacent_to(var)
         for ad_con in adj_cons:
             if ad_con is not con:
+                timer.start("replace_expressions")
                 new_expr = replace_expressions(
                     ad_con.expr,
                     substitution_map,
                     descend_into_named_expressions=True,
                     remove_named_expressions=False,
                 )
+                timer.stop("replace_expressions")
                 if new_expr is False:
                     raise RuntimeError("Replacement expression resolved to trivial infeasible constraint")
                 elif new_expr is True:
@@ -282,6 +297,7 @@ def eliminate_variables(
                 )
                 obj.set_value(new_expr)
 
+    timer.stop("eliminate_variables")
     return var_exprs, var_lb_map, var_ub_map
 
 

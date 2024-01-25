@@ -46,6 +46,14 @@ StructuralResults = namedtuple(
 USE_NAMED_EXPRESSIONS = True
 
 
+from pyomo.common.timing import HierarchicalTimer
+TIMER = HierarchicalTimer()
+import var_elim.algorithms.replace as replace_module
+import var_elim.heuristics.matching as matching_module
+replace_module.TIMER = TIMER
+matching_module.TIMER = TIMER
+
+
 def get_structural_results(model, elim_callback):
     timer = TicTocTimer()
 
@@ -127,17 +135,34 @@ def get_structural_results(model, elim_callback):
 
 
 def matching_elim_callback(model):
+    timer = TIMER
+    timer.start("linear_igraph")
+    # Graphs we might want to use:
+    # - linear edges only, no inequalities
+    # - all edges, no inequalities
+    # - all edges, with inequalities
     linear_igraph = IncidenceGraphInterface(
         model,
         include_inequality=False,
         linear_only=True,
         method=IncidenceMethod.ampl_repn,
     )
+    timer.stop("linear_igraph")
+    timer.start("maximum_matching")
     matching = linear_igraph.maximum_matching()
+    timer.stop("maximum_matching")
+
     ub = len(matching)
+    timer.start("generate_elimination")
     var_elim, con_elim = generate_elimination_via_matching(model)
+    timer.stop("generate_elimination")
+
+    timer.start("define_order")
     var_elim, con_elim = define_elimination_order(var_elim, con_elim)
+    timer.stop("define_order")
+
     eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+
     results = ElimResults(ub)
     return results
 
@@ -244,15 +269,15 @@ def main():
     nfe = 300
     models = [
         ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
-        #("OPF-4917", create_opf()),
+        #("OPF-4917", create_opf),
         #("Pipeline", create_pipeline()),
     ]
 
     elim_callbacks = [
-        ("Degree=1", d1_elim_callback),
-        ("Trivial", trivial_elim_callback),
-        ("Linear, degree=2", linear_d2_elim_callback),
-        ("Degree=2", d2_elim_callback),
+        #("Degree=1", d1_elim_callback),
+        #("Trivial", trivial_elim_callback),
+        #("Linear, degree=2", linear_d2_elim_callback),
+        #("Degree=2", d2_elim_callback),
         ("Matching", matching_elim_callback),
     ]
     model_cb_elim_prod = list(itertools.product(models, elim_callbacks))
@@ -265,6 +290,9 @@ def main():
     #m2 = create_distill(horizon=horizon, nfe=nfe)
     #solve_original(m1, tee=True)
     #solve_reduced(m2, tee=True)
+
+    timer = TIMER
+    timer.start("root")
 
     for i in range(len(model_cb_elim_prod)):
         mname, model = model_elim_prod[i][0]
@@ -314,6 +342,9 @@ def main():
         reduced_nonlin_nodes = results.reduced.n_nl_node - results.reduced.n_linear_node
         print(f"Original n. nonlinear nodes: {orig_nonlin_nodes}")
         print(f"Reduced n. nonlinear nodes: {reduced_nonlin_nodes}")
+
+    timer.stop("root")
+    print(timer)
 
 
 if __name__ == "__main__":

@@ -81,8 +81,14 @@ def break_algebraic_loop(variables, constraints, matching, method=TearMethod.gre
     return _dispatcher[method](igraph, matching)
 
 
+from pyomo.common.timing import HierarchicalTimer
+TIMER = HierarchicalTimer()
+
+
 def generate_elimination_via_matching(m):
+    timer = TIMER
     # TODO: Optional IncidenceGraphInterface argument
+    timer.start("linear_igraph")
     linear_igraph = IncidenceGraphInterface(
         m,
         active=True,
@@ -90,11 +96,15 @@ def generate_elimination_via_matching(m):
         include_inequality=False,
         linear_only=True,
     )
+    timer.stop("linear_igraph")
+    timer.start("maximum_matching")
     matching = linear_igraph.maximum_matching()
+    timer.stop("maximum_matching")
 
     con_list = list(matching.keys())
     var_list = list(matching.values())
 
+    timer.start("igraph")
     igraph = IncidenceGraphInterface(
         m,
         active=True,
@@ -102,7 +112,10 @@ def generate_elimination_via_matching(m):
         include_inequality=False,
         linear_only=False,
     )
+    timer.stop("igraph")
+    timer.start("block_triang")
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
+    timer.stop("block_triang")
 
     var_order = []
     con_order = []
@@ -132,7 +145,9 @@ def generate_elimination_via_matching(m):
             # variable in this block. I believe this is true (TODO: prove
             # -- this should follow from uniqueness of strongly connected
             # components).
+            timer.start("break_loop")
             reduced_vb, reduced_cb = break_algebraic_loop(vb, cb, matching)
+            timer.stop("break_loop")
             var_order.extend(reduced_vb)
             con_order.extend(reduced_cb)
 
