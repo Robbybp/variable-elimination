@@ -25,7 +25,11 @@ from pyomo.core.base.set import Set, Integers, Binary
 from pyomo.common.collections import ComponentSet, ComponentMap
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
-from pyomo.core.expr.visitor import replace_expressions, identify_variables
+from pyomo.core.expr.visitor import (
+    replace_expressions,
+    identify_variables,
+    ExpressionReplacementVisitor,
+)
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.common.modeling import unique_component_name
@@ -50,6 +54,7 @@ def define_variable_from_constraint(variable, constraint):
         Defines variable using the expression in the constraint
 
     """
+    timer = TIMER
     if not isinstance(constraint.expr, EqualityExpression):
         raise RuntimeError(
             f"{constraint.name} does not contain an EqualityExpression."
@@ -61,9 +66,11 @@ def define_variable_from_constraint(variable, constraint):
     #   whatever parameters (or fixed variables) are present. This is important
     #   for reconstructing the full expression
     # - quadratic=False to avoid unnecessary complexity
+    timer.start("standard_repn")
     repn = generate_standard_repn(
         constraint.body, compute_values=False, quadratic=False
     )
+    timer.stop("standard_repn")
     var_coef_list = zip(repn.linear_vars, repn.linear_coefs)
     linear_coef_map = ComponentMap(var_coef_list)
     nonlinear_vars = ComponentSet(repn.nonlinear_vars)
@@ -147,6 +154,36 @@ def add_bounds_to_expr(var, var_expr):
     return lb_expr, ub_expr
 
 
+def _get_elimination_map(igraph, variables, constraints):
+    subgraph = igraph.subgraph(variables, constraints)
+    # Assume variables/constraints are in lower triangular order
+    substitution_map = {}
+    to_replace = set()
+    for var, con in zip(variables, constraints):
+        # If necessary, replace expressions in constraint, before
+        # using it to generate an expression defining the var
+        if id(con) in to_replace:
+            to_replace.remove(id(con))
+            new_expr = replace_expressions(
+                con.expr,
+                substitution_map,
+                descend_into_named_expressions=True,
+                remove_named_expressions=False,
+            )
+            con.set_value(new_expr)
+
+        # Define variable from the constraint and update the substitution map
+        var_expr = define_variable_from_constraint(var, con)
+        substitution_map[id(var)] = var_expr
+
+        # Add other constraints in which the variable appears to the set of
+        # constraints we must process
+        for adj_con in subgraph.get_adjacent_to(var):
+            if adj_con is not con:
+                to_replace.add(id(adj_con))
+    return substitution_map
+
+
 def eliminate_variables(
     m,
     var_order,
@@ -219,7 +256,7 @@ def eliminate_variables(
     # Including inequalities in this incidence graph replaces variables in the
     # adjacent inequality constraints too. If the user supplies an igraph,
     # it needs to have the inequality constraints included
-    timer.start("linear_igraph")
+    timer.start("igraph")
     if igraph is None:
         igraph = IncidenceGraphInterface(
             m,
@@ -228,24 +265,23 @@ def eliminate_variables(
             # nonzeros (and introduce more spurious nonzeros).
             method=IncidenceMethod.ampl_repn,
         )
-    timer.stop("linear_igraph")
+    timer.stop("igraph")
 
-    for var, con in zip(var_order, con_order):
-        # Get expression for the variable from constraint
-        timer.start("define_variable")
-        var_expr = define_variable_from_constraint(var, con)
-        timer.stop("define_variable")
+    substitution_map = _get_elimination_map(igraph, var_order, con_order)
+
+    # Deactivate constraints that define variables
+    elim_con_set = set(id(con) for con in con_order)
+    for con in con_order:
         con.deactivate()
 
+    # Update data structures for eliminated variables
+    for var in var_order:
+        var_expr = substitution_map[id(var)]
         if use_named_expressions:
             elim_var_set.add(var.name)
             elim_var_expr[var.name] = var_expr
             var_expr = elim_var_expr[var.name]
-
-        timer.start("add_bounds")
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
-        timer.stop("add_bounds")
-
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
         if lb_expr is not None and type(lb_expr) is not bool:
@@ -254,48 +290,115 @@ def eliminate_variables(
             bound_con_set.add(lb_name)
             bound_con[lb_name] = lb_expr
             var_lb_map[var] = bound_con[lb_name]
-            
         if ub_expr is not None and type(ub_expr) is not bool:
             if ub_expr is False:
                 raise RuntimeError("Upper bound resolved to trivial infeasible constraint")
             bound_con_set.add(ub_name)
             bound_con[ub_name] = ub_expr
             var_ub_map[var] = bound_con[ub_name]
-
         var_exprs.append((var, var_expr))
 
-        # Build substitution map
-        substitution_map = {id(var): var_expr}
+    # Replace eliminated variables in the rest of the constraints
+    replacement_visitor = ExpressionReplacementVisitor(
+        substitute=substitution_map,
+        descend_into_named_expressions=True,
+        remove_named_expressions=False,
+    )
+    for con in igraph.constraints:
+        if (
+            id(con) not in elim_con_set
+            and any(id(var) in substitution_map for var in igraph.get_adjacent_to(con))
+        ):
+            new_expr = replacement_visitor.walk_expression(con.expr)
+            con.set_value(new_expr)
 
-        # Get constraints in which the variable appears
-        # This will have the deactivated constraints too
-        adj_cons = igraph.get_adjacent_to(var)
-        for ad_con in adj_cons:
-            if ad_con is not con:
-                timer.start("replace_expressions")
-                new_expr = replace_expressions(
-                    ad_con.expr,
-                    substitution_map,
-                    descend_into_named_expressions=True,
-                    remove_named_expressions=False,
-                )
-                timer.stop("replace_expressions")
-                if new_expr is False:
-                    raise RuntimeError("Replacement expression resolved to trivial infeasible constraint")
-                elif new_expr is True:
-                    ad_con.deactivate()
-                else:
-                    ad_con.set_value(new_expr)
+    for obj in m.component_data_objects(Objective, active=True):
+        new_expr = replacement_visitor.walk_expression(obj.expr)
+        obj.set_value(new_expr)
 
-        if var in var_obj_map:
-            for obj in var_obj_map[var]:
-                new_expr = replace_expressions(
-                    obj.expr,
-                    substitution_map,
-                    descend_into_named_expressions=True,
-                    remove_named_expressions=False,
-                )
-                obj.set_value(new_expr)
+    #for var, con in zip(var_order, con_order):
+    #    # Get expression for the variable from constraint
+    #    timer.start("define_variable")
+    #    var_expr = define_variable_from_constraint(var, con)
+    #    timer.stop("define_variable")
+    #    con.deactivate()
+
+    #    if use_named_expressions:
+    #        timer.start("named_expr")
+    #        elim_var_set.add(var.name)
+    #        elim_var_expr[var.name] = var_expr
+    #        var_expr = elim_var_expr[var.name]
+    #        timer.stop("named_expr")
+
+    #    timer.start("add_bounds")
+    #    lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
+    #    timer.stop("add_bounds")
+
+    #    lb_name = var.name + "_lb"
+    #    ub_name = var.name + "_ub"
+    #    timer.start("update_bound_maps")
+    #    if lb_expr is not None and type(lb_expr) is not bool:
+    #        if lb_expr is False:
+    #            raise RuntimeError("Lower bound resolved to trivial infeasible constraint")
+    #        bound_con_set.add(lb_name)
+    #        bound_con[lb_name] = lb_expr
+    #        var_lb_map[var] = bound_con[lb_name]
+    #        
+    #    if ub_expr is not None and type(ub_expr) is not bool:
+    #        if ub_expr is False:
+    #            raise RuntimeError("Upper bound resolved to trivial infeasible constraint")
+    #        bound_con_set.add(ub_name)
+    #        bound_con[ub_name] = ub_expr
+    #        var_ub_map[var] = bound_con[ub_name]
+    #    timer.stop("update_bound_maps")
+
+    #    var_exprs.append((var, var_expr))
+
+    #    # Build substitution map
+    #    substitution_map = {id(var): var_expr}
+
+    #    # Build replacement visitor
+    #    replacement_visitor = ExpressionReplacementVisitor(
+    #        substitute=substitution_map,
+    #        descend_into_named_expressions=True,
+    #        remove_named_expressions=False,
+    #    )
+
+    #    # Get constraints in which the variable appears
+    #    # This will have the deactivated constraints too
+    #    adj_cons = igraph.get_adjacent_to(var)
+    #    for ad_con in adj_cons:
+    #        if ad_con is not con:
+    #            timer.start("replace_expressions")
+    #            new_expr = replacement_visitor.walk_expression(ad_con.expr)
+    #            #new_expr = replace_expressions(
+    #            #    ad_con.expr,
+    #            #    substitution_map,
+    #            #    descend_into_named_expressions=True,
+    #            #    remove_named_expressions=False,
+    #            #)
+    #            timer.stop("replace_expressions")
+    #            timer.start("update constraint")
+    #            if new_expr is False:
+    #                raise RuntimeError("Replacement expression resolved to trivial infeasible constraint")
+    #            elif new_expr is True:
+    #                ad_con.deactivate()
+    #            else:
+    #                ad_con.set_value(new_expr)
+    #            timer.stop("update constraint")
+
+    #    if var in var_obj_map:
+    #        for obj in var_obj_map[var]:
+    #            timer.start("update objective")
+    #            new_expr = replacement_visitor.walk_expression(obj.expr)
+    #            #new_expr = replace_expressions(
+    #            #    obj.expr,
+    #            #    substitution_map,
+    #            #    descend_into_named_expressions=True,
+    #            #    remove_named_expressions=False,
+    #            #)
+    #            obj.set_value(new_expr)
+    #            timer.stop("update objective")
 
     timer.stop("eliminate_variables")
     return var_exprs, var_lb_map, var_ub_map

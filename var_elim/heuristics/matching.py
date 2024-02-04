@@ -64,20 +64,29 @@ _dispatcher = {
 }
 
 
-def break_algebraic_loop(variables, constraints, matching, method=TearMethod.greedy):
+def break_algebraic_loop(
+    #variables,
+    #constraints,
+    igraph,
+    matching,
+    method=TearMethod.greedy,
+):
     # TODO: Optional IncidenceGraphInterface argument
     # TODO: break_algebraic_loops function that allows decomposable systems
-    subsystem = create_subsystem_block(constraints, variables)
-    to_fix = list(subsystem.input_vars[:])
-    with TemporarySubsystemManager(to_fix=to_fix):
-        igraph = IncidenceGraphInterface(subsystem)
-    var_blocks, con_blocks = igraph.block_triangularize()
-    if len(var_blocks) != 1:
-        # The incidence matrix does not satisfy the strong Hall property.
-        raise RuntimeError(
-            f"break_algebraic_loop only accepts systems that do not decompose."
-            f"Got {len(var_blocks)} strongly connected components."
-        )
+    #subsystem = create_subsystem_block(constraints, variables)
+    #to_fix = list(subsystem.input_vars[:])
+    #with TemporarySubsystemManager(to_fix=to_fix):
+    #    igraph = IncidenceGraphInterface(subsystem)
+
+    # TODO: This block triangularize validation should not be necessary given
+    # the context in the overall algorithm.
+    #var_blocks, con_blocks = igraph.block_triangularize()
+    #if len(var_blocks) != 1:
+    #    # The incidence matrix does not satisfy the strong Hall property.
+    #    raise RuntimeError(
+    #        f"break_algebraic_loop only accepts systems that do not decompose."
+    #        f"Got {len(var_blocks)} strongly connected components."
+    #    )
     return _dispatcher[method](igraph, matching)
 
 
@@ -85,17 +94,31 @@ from pyomo.common.timing import HierarchicalTimer
 TIMER = HierarchicalTimer()
 
 
-def generate_elimination_via_matching(m):
+def generate_elimination_via_matching(
+    m,
+    linear_igraph=None,
+    igraph=None,
+):
+    """
+    Parameters
+    ----------
+    m : model
+    linear_igraph : Incidence graph with edges corresponding to linear
+        variable-constraint incidence. Should *not* include inequalities.
+    igraph : Full incidence graph. Should *not* include inequalities.
+
+    """
     timer = TIMER
     # TODO: Optional IncidenceGraphInterface argument
     timer.start("linear_igraph")
-    linear_igraph = IncidenceGraphInterface(
-        m,
-        active=True,
-        include_fixed=False,
-        include_inequality=False,
-        linear_only=True,
-    )
+    if linear_igraph is None:
+        linear_igraph = IncidenceGraphInterface(
+            m,
+            active=True,
+            include_fixed=False,
+            include_inequality=False,
+            linear_only=True,
+        )
     timer.stop("linear_igraph")
     timer.start("maximum_matching")
     matching = linear_igraph.maximum_matching()
@@ -105,16 +128,21 @@ def generate_elimination_via_matching(m):
     var_list = list(matching.values())
 
     timer.start("igraph")
-    igraph = IncidenceGraphInterface(
-        m,
-        active=True,
-        include_fixed=False,
-        include_inequality=False,
-        linear_only=False,
-    )
+    if igraph is None:
+        igraph = IncidenceGraphInterface(
+            m,
+            active=True,
+            include_fixed=False,
+            include_inequality=False,
+            linear_only=False,
+        )
     timer.stop("igraph")
     timer.start("block_triang")
-    var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
+    # Note that this already uses an efficient subgraph, so igraph does not
+    # need to be restricted to any subset of variables/constraints.
+    matched_subgraph = igraph.subgraph(var_list, con_list)
+    var_blocks, con_blocks = matched_subgraph.block_triangularize()
+    #var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
     timer.stop("block_triang")
 
     var_order = []
@@ -146,7 +174,18 @@ def generate_elimination_via_matching(m):
             # -- this should follow from uniqueness of strongly connected
             # components).
             timer.start("break_loop")
-            reduced_vb, reduced_cb = break_algebraic_loop(vb, cb, matching)
+            # TODO: Would starting from a smaller graph (defined on the matching)
+            # have a noticeable performance benefit?
+            timer.start("subgraph")
+            subgraph = matched_subgraph.subgraph(vb, cb)
+            timer.stop("subgraph")
+            reduced_vb, reduced_cb = break_algebraic_loop(
+                #vb,
+                #cb,
+                # Can I do this with just the subgraph?
+                subgraph,
+                matching,
+            )
             timer.stop("break_loop")
             var_order.extend(reduced_vb)
             con_order.extend(reduced_cb)

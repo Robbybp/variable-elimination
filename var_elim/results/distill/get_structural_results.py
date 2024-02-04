@@ -1,4 +1,5 @@
 import pyomo.environ as pyo
+from pyomo.core.expr import EqualityExpression
 from pyomo.common.collections import ComponentMap
 from pyomo.common.timing import TicTocTimer
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
@@ -134,34 +135,76 @@ def get_structural_results(model, elim_callback):
     return results
 
 
+def get_equality_constraints(model):
+    eq_cons = []
+    for con in model.component_data_objects(pyo.Constraint, active=True):
+        if isinstance(con.expr, EqualityExpression):
+            eq_cons.append(con)
+    return eq_cons
+
+
 def matching_elim_callback(model):
     timer = TIMER
-    timer.start("linear_igraph")
-    # Graphs we might want to use:
-    # - linear edges only, no inequalities
-    # - all edges, no inequalities
-    # - all edges, with inequalities
-    linear_igraph = IncidenceGraphInterface(
+
+    # Construct all the incidence graphs we will need for this analysis
+    #
+    # The full incidence graph is used to determine variable/constraint incidence.
+    # It does not necessarily need to use ampl_repn, although "unnecessary
+    # replacements" may lead to spurious variables in the NL file (that only
+    # participate with coefficients of zero). (Aside: I'm not sure this is
+    # true. If AMPLRepn is always built root-to-leaf, then I think we should
+    # be fine. Where exactly was the bug that led to me using ampl_repn?)
+    igraph = IncidenceGraphInterface(
         model,
-        include_inequality=False,
-        linear_only=True,
+        linear_only=False,
+        include_inequality=True,
         method=IncidenceMethod.ampl_repn,
     )
+    eq_cons = get_equality_constraints(model)
+
+    # We need an incidence graph on only equality constraints to enforce lower
+    # triangularity of the eliminated variables and constraints. Using ampl_repn
+    # allows a potentially less conservative elimination order, but
+    # identify_variables should still be valid.
+    eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
+
+    # We need a linear, equality-only incidence graph to actually select
+    # variable/constraint elimination pairs. This *could potentially* be
+    # constructed as an edge-subgraph, if we stored a linear/nonlinear
+    # indicator for each edge.
+    timer.start("linear_igraph")
+    linear_igraph = IncidenceGraphInterface(
+        model, linear_only=True, include_inequality=False
+    )
     timer.stop("linear_igraph")
+
     timer.start("maximum_matching")
     matching = linear_igraph.maximum_matching()
     timer.stop("maximum_matching")
-
     ub = len(matching)
+
     timer.start("generate_elimination")
-    var_elim, con_elim = generate_elimination_via_matching(model)
+    var_elim, con_elim = generate_elimination_via_matching(
+        model,
+        linear_igraph=linear_igraph,
+        igraph=eq_igraph,
+    )
     timer.stop("generate_elimination")
 
-    timer.start("define_order")
-    var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-    timer.stop("define_order")
+    #timer.start("define_order")
+    #elim_subgraph = eq_igraph.subgraph(con_elim, var_elim)
+    #var_elim, con_elim = define_elimination_order(
+    #    var_elim, con_elim, igraph=igraph,
+    #)
+    #timer.stop("define_order")
 
-    eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+    eliminate_variables(
+        model,
+        var_elim,
+        con_elim,
+        igraph=igraph,
+        use_named_expressions=USE_NAMED_EXPRESSIONS,
+    )
 
     results = ElimResults(ub)
     return results
