@@ -93,13 +93,14 @@ def get_structural_results(model, elim_callback):
     reduced_igraph = IncidenceGraphInterface(
         model, include_inequality=True, method=IncidenceMethod.ampl_repn
     )
+    timer.toc("Reduced incidence graph")
     reduced_linear_igraph = IncidenceGraphInterface(
         model,
         include_inequality=True,
         linear_only=True,
         method=IncidenceMethod.ampl_repn,
     )
-    timer.toc("Reduced incidence graph")
+    timer.toc("Reduced linear subgraph")
 
     orig_nvar = len(orig_igraph.variables)
     orig_ncon = len(orig_igraph.constraints)
