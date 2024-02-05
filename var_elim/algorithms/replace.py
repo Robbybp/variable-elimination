@@ -154,8 +154,24 @@ def add_bounds_to_expr(var, var_expr):
     return lb_expr, ub_expr
 
 
-def _get_elimination_map(igraph, variables, constraints):
+def _get_elimination_map(
+    m,
+    igraph,
+    variables,
+    constraints,
+    use_named_expressions=False,
+):
     subgraph = igraph.subgraph(variables, constraints)
+
+    elim_var_set = Set(initialize=[])
+    m.add_component(
+        unique_component_name(m, "replaced_variable_set"), elim_var_set
+    )
+    elim_var_expr = Expression(elim_var_set)
+    m.add_component(
+        unique_component_name(m, "eliminated_variable_expressions"), elim_var_expr
+    )
+
     # Assume variables/constraints are in lower triangular order
     substitution_map = {}
     to_replace = set()
@@ -174,6 +190,10 @@ def _get_elimination_map(igraph, variables, constraints):
 
         # Define variable from the constraint and update the substitution map
         var_expr = define_variable_from_constraint(var, con)
+        elim_var_set.add(var.name)
+        elim_var_expr[var.name] = var_expr
+        if use_named_expressions:
+            var_expr = elim_var_expr[var.name]
         substitution_map[id(var)] = var_expr
 
         # Add other constraints in which the variable appears to the set of
@@ -181,7 +201,7 @@ def _get_elimination_map(igraph, variables, constraints):
         for adj_con in subgraph.get_adjacent_to(var):
             if adj_con is not con:
                 to_replace.add(id(adj_con))
-    return substitution_map
+    return substitution_map, elim_var_set, elim_var_expr
 
 
 def eliminate_variables(
@@ -238,17 +258,6 @@ def eliminate_variables(
         unique_component_name(m, "replaced_variable_bounds"), bound_con
     )
 
-    # Set that will store names of replaced variables
-    if use_named_expressions:
-        elim_var_set = Set(initialize=[])
-        m.add_component(
-            unique_component_name(m, "replaced_variable_set"), elim_var_set
-        )
-        elim_var_expr = Expression(elim_var_set)
-        m.add_component(
-            unique_component_name(m, "eliminated_variable_expressions"), elim_var_expr
-        )
-
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
     var_exprs = []
@@ -267,7 +276,9 @@ def eliminate_variables(
         )
     timer.stop("igraph")
 
-    substitution_map = _get_elimination_map(igraph, var_order, con_order)
+    substitution_map, elim_var_set, elim_var_expr = _get_elimination_map(
+        m, igraph, var_order, con_order, use_named_expressions=use_named_expressions
+    )
 
     # Deactivate constraints that define variables
     elim_con_set = set(id(con) for con in con_order)
@@ -277,10 +288,6 @@ def eliminate_variables(
     # Update data structures for eliminated variables
     for var in var_order:
         var_expr = substitution_map[id(var)]
-        if use_named_expressions:
-            elim_var_set.add(var.name)
-            elim_var_expr[var.name] = var_expr
-            var_expr = elim_var_expr[var.name]
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
