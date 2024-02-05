@@ -70,6 +70,11 @@ def get_structural_results(model, elim_callback):
         method=IncidenceMethod.ampl_repn,
     )
     timer.toc("Linear subgraph")
+    eq_cons = get_equality_constraints(model)
+    orig_linear_eq_igraph = orig_linear_igraph.subgraph(
+        orig_linear_igraph.variables, eq_cons
+    )
+    timer.toc("Linear eq-only subgraph")
 
     orig_nnode = count_model_nodes(model)
     timer.toc("Count Pyomo nodes")
@@ -78,7 +83,9 @@ def get_structural_results(model, elim_callback):
     orig_linear_nlnode = count_model_nodes(model, amplrepn=True, linear_only=True)
     timer.toc("Count linear nl nodes")
 
-    elim_res = elim_callback(model, igraph=orig_igraph)
+    elim_res = elim_callback(
+        model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph
+    )
     timer.toc("Perform elimination")
 
     reduced_nnode = count_model_nodes(model)
@@ -145,6 +152,7 @@ def matching_elim_callback(model, **kwds):
     timer = TIMER
 
     igraph = kwds.pop("igraph", None)
+    linear_igraph = kwds.pop("linear_igraph", None)
 
     # Construct all the incidence graphs we will need for this analysis
     #
@@ -178,9 +186,10 @@ def matching_elim_callback(model, **kwds):
     # constructed as an edge-subgraph, if we stored a linear/nonlinear
     # indicator for each edge.
     timer.start("linear_igraph")
-    linear_igraph = IncidenceGraphInterface(
-        model, linear_only=True, include_inequality=False
-    )
+    if linear_igraph is None:
+        linear_igraph = IncidenceGraphInterface(
+            model, linear_only=True, include_inequality=False
+        )
     timer.stop("linear_igraph")
 
     timer.start("maximum_matching")
