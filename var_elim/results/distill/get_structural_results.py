@@ -70,9 +70,6 @@ def get_structural_results(model, elim_callback):
         method=IncidenceMethod.ampl_repn,
     )
     timer.toc("Linear subgraph")
-    # This is too matching-specific. This should be handled by the elimination callback
-    #matching = orig_linear_igraph.maximum_matching()
-    #n_linear_match = len(matching)
 
     orig_nnode = count_model_nodes(model)
     timer.toc("Count Pyomo nodes")
@@ -81,7 +78,7 @@ def get_structural_results(model, elim_callback):
     orig_linear_nlnode = count_model_nodes(model, amplrepn=True, linear_only=True)
     timer.toc("Count linear nl nodes")
 
-    elim_res = elim_callback(model)
+    elim_res = elim_callback(model, igraph=orig_igraph)
     timer.toc("Perform elimination")
 
     reduced_nnode = count_model_nodes(model)
@@ -94,13 +91,14 @@ def get_structural_results(model, elim_callback):
     reduced_igraph = IncidenceGraphInterface(
         model, include_inequality=True, method=IncidenceMethod.ampl_repn
     )
+    timer.toc("Reduced incidence graph")
     reduced_linear_igraph = IncidenceGraphInterface(
         model,
         include_inequality=True,
         linear_only=True,
         method=IncidenceMethod.ampl_repn,
     )
-    timer.toc("Reduced incidence graph")
+    timer.toc("Reduced linear subgraph")
 
     orig_nvar = len(orig_igraph.variables)
     orig_ncon = len(orig_igraph.constraints)
@@ -143,8 +141,10 @@ def get_equality_constraints(model):
     return eq_cons
 
 
-def matching_elim_callback(model):
+def matching_elim_callback(model, **kwds):
     timer = TIMER
+
+    igraph = kwds.pop("igraph", None)
 
     # Construct all the incidence graphs we will need for this analysis
     #
@@ -154,19 +154,24 @@ def matching_elim_callback(model):
     # participate with coefficients of zero). (Aside: I'm not sure this is
     # true. If AMPLRepn is always built root-to-leaf, then I think we should
     # be fine. Where exactly was the bug that led to me using ampl_repn?)
-    igraph = IncidenceGraphInterface(
-        model,
-        linear_only=False,
-        include_inequality=True,
-        method=IncidenceMethod.ampl_repn,
-    )
+    if igraph is None:
+        timer.start("igraph")
+        igraph = IncidenceGraphInterface(
+            model,
+            linear_only=False,
+            include_inequality=True,
+            method=IncidenceMethod.ampl_repn,
+        )
+        timer.stop("igraph")
     eq_cons = get_equality_constraints(model)
 
     # We need an incidence graph on only equality constraints to enforce lower
     # triangularity of the eliminated variables and constraints. Using ampl_repn
     # allows a potentially less conservative elimination order, but
     # identify_variables should still be valid.
+    timer.start("subgraph")
     eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
+    timer.stop("subgraph")
 
     # We need a linear, equality-only incidence graph to actually select
     # variable/constraint elimination pairs. This *could potentially* be
@@ -210,7 +215,7 @@ def matching_elim_callback(model):
     return results
 
 
-def d1_elim_callback(model):
+def d1_elim_callback(model, **kwds):
     while True:
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
@@ -222,7 +227,7 @@ def d1_elim_callback(model):
     return ElimResults(None)
 
 
-def d2_elim_callback(model):
+def d2_elim_callback(model, **kwds):
     while True:
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
@@ -244,7 +249,7 @@ def d2_elim_callback(model):
     return ElimResults(None)
 
 
-def trivial_elim_callback(model):
+def trivial_elim_callback(model, **kwds):
     while True:
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
@@ -266,7 +271,7 @@ def trivial_elim_callback(model):
     return ElimResults(None)
 
 
-def linear_d2_elim_callback(model):
+def linear_d2_elim_callback(model, **kwds):
     while True:
         var_elim, con_elim = get_degree_one_elimination(model)
         if var_elim:
@@ -298,12 +303,18 @@ def solve_original(m, tee=True):
 
 
 def solve_reduced(m, tee=True):
+    timer = TicTocTimer()
+    timer.tic()
     var_elim, con_elim = generate_elimination_via_matching(m)
-    var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-    eliminate_variables(m, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+    var_exprs, var_lbs, var_ubs = eliminate_variables(m, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+    timer.toc("eliminate variables")
     solver = pyo.SolverFactory("ipopt")
     #solver.options["print_timing_statistics"] = "yes"
     solver.solve(m, tee=tee)
+    timer.toc("solve")
+    from var_elim.algorithms.validate import validate_solution
+    validate_solution(m, var_exprs, con_elim, tolerance=1e-6)
+    timer.toc("validate")
     return m
 
 
@@ -344,7 +355,6 @@ def main():
         print()
         print(f"{mname} -- {elim_name}")
         print("-"*nchar)
-        #print_statistics(model)
         results = get_structural_results(model, elim_callback)
 
         orig_nnz_per_con = results.orig.nnz / results.orig.ncon
