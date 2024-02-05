@@ -27,6 +27,7 @@ from pyomo.repn import generate_standard_repn
 from pyomo.core.expr.relational_expr import EqualityExpression
 from pyomo.core.expr.visitor import replace_expressions, identify_variables
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.common.modeling import unique_component_name
 
 
@@ -98,7 +99,9 @@ def define_elimination_order(var_list, con_list, igraph=None):
 
     """
     if igraph is None:
-        igraph = IncidenceGraphInterface()
+        # Use ampl_repn here as we don't want spurious nonzeros to mistakenly
+        # induce an algebraic loop
+        igraph = IncidenceGraphInterface(method=IncidenceMethod.ampl_repn)
 
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
     for vb, cb in zip(var_blocks, con_blocks):
@@ -139,7 +142,13 @@ def add_bounds_to_expr(var, var_expr):
     return lb_expr, ub_expr
 
 
-def eliminate_variables(m, var_order, con_order, igraph=None):
+def eliminate_variables(
+    m,
+    var_order,
+    con_order,
+    igraph=None,
+    use_named_expressions=False,
+):
     """
     Does the actual elimination by defining variable from constraint, deactivating
     the constraint used for variable definition, and replacing the variable in
@@ -185,19 +194,43 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         unique_component_name(m, "replaced_variable_bounds"), bound_con
     )
 
+    # Set that will store names of replaced variables
+    if use_named_expressions:
+        elim_var_set = Set(initialize=[])
+        m.add_component(
+            unique_component_name(m, "replaced_variable_set"), elim_var_set
+        )
+        elim_var_expr = Expression(elim_var_set)
+        m.add_component(
+            unique_component_name(m, "eliminated_variable_expressions"), elim_var_expr
+        )
+
     var_lb_map = ComponentMap()
     var_ub_map = ComponentMap()
+    var_exprs = []
 
     # Including inequalities in this incidence graph replaces variables in the
     # adjacent inequality constraints too. If the user supplies an igraph,
     # it needs to have the inequality constraints included
     if igraph is None:
-        igraph = IncidenceGraphInterface(m, include_inequality=True)
+        igraph = IncidenceGraphInterface(
+            m,
+            include_inequality=True,
+            # Use ampl_repn as we don't want to do extra work due to spurious
+            # nonzeros (and introduce more spurious nonzeros).
+            method=IncidenceMethod.ampl_repn,
+        )
 
     for var, con in zip(var_order, con_order):
         # Get expression for the variable from constraint
         var_expr = define_variable_from_constraint(var, con)
         con.deactivate()
+
+        if use_named_expressions:
+            elim_var_set.add(var.name)
+            elim_var_expr[var.name] = var_expr
+            var_expr = elim_var_expr[var.name]
+
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
 
         lb_name = var.name + "_lb"
@@ -216,6 +249,8 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
             bound_con[ub_name] = ub_expr
             var_ub_map[var] = bound_con[ub_name]
 
+        var_exprs.append((var, var_expr))
+
         # Build substitution map
         substitution_map = {id(var): var_expr}
 
@@ -224,7 +259,12 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
         adj_cons = igraph.get_adjacent_to(var)
         for ad_con in adj_cons:
             if ad_con is not con:
-                new_expr = replace_expressions(ad_con.expr, substitution_map)
+                new_expr = replace_expressions(
+                    ad_con.expr,
+                    substitution_map,
+                    descend_into_named_expressions=True,
+                    remove_named_expressions=False,
+                )
                 if new_expr is False:
                     raise RuntimeError("Replacement expression resolved to trivial infeasible constraint")
                 elif new_expr is True:
@@ -234,10 +274,15 @@ def eliminate_variables(m, var_order, con_order, igraph=None):
 
         if var in var_obj_map:
             for obj in var_obj_map[var]:
-                new_expr = replace_expressions(obj.expr, substitution_map)
+                new_expr = replace_expressions(
+                    obj.expr,
+                    substitution_map,
+                    descend_into_named_expressions=True,
+                    remove_named_expressions=False,
+                )
                 obj.set_value(new_expr)
 
-    return m, var_lb_map, var_ub_map
+    return var_exprs, var_lb_map, var_ub_map
 
 
 if __name__ == "__main__":
