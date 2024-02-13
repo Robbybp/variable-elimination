@@ -25,6 +25,9 @@ from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from var_elim.algorithms.replace import define_elimination_order
 
 
+from pyomo.common.timing import HierarchicalTimer
+
+
 class TearMethod(enum.Enum):
     greedy = 0
     # TODO: more sophisticated heuristic, e.g. Elmqvist & Otter
@@ -70,14 +73,11 @@ def break_algebraic_loop(igraph, matching, method=TearMethod.greedy):
     return _dispatcher[method](igraph, matching)
 
 
-from pyomo.common.timing import HierarchicalTimer
-TIMER = HierarchicalTimer()
-
-
 def generate_elimination_via_matching(
     m,
     linear_igraph=None,
     igraph=None,
+    timer=None,
 ):
     """
     Parameters
@@ -88,7 +88,8 @@ def generate_elimination_via_matching(
     igraph : Full incidence graph. Should *not* include inequalities.
 
     """
-    timer = TIMER
+    if timer is None:
+        timer = HierarchicalTimer()
     timer.start("linear_igraph")
     if linear_igraph is None:
         linear_igraph = IncidenceGraphInterface(

@@ -33,14 +33,10 @@ from pyomo.core.expr.visitor import (
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.common.modeling import unique_component_name
-
-
 from pyomo.common.timing import HierarchicalTimer
 
-TIMER = HierarchicalTimer()
 
-
-def define_variable_from_constraint(variable, constraint):
+def define_variable_from_constraint(variable, constraint, timer=None):
     """Get the expression that defines the variable according to the
     constraint.
 
@@ -54,7 +50,7 @@ def define_variable_from_constraint(variable, constraint):
         Defines variable using the expression in the constraint
 
     """
-    timer = TIMER
+    timer = HierarchicalTimer() if timer is None else timer
     if not isinstance(constraint.expr, EqualityExpression):
         raise RuntimeError(
             f"{constraint.name} does not contain an EqualityExpression."
@@ -210,6 +206,7 @@ def eliminate_variables(
     con_order,
     igraph=None,
     use_named_expressions=False,
+    timer=None,
 ):
     """
     Does the actual elimination by defining variable from constraint, deactivating
@@ -221,7 +218,8 @@ def eliminate_variables(
     Reduced Model
 
     """
-    timer = TIMER
+    if timer is None:
+        timer = HierarchicalTimer()
     timer.start("eliminate_variables")
     for var in var_order:
         if var.domain is Integers or var.domain is Binary:

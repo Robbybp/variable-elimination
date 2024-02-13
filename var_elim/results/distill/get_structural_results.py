@@ -1,7 +1,7 @@
 import pyomo.environ as pyo
 from pyomo.core.expr import EqualityExpression
 from pyomo.common.collections import ComponentMap
-from pyomo.common.timing import TicTocTimer
+from pyomo.common.timing import TicTocTimer, HierarchicalTimer
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
@@ -47,15 +47,8 @@ StructuralResults = namedtuple(
 USE_NAMED_EXPRESSIONS = True
 
 
-from pyomo.common.timing import HierarchicalTimer
-TIMER = HierarchicalTimer()
-import var_elim.algorithms.replace as replace_module
-import var_elim.heuristics.matching as matching_module
-replace_module.TIMER = TIMER
-matching_module.TIMER = TIMER
-
-
-def get_structural_results(model, elim_callback):
+def get_structural_results(model, elim_callback, htimer=None):
+    htimer = HierarchicalTimer if htimer is None else htimer
     timer = TicTocTimer()
 
     timer.tic()
@@ -84,7 +77,7 @@ def get_structural_results(model, elim_callback):
     timer.toc("Count linear nl nodes")
 
     elim_res = elim_callback(
-        model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph
+        model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph, timer=htimer
     )
     timer.toc("Perform elimination")
 
@@ -149,7 +142,7 @@ def get_equality_constraints(model):
 
 
 def matching_elim_callback(model, **kwds):
-    timer = TIMER
+    timer = kwds.pop("timer", HierarchicalTimer())
 
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
@@ -202,10 +195,12 @@ def matching_elim_callback(model, **kwds):
         model,
         linear_igraph=linear_igraph,
         igraph=eq_igraph,
+        timer=timer,
     )
     timer.stop("generate_elimination")
 
     #timer.start("define_order")
+    # Not necessary for this algorithm
     #elim_subgraph = eq_igraph.subgraph(con_elim, var_elim)
     #var_elim, con_elim = define_elimination_order(
     #    var_elim, con_elim, igraph=igraph,
@@ -218,6 +213,7 @@ def matching_elim_callback(model, **kwds):
         con_elim,
         igraph=igraph,
         use_named_expressions=USE_NAMED_EXPRESSIONS,
+        timer=timer,
     )
 
     results = ElimResults(ub)
@@ -354,7 +350,7 @@ def main():
     #solve_original(m1, tee=True)
     #solve_reduced(m2, tee=True)
 
-    timer = TIMER
+    timer = HierarchicalTimer()
     timer.start("root")
 
     for i in range(len(model_cb_elim_prod)):
@@ -364,7 +360,7 @@ def main():
         print()
         print(f"{mname} -- {elim_name}")
         print("-"*nchar)
-        results = get_structural_results(model, elim_callback)
+        results = get_structural_results(model, elim_callback, htimer=timer)
 
         orig_nnz_per_con = results.orig.nnz / results.orig.ncon
         reduced_nnz_per_con = results.reduced.nnz / results.reduced.ncon
