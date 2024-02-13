@@ -19,6 +19,7 @@
 #  ___________________________________________________________________________
 
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from pyomo.common.collections import ComponentMap, ComponentSet
 from pyomo.core.expr.visitor import identify_variables
 from pyomo.repn import generate_standard_repn
@@ -75,14 +76,25 @@ def var_major_elimination(m,
     degree_map_con = ComponentMap()
 
     # Generate incidence graph with active constraints
-    igraph = IncidenceGraphInterface(m, active=True, include_inequality= True)
+    igraph = IncidenceGraphInterface(
+        m,
+        active=True,
+        include_inequality=True,
+        method=IncidenceMethod.ampl_repn,
+    )
 
     # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
     # This is simply to narrow down the variables and constraints that are
     # candidates for replacement so we potentially have to do fewer checks
     # of standard_repn below.
-    linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
+    linear_igraph = IncidenceGraphInterface(
+        m,
+        active=True,
+        linear_only=True,
+        include_inequality=False,
+        method=IncidenceMethod.ampl_repn,
+    )
     linear_vars = ComponentSet(linear_igraph.variables)
     linear_cons = ComponentSet(linear_igraph.constraints)
 
@@ -177,11 +189,22 @@ def con_major_elimination(m,
     degree_map_con = ComponentMap()
 
     # Generate incidence graph with active constraints
-    igraph = IncidenceGraphInterface(m, active=True, include_inequality= True)
+    igraph = IncidenceGraphInterface(
+        m,
+        active=True,
+        include_inequality=True,
+        method=IncidenceMethod.ampl_repn,
+    )
     
     # Generate linear incidence graph to identify variables appearing linearly
     # in the constraints
-    linear_igraph = IncidenceGraphInterface(m, active = True, linear_only=True, include_inequality = False)
+    linear_igraph = IncidenceGraphInterface(
+        m,
+        active=True,
+        linear_only=True,
+        include_inequality=False,
+        method=IncidenceMethod.ampl_repn,
+    )
     linear_vars = ComponentSet(linear_igraph.variables)
     linear_cons = ComponentSet(linear_igraph.constraints)
 

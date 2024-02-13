@@ -80,6 +80,10 @@ def count_model_nodes(
 ):
     # TODO: Separate functions for amplrepn vs. Pyomo (that can be called by this
     # function for convenience).
+    #
+    # When counting nodes for the entire model, I think we always want to consider
+    # named expressions independently.
+    #descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
     if kwds and not amplrepn:
         raise RuntimeError("kwds not supported with amplrepn=False")
     if amplrepn:
@@ -116,7 +120,6 @@ def count_model_nodes(
             count += count_amplrepn_nodes(
                 expr,
                 visitor=visitor,
-                #expression_cache=expr_cache,
                 **kwds,
             )
         else:
@@ -126,8 +129,20 @@ def count_model_nodes(
         expr_ids = list(expr_cache)
         while expr_ids:
             e_id = expr_ids.pop()
-            # Why is there sometimes a third object in expr_cache?
+
             e_obj, repn, _ = expr_cache[e_id]
+            if isinstance(e_obj, NLFragment):
+                # NLFragment objects store the nonlinear portion of a named
+                # expression, as linear and nonlinear portions are written
+                # separately in the nl file. We skip this, as we will encounter
+                # and process the full named expression later.
+                #
+                # Add 1 to account for the indirection that occurs between
+                # the first and second portions of the subexpression.
+                # This is for done for consistency with how we count subexpressions
+                # elsewhere.
+                count += 1
+                continue
 
             if isinstance(e_obj, NLFragment):
                 count += 1
@@ -144,7 +159,6 @@ def count_model_nodes(
             count += count_amplrepn_nodes(
                 e_obj.expr,
                 visitor=visitor,
-                #expression_cache=new_expr_cache,
                 **kwds,
             )
             for new_e_id in new_expr_cache:
@@ -154,7 +168,6 @@ def count_model_nodes(
                     expr_cache[new_e_id] = new_expr_cache[new_e_id]
                     # Push to the top of our stack
                     expr_ids.append(new_e_id)
-    
     else:
         # This is the stack of expressions we still need to process.
         expr_stack = list(visitor.named_expressions)
@@ -249,9 +262,11 @@ def count_amplrepn_nodes(
         # ever referenced in the nonlinear portion of the constraint expression.
 
         if repn.nonlinear is not None:
-            # Add one node for the (+) that connects the linear and nonlinear
-            # subexpressions
-            count += 1
+            if count > 0:
+                # Add one node for the (+) that connects the linear and nonlinear
+                # subexpressions. This is only necessary if we have some constant
+                # or linear subexpression.
+                count += 1
             # Each line is a new node in the nonlinear expression
             count += repn.nonlinear[0].count("\n")
 
@@ -261,4 +276,8 @@ def count_amplrepn_nodes(
             and repn.named_exprs # Is not an empty set
         ):
             expression_cache.update(local_subexpression_cache)
+<<<<<<< HEAD
+=======
+
+>>>>>>> cf0530b3fcba03caecc39e40311a75da645c67ab
     return count

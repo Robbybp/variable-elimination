@@ -32,9 +32,13 @@ def expr_filter(
     affine=None,
     equal_coefficients=None,
 ):
+    # This function does not actually need the expressions generated
+    # by standard repn. TODO: explore using ampl_repn for consistency.
     repn = generate_standard_repn(
         expr,
-        compute_values=False,
+        # We compute values here to try to filter out zero terms in nonlinear
+        # subexpression.
+        compute_values=True,
         quadratic=False,
     )
     con_is_affine = (len(repn.nonlinear_vars) == 0)
@@ -50,7 +54,7 @@ def expr_filter(
     if affine is not None:
         # This specifically checks whether the constraint is affine,
         # i.e. "affine and not linear"
-        con_is_linear = (con_is_affine and (repn.constant == 0))
+        con_is_linear = (con_is_affine and pyo_value(repn.constant == 0))
         if affine != (con_is_affine and not con_is_linear):
             # We fail the affine check
             return False

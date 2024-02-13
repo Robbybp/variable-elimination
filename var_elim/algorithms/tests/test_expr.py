@@ -112,7 +112,6 @@ class TestNodeCounter:
         n_nodes = count_model_nodes(m, amplrepn=False)
         assert n_nodes == 38
 
-
 class TestAmplNodeCounter:
 
     def test_count_nodes_simple(self):
@@ -129,7 +128,7 @@ class TestAmplNodeCounter:
         m.eq = pyo.Constraint(pyo.Integers)
         m.subexpr = pyo.Expression(pyo.Integers)
 
-        # 7 nodes (somehow)
+        # 6 nodes (somehow)
         m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
 
         # 14 nodes in body (somehow)
@@ -139,10 +138,15 @@ class TestAmplNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 30
+        assert n_nodes == 29
 
         n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
         assert n_linear_nodes == 14
+
+        m.obj = pyo.Objective(expr=m.x[3]**2 + m.subexpr[1]**2)
+        n_nodes = count_model_nodes(m, amplrepn=True)
+        # I count 7 nodes in the objective, but somehow the nl repn contains 8 nodes
+        assert n_nodes == 36
 
     def test_count_nodes_nested_expr(self):
         m = pyo.ConcreteModel()
@@ -150,7 +154,7 @@ class TestAmplNodeCounter:
         m.eq = pyo.Constraint(pyo.Integers)
         m.subexpr = pyo.Expression(pyo.Integers)
 
-        # 7 nodes (somehow)
+        # 6 nodes
         m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
 
         # I count 7 nodes, all nonlinear
@@ -163,10 +167,41 @@ class TestAmplNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 40
+        assert n_nodes == 38
 
         n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
         assert n_linear_nodes == 14
+
+    def test_count_nodes_nlfragment(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
+        # 15 nodes
+        m.subexpr[1] = m.x[3] + 2*m.x[1] - m.x[2] * pyo.exp(3*m.x[1])
+        # To maximize the size of the linear subexpression, the subexpr[1] term
+        # is split into linear(subexpr[1]) and nonlinear(subexpr[1]) (the latter
+        # is the NLFragment). The linear terms are then inserted directly into
+        # this expression (as linear subexpressions can't contain defined variables).
+        # This increases node count, but decreases the work that must be done
+        # to take derivatives.
+        #
+        # Linear: 11 nodes, nonlinear: 11 nodes (and the plus to combine them)
+        # Then we add 1 to account for the indirection required to access the
+        # NLFragment.
+        # Total: 24 nodes
+        m.subexpr[2] = m.subexpr[1] + 3*m.x[2] + (1 - m.x[3])**2 * m.subexpr[1]
+        # Similarly, linear portions of common subexpressions are "lifted" into
+        # the constraints.
+        # Linear: 11 nodes. Nonlinear: 2 nodes.
+        # Total: 15 nodes
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
+        # Linear: 7 nodes. Nonlinear: 7 nodes.
+        # Total: 16 nodes
+        m.eq[2] = m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
+
+        n_nodes = count_model_nodes(m, amplrepn=True)
+        assert n_nodes == 70
 
 
 if __name__ == "__main__":
