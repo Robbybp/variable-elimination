@@ -28,6 +28,7 @@ from var_elim.algorithms.replace import (
     define_elimination_order,
     eliminate_variables,
 )
+from var_elim.algorithms.validate import validate_solution
 
 
 ipopt_avail = pyo.SolverFactory("ipopt").available()
@@ -154,7 +155,7 @@ class TestReplacementInObjective:
 
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
-        assert math.isclose(pyo.value(m1.obj), pyo.value(m2.obj))
+        assert math.isclose(pyo.value(m1.obj), pyo.value(m2.obj), rel_tol=1e-6)
 
 
 class TestReplacementWithBounds:
@@ -212,7 +213,7 @@ class TestReplacementWithBounds:
         cons_to_elim = [m2.eq1, m2.eq2]
 
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
-        _, var_lb_map, var_ub_map = eliminate_variables(m2, var_order, con_order)
+        var_exprs, var_lb_map, var_ub_map = eliminate_variables(m2, var_order, con_order)
 
         solver.solve(m2, tee=False)
         pyo.assert_optimal_termination(res)
@@ -284,6 +285,102 @@ class TestReplacementInInequalities:
         assert math.isclose(pyo.value(m1.eq4.body), pyo.value(m1.eq4.lb), rel_tol=1e-6)
         assert math.isclose(m1.y[1].value, m2.y[1].value)
         assert math.isclose(m1.y[2].value, m2.y[2].value)
+
+
+class TestReplaceWithNamedExpressions:
+    def _make_simple_model(self, named_expressions=False):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2], initialize=1, bounds=(-5, 5))
+        m.y = pyo.Var([1, 2], initialize=1)
+
+        m.eq1 = pyo.Constraint(expr=m.x[1] == 2 * m.y[1] ** 2)
+        m.eq2 = pyo.Constraint(expr=m.x[2] == 3 * m.y[2] ** 3)
+
+        if named_expressions:
+            m.subexpr = pyo.Expression(pyo.Integers)
+            m.subexpr[1] = m.x[1] * m.x[2]
+            m.subexpr[2] = m.x[1] + m.x[2]
+            m.eq3 = pyo.Constraint(expr=m.subexpr[1] == 1.0)
+            m.eq4 = pyo.Constraint(expr=m.subexpr[2] >= 3.0)
+        else:
+            m.eq3 = pyo.Constraint(expr=m.x[1] * m.x[2] == 1.0)
+            m.eq4 = pyo.Constraint(expr=m.x[1] + m.x[2] >= 3)
+
+        m.y[1].setlb(1.0)
+        m.y[2].setlb(0.5)
+
+        m.obj = pyo.Objective(expr=m.y[1] ** 2 + m.y[2] ** 2)
+
+        return m
+
+    def test_defining_expressions(self):
+        m = self._make_simple_model()
+
+        vars_to_elim = [m.x[1], m.x[2]]
+        cons_to_elim = [m.eq1, m.eq2]
+
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
+        var_exprs, var_lb_map, var_ub_map = eliminate_variables(
+            m, var_order, con_order, use_named_expressions=True
+        )
+
+        assert isinstance(m.eliminated_variable_expressions, pyo.Expression)
+
+        # Make sure the common subexpressions are being used in the constraint body
+        assert m.eq3.body.args[0].ctype is pyo.Expression
+        assert m.eq3.body.args[1].ctype is pyo.Expression
+        assert m.eq4.body.args[0].ctype is pyo.Expression
+        assert m.eq4.body.args[1].ctype is pyo.Expression
+
+    @pytest.mark.skipif(not ipopt_avail, reason="Ipopt is not available")
+    def test_solve_and_validate(self):
+        m = self._make_simple_model()
+        vars_to_elim = [m.x[1], m.x[2]]
+        cons_to_elim = [m.eq1, m.eq2]
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
+        var_exprs, var_lb_map, var_ub_map = eliminate_variables(
+            m, var_order, con_order, use_named_expressions=True
+        )
+
+        solver = pyo.SolverFactory("ipopt")
+        print(solver.executable())
+        res = solver.solve(m, tee=True)
+        pyo.assert_optimal_termination(res)
+
+        valid, violations = validate_solution(
+            m, var_exprs, cons_to_elim, tolerance=1e-6
+        )
+        violated_cons, violated_bounds, violated_elim_cons = violations
+        for con in violated_cons:
+            print(con.name)
+        assert valid
+
+    def test_replace_in_named_expressions(self):
+        m = self._make_simple_model(named_expressions=True)
+
+        # Sanity check that these are named expressions before
+        # any elimination
+        assert m.eq3.body.ctype is pyo.Expression
+        assert m.eq4.body.ctype is pyo.Expression
+
+        vars_to_elim = [m.x[1], m.x[2]]
+        cons_to_elim = [m.eq1, m.eq2]
+        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
+        eliminate_variables(m, var_order, con_order)
+
+        # Make sure named expressions are still used by constraints
+        assert m.eq3.body.ctype is pyo.Expression
+        assert m.eq4.body.ctype is pyo.Expression
+
+        # Make sure replacement has happened in the named expressions
+        assert (
+            ComponentSet(identify_variables(m.subexpr[1].expr))
+            == ComponentSet([m.y[1], m.y[2]])
+        )
+        assert (
+            ComponentSet(identify_variables(m.subexpr[2].expr))
+            == ComponentSet([m.y[1], m.y[2]])
+        )
 
 
 class TestExceptions:

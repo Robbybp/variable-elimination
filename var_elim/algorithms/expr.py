@@ -122,14 +122,10 @@ def count_model_nodes(
             count += count_amplrepn_nodes(
                 expr,
                 visitor=visitor,
-                #expression_cache=expr_cache,
                 **kwds,
             )
         else:
             count += visitor.walk_expression(expr)
-            #count += count_nodes(
-            #    expr, descend_into_named_expressions=descend_into_named_expressions
-            #)
 
     if amplrepn:
         expr_ids = list(expr_cache)
@@ -161,7 +157,6 @@ def count_model_nodes(
             count += count_amplrepn_nodes(
                 e_obj.expr,
                 visitor=visitor,
-                #expression_cache=new_expr_cache,
                 **kwds,
             )
             for new_e_id in new_expr_cache:

@@ -112,7 +112,6 @@ class TestNodeCounter:
         n_nodes = count_model_nodes(m, amplrepn=False)
         assert n_nodes == 38
 
-
 class TestAmplNodeCounter:
 
     def test_count_nodes_simple(self):

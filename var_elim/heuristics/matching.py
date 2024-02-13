@@ -21,6 +21,7 @@
 import enum
 from pyomo.util.subsystems import create_subsystem_block, TemporarySubsystemManager
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from var_elim.algorithms.replace import define_elimination_order
 
 
@@ -70,7 +71,7 @@ def break_algebraic_loop(variables, constraints, matching, method=TearMethod.gre
     subsystem = create_subsystem_block(constraints, variables)
     to_fix = list(subsystem.input_vars[:])
     with TemporarySubsystemManager(to_fix=to_fix):
-        igraph = IncidenceGraphInterface(subsystem)
+        igraph = IncidenceGraphInterface(subsystem, method=IncidenceMethod.ampl_repn)
     var_blocks, con_blocks = igraph.block_triangularize()
     if len(var_blocks) != 1:
         # The incidence matrix does not satisfy the strong Hall property.
@@ -83,24 +84,31 @@ def break_algebraic_loop(variables, constraints, matching, method=TearMethod.gre
 
 def generate_elimination_via_matching(m):
     # TODO: Optional IncidenceGraphInterface argument
+    # NOTE: ampl_repn is not strictly necessarily as, with linear_only,
+    # it should give us the same nonzeros as standard_repn (the default).
+    # We use ampl_repn primarily for performance.
     linear_igraph = IncidenceGraphInterface(
         m,
         active=True,
         include_fixed=False,
         include_inequality=False,
         linear_only=True,
+        method=IncidenceMethod.ampl_repn,
     )
     matching = linear_igraph.maximum_matching()
 
     con_list = list(matching.keys())
     var_list = list(matching.values())
 
+    # NOTE: Use ampl_repn here as we don't want spurious nonzeros to contribute
+    # to algebraic loops.
     igraph = IncidenceGraphInterface(
         m,
         active=True,
         include_fixed=False,
         include_inequality=False,
         linear_only=False,
+        method=IncidenceMethod.ampl_repn,
     )
     var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
 
