@@ -85,8 +85,31 @@ def count_model_nodes(
     # named expressions independently.
     #descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
     if kwds and not amplrepn:
-        raise RuntimeError("kwds not supported with amplrepn=False")
-    visitor = NodeCounter(descend_into_named_expressions=False)
+        raise RuntimeError(
+            "kwds (other than descend_into_named_expressions) not supported with amplrepn=False"
+        )
+    if amplrepn:
+        subexpression_cache = {}
+        subexpression_order = []
+        external_functions = {}
+        var_map = {}
+        used_named_expressions = set()
+        symbolic_solver_labels = False
+        export_defined_variables = True
+        sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+        visitor = AMPLRepnVisitor(
+            text_nl_template,
+            subexpression_cache,
+            subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
+    else:
+        visitor = NodeCounter(descend_into_named_expressions=False)
 
     count = 0
     component_exprs = (
@@ -94,37 +117,162 @@ def count_model_nodes(
         + [obj.expr for obj in model.component_data_objects(Objective, active=True)]
     )
     for expr in component_exprs:
-        count += visitor.walk_expression(expr)
+        if amplrepn:
+            expr_cache = subexpression_cache
+            count += count_amplrepn_nodes(
+                expr,
+                visitor=visitor,
+                **kwds,
+            )
+        else:
+            count += visitor.walk_expression(expr)
 
-    # This is the stack of expressions we still need to process.
-    expr_stack = list(visitor.named_expressions)
-    # This is the set of all expressions that have ever been added to the
-    # stack.
-    encountered_expr_ids = set(visitor.named_expr_map)
-    while expr_stack:
-        named_expr = expr_stack.pop()
+    if amplrepn:
+        expr_ids = list(expr_cache)
+        while expr_ids:
+            e_id = expr_ids.pop()
 
-        # Walk expression to count nodes in this named expression.
-        # Additionally, this adds any new named expressions
-        #
-        # Clear named expressions so we know which ones were discovered
-        # this iteration. This avoids quadratic scaling as we build up
-        # lots of named expressions.
-        visitor.named_expr_map.clear()
-        visitor.named_expressions = []
-        count += visitor.walk_expression(named_expr.expr)
+            e_obj, repn, _ = expr_cache[e_id]
+            if isinstance(e_obj, NLFragment):
+                # NLFragment objects store the nonlinear portion of a named
+                # expression, as linear and nonlinear portions are written
+                # separately in the nl file. We skip this, as we will encounter
+                # and process the full named expression later.
+                #
+                # Add 1 to account for the indirection that occurs between
+                # the first and second portions of the subexpression.
+                # This is for done for consistency with how we count subexpressions
+                # elsewhere.
+                count += 1
+                continue
 
-        # Add new expressions to the "global set"
-        for e_id, new_expr in visitor.named_expr_map.items():
-            if e_id not in encountered_expr_ids:
-                # encountered_expr_ids stays in-sync with the visitor's set
-                # of expressions, but we need to maintain these two sets
-                # so we know which expressions to add to the stack.
-                # We could just re-construct (or clear) the visitor, but then
-                # we need to maintain a separate count. Can consider this for
-                # performance later.
-                encountered_expr_ids.add(e_id)
-                # need to link the id to the actual expression
-                expr_stack.append(new_expr)
+            # NOTE: The named expression subtree will replace at least one node
+            # in each nonlinear constraint where it appears. We don't attempt
+            # to account for this.
+
+            # Re-set subexpression cache so we know which expressions are the
+            # new ones.
+            visitor.subexpression_cache = {}
+            new_expr_cache = visitor.subexpression_cache
+            count += count_amplrepn_nodes(
+                e_obj.expr,
+                visitor=visitor,
+                **kwds,
+            )
+            for new_e_id in new_expr_cache:
+                if new_e_id not in expr_cache:
+                    # Update "global" dict with newly discovered
+                    # subexpressions
+                    expr_cache[new_e_id] = new_expr_cache[new_e_id]
+                    # Push to the top of our stack
+                    expr_ids.append(new_e_id)
+    else:
+        # This is the stack of expressions we still need to process.
+        expr_stack = list(visitor.named_expressions)
+        # This is the set of all expressions that have ever been added to the
+        # stack.
+        encountered_expr_ids = set(visitor.named_expr_map)
+        while expr_stack:
+            named_expr = expr_stack.pop()
+
+            # Walk expression to count nodes in this named expression.
+            # Additionally, this adds any new named expressions
+            #
+            # Clear named expressions so we know which ones were discovered
+            # this iteration. This avoids quadratic scaling as we build up
+            # lots of named expressions.
+            visitor.named_expr_map.clear()
+            visitor.named_expressions = []
+            count += visitor.walk_expression(named_expr.expr)
+
+            # Add new expressions to the "global set"
+            for e_id, new_expr in visitor.named_expr_map.items():
+                if e_id not in encountered_expr_ids:
+                    # encountered_expr_ids stays in-sync with the visitor's set
+                    # of expressions, but we need to maintain these two sets
+                    # so we know which expressions to add to the stack.
+                    # We could just re-construct (or clear) the visitor, but then
+                    # we need to maintain a separate count. Can consider this for
+                    # performance later.
+                    encountered_expr_ids.add(e_id)
+                    # need to link the id to the actual expression
+                    expr_stack.append(new_expr)
+
+    return count
+
+
+def count_amplrepn_nodes(
+    expr,
+    export_defined_variables=True,
+    expression_cache=None,
+    linear_only=False,
+    visitor=None
+):
+    """
+    Use export_defined_variables=False to descend into named expressions while
+    computing nodes.
+
+    Side effect: If expression_cache (dict) is provided, it will be updated
+    with the named expressions found in the provided expr.
+
+    """
+    if visitor is None:
+        local_subexpression_cache = {}
+        subexpression_order = []
+        external_functions = {}
+        var_map = {}
+        used_named_expressions = set()
+        symbolic_solver_labels = False
+        sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+        visitor = AMPLRepnVisitor(
+            text_nl_template,
+            local_subexpression_cache,
+            subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
+    AMPLRepn.ActiveVisitor = visitor
+    try:
+        repn = visitor.walk_expression((expr, None, 0, 1.0))
+    finally:
+        AMPLRepn.ActiveVisitor = None
+
+    count = 0
+
+    if repn.const != 0.0:
+        # Add the nodes for the +(const) operation
+        count += 2
+
+    # We model each linear term as +(*(coef, var)), which is four nodes
+    count += max(
+        0,
+        # Subtract one as, for n terms, we only need n-1 (+) operations
+        4 * len([vid for vid, coef in repn.linear.items() if coef != 0.0]) - 1,
+    )
+
+    if not linear_only:
+        # If we only want to count linear nodes, we ignore the nonlinear
+        # subexpression. We also ignore named subexpressions, as these are only
+        # ever referenced in the nonlinear portion of the constraint expression.
+
+        if repn.nonlinear is not None:
+            if count > 0:
+                # Add one node for the (+) that connects the linear and nonlinear
+                # subexpressions. This is only necessary if we have some constant
+                # or linear subexpression.
+                count += 1
+            # Each line is a new node in the nonlinear expression
+            count += repn.nonlinear[0].count("\n")
+
+        if (
+            expression_cache is not None
+            and export_defined_variables
+            and repn.named_exprs # Is not an empty set
+        ):
+            expression_cache.update(local_subexpression_cache)
 
     return count
