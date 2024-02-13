@@ -276,8 +276,5 @@ def count_amplrepn_nodes(
             and repn.named_exprs # Is not an empty set
         ):
             expression_cache.update(local_subexpression_cache)
-<<<<<<< HEAD
-=======
 
->>>>>>> cf0530b3fcba03caecc39e40311a75da645c67ab
     return count
