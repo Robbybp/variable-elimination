@@ -32,130 +32,16 @@ from var_elim.algorithms.expr import (
 from var_elim.algorithms.validate import validate_solution
 
 
-IncStructure = namedtuple(
-    "IncStructure",
-    ["nvar", "ncon", "nnz", "nnz_linear", "nnode", "n_nl_node", "n_linear_node"],
-)
-ElimResults = namedtuple(
-    "ElimResults",
-    ["upper_bound", "constraints", "var_expressions"],
-)
-StructuralResults = namedtuple(
-    "StructuralResults",
-    ["orig", "reduced", "elim"],
-)
-
-
 USE_NAMED_EXPRESSIONS = True
 
 
-# TODO: If/when I have to change these ever, move them into a central location
-# so they don't get out of sync with structural results.
-def matching_elim_callback(model):
-    linear_igraph = IncidenceGraphInterface(
-        model,
-        include_inequality=False,
-        linear_only=True,
-        method=IncidenceMethod.ampl_repn,
-    )
-    matching = linear_igraph.maximum_matching()
-    ub = len(matching)
-    var_elim, con_elim = generate_elimination_via_matching(model)
-    var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-    var_exprs, var_lb_map, var_ub_map = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-    results = ElimResults(ub, con_elim, var_exprs)
-    return results
-
-
-def d2_elim_callback(model):
-    total_con_elim = []
-    total_var_exprs = []
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        var_elim, con_elim = get_degree_two_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 2")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        # No d1 cons and no d2 cons
-        break
-
-    results = ElimResults(None, total_con_elim, total_var_exprs)
-    return results
-
-
-def trivial_elim_callback(model):
-    total_con_elim = []
-    total_var_exprs = []
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        var_elim, con_elim = get_trivial_constraint_elimination(model, allow_affine=True)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 2")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        # No d1 cons and no d2 cons
-        break
-
-    return ElimResults(None, total_con_elim, total_var_exprs)
-
-
-def linear_d2_elim_callback(model):
-    total_con_elim = []
-    total_var_exprs = []
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        var_elim, con_elim = get_linear_degree_two_elimination(
-            model, allow_affine=True
-        )
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 2")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        # no d1 cons or d2 cons
-        break
-
-    return ElimResults(None, total_con_elim, total_var_exprs)
-
-
-def no_elim_callback(model):
-    return ElimResults(None, [], [])
+from var_elim.elimination_callbacks import (
+    matching_elim_callback,
+    d2_elim_callback,
+    trivial_elim_callback,
+    linear_d2_elim_callback,
+    no_elim_callback,
+)
 
 
 def solve_original(m, tee=True):
@@ -303,8 +189,8 @@ def main():
             other_solve_time -= subtimer.total_time
         other_solve_time_periter = other_solve_time / n_iter
         print(f"Other time per 100 iterations:     {100*other_solve_time_periter}")
-
         print()
+
     htimer.stop("root")
     print(htimer)
 
