@@ -200,9 +200,7 @@ def main():
         "max_iter": 100,
     }
 
-    from workspace.var_elim.cyipopt import (
-        TimedCyIpoptNLP, TimedPyomoCyIpoptSolver, Callback
-    )
+    from var_elim.cyipopt import TimedPyomoCyIpoptSolver, Callback
 
     # Note that we allow any solver to be used here. However, below we assume
     # that the HierarchicalTimer will get populated with timing categories that
