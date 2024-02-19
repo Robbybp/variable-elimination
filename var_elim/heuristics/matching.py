@@ -25,6 +25,9 @@ from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from var_elim.algorithms.replace import define_elimination_order
 
 
+from pyomo.common.timing import HierarchicalTimer
+
+
 class TearMethod(enum.Enum):
     greedy = 0
     # TODO: more sophisticated heuristic, e.g. Elmqvist & Otter
@@ -65,52 +68,63 @@ _dispatcher = {
 }
 
 
-def break_algebraic_loop(variables, constraints, matching, method=TearMethod.greedy):
-    # TODO: Optional IncidenceGraphInterface argument
+def break_algebraic_loop(igraph, matching, method=TearMethod.greedy):
     # TODO: break_algebraic_loops function that allows decomposable systems
-    subsystem = create_subsystem_block(constraints, variables)
-    to_fix = list(subsystem.input_vars[:])
-    with TemporarySubsystemManager(to_fix=to_fix):
-        igraph = IncidenceGraphInterface(subsystem, method=IncidenceMethod.ampl_repn)
-    var_blocks, con_blocks = igraph.block_triangularize()
-    if len(var_blocks) != 1:
-        # The incidence matrix does not satisfy the strong Hall property.
-        raise RuntimeError(
-            f"break_algebraic_loop only accepts systems that do not decompose."
-            f"Got {len(var_blocks)} strongly connected components."
-        )
     return _dispatcher[method](igraph, matching)
 
 
-def generate_elimination_via_matching(m):
-    # TODO: Optional IncidenceGraphInterface argument
-    # NOTE: ampl_repn is not strictly necessarily as, with linear_only,
-    # it should give us the same nonzeros as standard_repn (the default).
-    # We use ampl_repn primarily for performance.
-    linear_igraph = IncidenceGraphInterface(
-        m,
-        active=True,
-        include_fixed=False,
-        include_inequality=False,
-        linear_only=True,
-        method=IncidenceMethod.ampl_repn,
-    )
+def generate_elimination_via_matching(
+    m,
+    linear_igraph=None,
+    igraph=None,
+    timer=None,
+):
+    """
+    Parameters
+    ----------
+    m : model
+    linear_igraph : Incidence graph with edges corresponding to linear
+        variable-constraint incidence. Should *not* include inequalities.
+    igraph : Full incidence graph. Should *not* include inequalities.
+
+    """
+    if timer is None:
+        timer = HierarchicalTimer()
+    timer.start("linear_igraph")
+    if linear_igraph is None:
+        linear_igraph = IncidenceGraphInterface(
+            m,
+            active=True,
+            include_fixed=False,
+            include_inequality=False,
+            linear_only=True,
+        )
+    timer.stop("linear_igraph")
+    timer.start("maximum_matching")
     matching = linear_igraph.maximum_matching()
+    timer.stop("maximum_matching")
 
     con_list = list(matching.keys())
     var_list = list(matching.values())
 
-    # NOTE: Use ampl_repn here as we don't want spurious nonzeros to contribute
-    # to algebraic loops.
-    igraph = IncidenceGraphInterface(
-        m,
-        active=True,
-        include_fixed=False,
-        include_inequality=False,
-        linear_only=False,
-        method=IncidenceMethod.ampl_repn,
-    )
-    var_blocks, con_blocks = igraph.block_triangularize(var_list, con_list)
+    timer.start("igraph")
+    if igraph is None:
+        # NOTE: Use ampl_repn here as we don't want spurious nonzeros to contribute
+        # to algebraic loops.
+        igraph = IncidenceGraphInterface(
+            m,
+            active=True,
+            include_fixed=False,
+            include_inequality=False,
+            linear_only=False,
+        )
+    timer.stop("igraph")
+    timer.start("block_triang")
+    # Note that this already uses an efficient subgraph, so igraph does not
+    # need to be restricted to any subset of variables/constraints.
+    matched_subgraph = igraph.subgraph(var_list, con_list)
+    var_blocks, con_blocks = matched_subgraph.block_triangularize()
+    timer.stop("block_triang")
 
     var_order = []
     con_order = []
@@ -140,7 +154,12 @@ def generate_elimination_via_matching(m):
             # variable in this block. I believe this is true (TODO: prove
             # -- this should follow from uniqueness of strongly connected
             # components).
-            reduced_vb, reduced_cb = break_algebraic_loop(vb, cb, matching)
+            timer.start("break_loop")
+            timer.start("subgraph")
+            subgraph = matched_subgraph.subgraph(vb, cb)
+            timer.stop("subgraph")
+            reduced_vb, reduced_cb = break_algebraic_loop(subgraph, matching)
+            timer.stop("break_loop")
             var_order.extend(reduced_vb)
             con_order.extend(reduced_cb)
 

@@ -85,9 +85,7 @@ def count_model_nodes(
     # named expressions independently.
     #descend_into_named_expressions = kwds.pop("descend_into_named_expressions", True)
     if kwds and not amplrepn:
-        raise RuntimeError(
-            "kwds (other than descend_into_named_expressions) not supported with amplrepn=False"
-        )
+        raise RuntimeError("kwds not supported with amplrepn=False")
     if amplrepn:
         subexpression_cache = {}
         subexpression_order = []
@@ -143,6 +141,10 @@ def count_model_nodes(
                 # the first and second portions of the subexpression.
                 # This is for done for consistency with how we count subexpressions
                 # elsewhere.
+                count += 1
+                continue
+
+            if isinstance(e_obj, NLFragment):
                 count += 1
                 continue
 
