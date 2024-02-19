@@ -58,6 +58,8 @@ def get_equality_constraints(model):
 
 def matching_elim_callback(model, **kwds):
     timer = kwds.pop("timer", HierarchicalTimer())
+    # In case we don't want to modify the model in-place
+    eliminate = kwds.pop("eliminate", True)
 
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
@@ -122,14 +124,19 @@ def matching_elim_callback(model, **kwds):
     #)
     #timer.stop("define_order")
 
-    var_exprs, var_lb_map, var_ub_map = eliminate_variables(
-        model,
-        var_elim,
-        con_elim,
-        igraph=igraph,
-        use_named_expressions=USE_NAMED_EXPRESSIONS,
-        timer=timer,
-    )
+    if eliminate:
+        var_exprs, var_lb_map, var_ub_map = eliminate_variables(
+            model,
+            var_elim,
+            con_elim,
+            igraph=igraph,
+            use_named_expressions=USE_NAMED_EXPRESSIONS,
+            timer=timer,
+        )
+    else:
+        # TODO: Find a way to communicate this information other than
+        # overloading the var_expressions field
+        var_exprs = var_elim
 
     results = ElimResults(ub, con_elim, var_exprs)
     return results
