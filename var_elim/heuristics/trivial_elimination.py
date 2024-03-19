@@ -144,7 +144,7 @@ def get_linear_degree_two_elimination(model, allow_affine=False):
     return generate_elimination_via_matching(temp_block)
 
 
-def get_degree_one_elimination(model):
+def get_degree_one_elimination(model, linear_igraph =None, eq_igraph= None):
     # If we are eliminating a constraint with degree one, it must be linear.
     # We always allow affine constraints here, as otherwise we would only
     # replace constraints of the form x = 0.
@@ -152,10 +152,17 @@ def get_degree_one_elimination(model):
     # nonzeros in the Jacobian.
     d1_cons = filter_constraints(model, linear=True, degree=1)
     temp_block = create_subsystem_block(d1_cons)
-    return generate_elimination_via_matching(temp_block)
+ 
+    if linear_igraph is None or eq_igraph is None:
+        return generate_elimination_via_matching(temp_block)
+
+    else:
+        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, d1_cons)
+        return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
+ 
 
 
-def get_degree_two_elimination(model):
+def get_degree_two_elimination(model, linear_igraph = None, eq_igraph = None):
     """Get elimination order that considers all degree-two constraints
 
     These include nonlinear constraints, although, as always, nonlinear
@@ -164,8 +171,12 @@ def get_degree_two_elimination(model):
     """
     d2_cons = filter_constraints(model, degree=2)
     temp_block = create_subsystem_block(d2_cons)
-    return generate_elimination_via_matching(temp_block)
-
+    if linear_igraph is None or eq_igraph is None:
+        return generate_elimination_via_matching(temp_block)
+    else:
+        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, d2_cons)
+        return generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
+ 
 
 if __name__ == "__main__":
     from var_elim.models.distillation.distill import create_instance
