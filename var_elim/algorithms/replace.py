@@ -205,6 +205,8 @@ def eliminate_variables(
     var_order,
     con_order,
     igraph=None,
+    linear_igraph = None,
+    eq_igraph = None,
     use_named_expressions=False,
     timer=None,
 ):
@@ -320,7 +322,26 @@ def eliminate_variables(
     for obj in m.component_data_objects(Objective, active=True):
         new_expr = replacement_visitor.walk_expression(obj.expr)
         obj.set_value(new_expr)
-
+    
+    if linear_igraph is not None and eq_igraph is not None:
+        #Update the graph using add_edge remove_nodes method
+        for i in range(len(var_order)):
+            for adj_con in eq_igraph.get_adjacent_to(var_order[i]):
+                for adj_var in eq_igraph.get_adjacent_to(con_order[i]):
+                    timer.start("add_edge")
+                    eq_igraph.add_edge(adj_var, adj_con)
+                    timer.stop("add_edge")
+            for adj_con in linear_igraph.get_adjacent_to(var_order[i]):
+                for adj_var in linear_igraph.get_adjacent_to(con_order[i]):
+                    timer.start("add_edge")
+                    linear_igraph.add_edge(adj_var, adj_con)
+                    timer.stop("add_edge")
+        #Remove the nodes
+        timer.start("remove_nodes")
+        eq_igraph.remove_nodes([var_order, con_order])
+        linear_igraph.remove_nodes([var_order, con_order])
+        timer.stop("remove_nodes")
+    
     #for var, con in zip(var_order, con_order):
     #    # Get expression for the variable from constraint
     #    timer.start("define_variable")
