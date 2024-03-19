@@ -105,7 +105,7 @@ def filter_constraints(
     ))
 
 
-def get_trivial_constraint_elimination(model, allow_affine=False):
+def get_trivial_constraint_elimination(model, allow_affine=False, linear_igraph = None, eq_igraph = None):
     if allow_affine:
         # None is the correct argument to the filter to skip the affine-ness
         # check altogether.
@@ -121,12 +121,17 @@ def get_trivial_constraint_elimination(model, allow_affine=False):
         equal_coefficients=True,
     )
     temp_block = create_subsystem_block(trivial_cons)
-    return generate_elimination_via_matching(temp_block)
+    if linear_igraph is None or eq_igraph is None:
+        return generate_elimination_via_matching(temp_block)
+
+    else:
+        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, trivial_cons)
+        return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
 
 
 # TODO: Does this *really* need to be its own function? It just omits the
 # equal_coefficients flag from get_trivial_constraint_elimination.
-def get_linear_degree_two_elimination(model, allow_affine=False):
+def get_linear_degree_two_elimination(model, allow_affine=False, linear_igraph = None, eq_igraph = None):
     if allow_affine:
         # None is the correct argument to the filter to skip the affine-ness
         # check altogether.
@@ -141,7 +146,12 @@ def get_linear_degree_two_elimination(model, allow_affine=False):
         affine=affine,
     )
     temp_block = create_subsystem_block(trivial_cons)
-    return generate_elimination_via_matching(temp_block)
+    if linear_igraph is None or eq_igraph is None:
+        return generate_elimination_via_matching(temp_block)
+
+    else:
+        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, trivial_cons)
+        return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
 
 
 def get_degree_one_elimination(model, linear_igraph =None, eq_igraph= None):
