@@ -219,32 +219,50 @@ def matching_elim_callback(model, **kwds):
     results = ElimResults(ub)
     return results
 
-
 def d1_elim_callback(model, **kwds):
+    igraph = kwds.pop("igraph", None)
+    linear_igraph = kwds.pop("linear_igraph", None)
+    
+    eq_cons = get_equality_constraints(model)
+
+    # We need an incidence graph on only equality constraints to enforce lower
+    # triangularity of the eliminated variables and constraints. Using ampl_repn
+    # allows a potentially less conservative elimination order, but
+    # identify_variables should still be valid.
+    eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
+
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
+        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+
+            eliminate_variables(model, var_elim, con_elim,igraph = igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
+
             continue
         break
     return ElimResults(None)
 
 
 def d2_elim_callback(model, **kwds):
+    igraph = kwds.pop("igraph", None)
+
+    linear_igraph = kwds.pop("linear_igraph", None)
+    eq_cons = get_equality_constraints(model)
+    eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
+
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
+        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+            eliminate_variables(model, var_elim, con_elim,igraph = igraph, linear_igraph = linear_igraph, eq_igraph = eq_igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
 
-        var_elim, con_elim = get_degree_two_elimination(model)
+        var_elim, con_elim = get_degree_two_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+            eliminate_variables(model, var_elim, con_elim,igraph = igraph, linear_igraph = linear_igraph, eq_igraph = eq_igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             continue
 
@@ -255,18 +273,25 @@ def d2_elim_callback(model, **kwds):
 
 
 def trivial_elim_callback(model, **kwds):
+    igraph = kwds.pop("igraph", None)
+    linear_igraph = kwds.pop("linear_igraph", None)
+    
+    eq_cons = get_equality_constraints(model)
+    eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
+
+
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
+        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+            eliminate_variables(model, var_elim, con_elim, igraph = igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
 
-        var_elim, con_elim = get_trivial_constraint_elimination(model, allow_affine=True)
+        var_elim, con_elim = get_trivial_constraint_elimination(model, allow_affine=True, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+            eliminate_variables(model, var_elim, con_elim, igraph = igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             continue
 
@@ -277,20 +302,26 @@ def trivial_elim_callback(model, **kwds):
 
 
 def linear_d2_elim_callback(model, **kwds):
+    igraph = kwds.pop("igraph", None)
+    linear_igraph = kwds.pop("linear_igraph", None)
+    
+    eq_cons = get_equality_constraints(model)
+    eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
+
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
+        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+            eliminate_variables(model, var_elim, con_elim, igraph = igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             continue
 
         var_elim, con_elim = get_linear_degree_two_elimination(
-            model, allow_affine=True
+            model, allow_affine=True, linear_igraph = linear_igraph, eq_igraph = eq_igraph
         )
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
+            eliminate_variables(model, var_elim, con_elim, igraph = igraph, use_named_expressions=USE_NAMED_EXPRESSIONS)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             continue
 
@@ -333,10 +364,10 @@ def main():
     ]
 
     elim_callbacks = [
-        #("Degree=1", d1_elim_callback),
-        #("Trivial", trivial_elim_callback),
-        #("Linear, degree=2", linear_d2_elim_callback),
-        #("Degree=2", d2_elim_callback),
+        ("Degree=1", d1_elim_callback),
+        ("Trivial", trivial_elim_callback),
+        ("Linear, degree=2", linear_d2_elim_callback),
+        ("Degree=2", d2_elim_callback),
         ("Matching", matching_elim_callback),
     ]
     model_cb_elim_prod = list(itertools.product(models, elim_callbacks))
