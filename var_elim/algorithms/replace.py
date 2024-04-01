@@ -336,10 +336,11 @@ def eliminate_variables(
                     timer.start("add_edge")
                     linear_igraph.add_edge(adj_var, adj_con)
                     timer.stop("add_edge")
-        #Remove the nodes
+        #Remove the nodes 
+
         timer.start("remove_nodes")
-        eq_igraph.remove_nodes([var_order, con_order])
-        linear_igraph.remove_nodes([var_order, con_order])
+        eq_igraph.remove_nodes(var_order, con_order)
+        linear_igraph.remove_nodes(var_order, con_order)
         timer.stop("remove_nodes")
     
     #for var, con in zip(var_order, con_order):
