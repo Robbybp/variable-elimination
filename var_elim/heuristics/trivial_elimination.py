@@ -19,6 +19,7 @@
 #  ___________________________________________________________________________
 
 from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.var import Var
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr import EqualityExpression, value as pyo_value
 from pyomo.util.subsystems import create_subsystem_block
@@ -121,12 +122,10 @@ def get_trivial_constraint_elimination(model, allow_affine=False, linear_igraph 
         equal_coefficients=True,
     )
     temp_block = create_subsystem_block(trivial_cons)
-    if linear_igraph is None or eq_igraph is None:
-        return generate_elimination_via_matching(temp_block)
-
-    else:
-        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, trivial_cons)
-        return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
+    if linear_igraph is not None:
+        variables = list(temp_block.component_data_objects(Var))
+        linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
+    return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
 
 
 # TODO: Does this *really* need to be its own function? It just omits the
@@ -146,12 +145,11 @@ def get_linear_degree_two_elimination(model, allow_affine=False, linear_igraph =
         affine=affine,
     )
     temp_block = create_subsystem_block(trivial_cons)
-    if linear_igraph is None or eq_igraph is None:
-        return generate_elimination_via_matching(temp_block)
+    if linear_igraph is not None:
+        variables = list(temp_block.component_data_objects(Var))
+        linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
+    return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
 
-    else:
-        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, trivial_cons)
-        return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
 
 
 def get_degree_one_elimination(model, linear_igraph =None, eq_igraph= None):
@@ -162,14 +160,10 @@ def get_degree_one_elimination(model, linear_igraph =None, eq_igraph= None):
     # nonzeros in the Jacobian.
     d1_cons = filter_constraints(model, linear=True, degree=1)
     temp_block = create_subsystem_block(d1_cons)
- 
-    if linear_igraph is None or eq_igraph is None:
-        return generate_elimination_via_matching(temp_block)
-
-    else:
-        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, d1_cons)
-        return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
- 
+    if linear_igraph is not None:
+        variables = list(temp_block.component_data_objects(Var))
+        linear_igraph = linear_igraph.subgraph(variables, d1_cons)
+    return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
 
 
 def get_degree_two_elimination(model, linear_igraph = None, eq_igraph = None):
@@ -181,12 +175,11 @@ def get_degree_two_elimination(model, linear_igraph = None, eq_igraph = None):
     """
     d2_cons = filter_constraints(model, degree=2)
     temp_block = create_subsystem_block(d2_cons)
-    if linear_igraph is None or eq_igraph is None:
-        return generate_elimination_via_matching(temp_block)
-    else:
-        linear_igraph = linear_igraph.subgraph(linear_igraph.variables, d2_cons)
-        return generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
- 
+    if linear_igraph is not None:
+        variables = list(temp_block.component_data_objects(Var))
+        linear_igraph = linear_igraph.subgraph(variables, d2_cons)
+    return  generate_elimination_via_matching(temp_block, linear_igraph = linear_igraph, igraph = eq_igraph)
+
 
 if __name__ == "__main__":
     from var_elim.models.distillation.distill import create_instance
