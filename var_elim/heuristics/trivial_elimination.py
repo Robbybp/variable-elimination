@@ -117,6 +117,11 @@ def get_trivial_constraint_elimination(
     )
     temp_block = create_subsystem_block(trivial_cons)
     if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
         variables = list(temp_block.component_data_objects(Var))
         linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
     return generate_elimination_via_matching(
@@ -139,6 +144,11 @@ def get_linear_degree_two_elimination(
     trivial_cons = filter_constraints(model, degree=2, linear=True, affine=affine)
     temp_block = create_subsystem_block(trivial_cons)
     if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
         variables = list(temp_block.component_data_objects(Var))
         linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
     return generate_elimination_via_matching(
@@ -155,6 +165,11 @@ def get_degree_one_elimination(model, linear_igraph=None, eq_igraph=None):
     d1_cons = filter_constraints(model, linear=True, degree=1)
     temp_block = create_subsystem_block(d1_cons)
     if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
         variables = list(temp_block.component_data_objects(Var))
         linear_igraph = linear_igraph.subgraph(variables, d1_cons)
     return generate_elimination_via_matching(
@@ -172,6 +187,11 @@ def get_degree_two_elimination(model, linear_igraph=None, eq_igraph=None):
     d2_cons = filter_constraints(model, degree=2)
     temp_block = create_subsystem_block(d2_cons)
     if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
         variables = list(temp_block.component_data_objects(Var))
         linear_igraph = linear_igraph.subgraph(variables, d2_cons)
     return generate_elimination_via_matching(
