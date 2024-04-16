@@ -412,7 +412,6 @@ class TestRemoveNodes:
 
         return m
 
-
     def test_remove_nodes(self):
         m = self._make_simple_model()
         vars_to_elim = [m.x[1]]
@@ -435,6 +434,21 @@ class TestRemoveNodes:
         assert M_eq_orig- M_eq_new == 1
         assert N_linear_orig- N_linear_new == 1
         assert M_linear_orig - M_linear_new == 1
+
+    def test_updated_graph(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq1 = pyo.Constraint(expr=m.x[1] == m.x[2])
+        m.eq2 = pyo.Constraint(expr=m.x[2] == m.x[3])
+        m.ineq = pyo.Constraint(expr=m.x[1] + m.x[3] <= 10)
+
+        igraph = IncidenceGraphInterface(m, include_inequality=True)
+        eliminate_variables(m, [m.x[1]], [m.eq1], igraph=igraph)
+        eliminate_variables(m, [m.x[2]], [m.eq2], igraph=igraph)
+
+        new_igraph = IncidenceGraphInterface(m, include_inequality=True)
+        assert len(new_igraph.variables) == 1
+        assert len(new_igraph.constraints) == 1
         
 
 if __name__ == "__main__":
