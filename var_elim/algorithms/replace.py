@@ -243,8 +243,6 @@ def eliminate_variables(
     var_order,
     con_order,
     igraph=None,
-    linear_igraph = None,
-    eq_igraph = None,
     use_named_expressions=False,
     timer=None,
 ):
