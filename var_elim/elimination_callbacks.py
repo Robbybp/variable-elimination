@@ -169,8 +169,6 @@ def d1_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             # We need to perform the elimination on the linear and equality-only
@@ -215,8 +213,6 @@ def d2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
@@ -234,8 +230,6 @@ def d2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
@@ -279,8 +273,6 @@ def trivial_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
@@ -303,8 +295,6 @@ def trivial_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
@@ -347,8 +337,6 @@ def linear_d2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
@@ -368,8 +356,6 @@ def linear_d2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                #linear_igraph=linear_igraph,
-                #eq_igraph=eq_igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
