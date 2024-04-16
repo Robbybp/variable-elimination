@@ -200,6 +200,44 @@ def _get_elimination_map(
     return substitution_map, elim_var_set, elim_var_expr
 
 
+def eliminate_nodes_from_graph(igraph, variables, constraints, timer=None):
+    """Update an incidence graph to account for eliminated variables and
+    constraints
+
+    Nodes corresponding to eliminated variables and constraints are removed from
+    the graph. For every eliminated variable, constraint pair, an edge is drawn
+    between all pairs of adjacent (non-eliminated) constraints and variables.
+
+    Parameters
+    ----------
+
+    igraph: IncidenceGraphInterface
+        Graph to modify in-place.
+
+    variables: list of VarData
+        Variables to eliminated
+
+    constraints: list of ConData
+        Constraints to eliminate
+
+    """
+    if timer is None:
+        timer = HierarchicalTimer()
+    if len(variables) != len(constraints):
+        raise RuntimeError("Dimension mismatch")
+    timer.start("add_edge")
+    for var, con in zip(variables, constraints):
+        adj_vars = igraph.get_adjacent_to(con)
+        adj_cons = igraph.get_adjacent_to(var)
+        for adjvar in adj_vars:
+            for adjcon in adj_cons:
+                igraph.add_edge(adjvar, adjcon)
+    timer.stop("add_edge")
+    timer.start("remove_nodes")
+    igraph.remove_nodes(variables, constraints)
+    timer.stop("remove_nodes")
+
+
 def eliminate_variables(
     m,
     var_order,
@@ -214,6 +252,25 @@ def eliminate_variables(
     Does the actual elimination by defining variable from constraint, deactivating
     the constraint used for variable definition, and replacing the variable in
     every adjacent constraint
+
+    Parameters
+    ----------
+
+    m: ConcreteModel
+        Model whose variables and constraints will be eliminated
+
+    var_order: list of VarData
+        Variables to eliminate in the order provided
+
+    con_order: list of ConData
+        Equality constraints used to eliminate the variables, in order.
+        These constraints will also be eliminated.
+
+    igraph: IncidenceGraphInterface
+        Incidence graph of the model. This graph should include inequality
+        constraints. It is used to determine which constraints contain the
+        variables that have been eliminated, so these variables can be replaced
+        by the corresponding expressions.
 
     Returns
     -------
@@ -266,7 +323,8 @@ def eliminate_variables(
     # adjacent inequality constraints too. If the user supplies an igraph,
     # it needs to have the inequality constraints included
     timer.start("igraph")
-    if igraph is None:
+    igraph_provided = igraph is not None
+    if not igraph_provided:
         igraph = IncidenceGraphInterface(
             m,
             include_inequality=True,
@@ -311,6 +369,10 @@ def eliminate_variables(
         descend_into_named_expressions=True,
         remove_named_expressions=False,
     )
+    # TODO: There is a potential "sparse" implementation of this loop, where we
+    # iterate over variables-to-eliminate, and perform the substitution for each
+    # (new) constraint that they're adjacent to. This way we don't check every
+    # constraint if we're only eliminating a small number of variables.
     for con in igraph.constraints:
         if (
             id(con) not in elim_con_set
@@ -322,26 +384,9 @@ def eliminate_variables(
     for obj in m.component_data_objects(Objective, active=True):
         new_expr = replacement_visitor.walk_expression(obj.expr)
         obj.set_value(new_expr)
-    
-    if linear_igraph is not None and eq_igraph is not None:
-        #Update the graph using add_edge remove_nodes method
-        for i in range(len(var_order)):
-            for adj_con in eq_igraph.get_adjacent_to(var_order[i]):
-                for adj_var in eq_igraph.get_adjacent_to(con_order[i]):
-                    timer.start("add_edge")
-                    eq_igraph.add_edge(adj_var, adj_con)
-                    timer.stop("add_edge")
-            for adj_con in linear_igraph.get_adjacent_to(var_order[i]):
-                for adj_var in linear_igraph.get_adjacent_to(con_order[i]):
-                    timer.start("add_edge")
-                    linear_igraph.add_edge(adj_var, adj_con)
-                    timer.stop("add_edge")
-        #Remove the nodes 
 
-        timer.start("remove_nodes")
-        eq_igraph.remove_nodes(var_order, con_order)
-        linear_igraph.remove_nodes(var_order, con_order)
-        timer.stop("remove_nodes")
+    if igraph_provided:
+        eliminate_nodes_from_graph(igraph, var_order, con_order)
 
     timer.stop("eliminate_variables")
     return var_exprs, var_lb_map, var_ub_map

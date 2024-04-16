@@ -28,6 +28,7 @@ from pyomo.contrib.incidence_analysis.config import IncidenceMethod
 from var_elim.algorithms.replace import (
     define_elimination_order,
     eliminate_variables,
+    eliminate_nodes_from_graph,
 )
 from var_elim.algorithms.validate import validate_solution
 
@@ -426,6 +427,8 @@ class TestRemoveNodes:
 
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m, var_order, con_order, igraph = orig_igraph, linear_igraph = orig_linear_igraph, eq_igraph = orig_eq_igraph)
+        eliminate_nodes_from_graph(orig_linear_igraph, var_order, con_order)
+        eliminate_nodes_from_graph(orig_eq_igraph, var_order, con_order)
         N_eq_new, M_eq_new = orig_eq_igraph.incidence_matrix.shape
         N_linear_new, M_linear_new = orig_linear_igraph.incidence_matrix.shape
         assert N_eq_orig-N_eq_new == 1
