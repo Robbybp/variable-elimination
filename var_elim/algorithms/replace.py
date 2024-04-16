@@ -251,6 +251,13 @@ def eliminate_variables(
     the constraint used for variable definition, and replacing the variable in
     every adjacent constraint
 
+    Side-effects
+    ------------
+    Variables and constraints are eliminated in the provided model. If an incidence
+    graph is provided, nodes corresponding to eliminated variables and constraints
+    are removed, and new edges are drawn between adjacent constraints and variables
+    that remain in the model.
+
     Parameters
     ----------
 
