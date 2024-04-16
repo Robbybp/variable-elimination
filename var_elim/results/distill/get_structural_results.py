@@ -84,6 +84,11 @@ def get_structural_results(model, elim_callback, htimer=None):
     orig_linear_nlnode = count_model_nodes(model, amplrepn=True, linear_only=True)
     timer.toc("Count linear nl nodes")
 
+    orig_nvar = len(orig_igraph.variables)
+    orig_ncon = len(orig_igraph.constraints)
+    orig_nnz = orig_igraph.n_edges
+    orig_nnz_linear = orig_linear_igraph.n_edges
+
     elim_res = elim_callback(
         model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph, timer=htimer
     )
@@ -107,11 +112,6 @@ def get_structural_results(model, elim_callback, htimer=None):
         method=IncidenceMethod.ampl_repn,
     )
     timer.toc("Reduced linear subgraph")
-
-    orig_nvar = len(orig_igraph.variables)
-    orig_ncon = len(orig_igraph.constraints)
-    orig_nnz = orig_igraph.n_edges
-    orig_nnz_linear = orig_linear_igraph.n_edges
 
     reduced_nvar = len(reduced_igraph.variables)
     reduced_ncon = len(reduced_igraph.constraints)
