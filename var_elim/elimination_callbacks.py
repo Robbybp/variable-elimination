@@ -84,9 +84,7 @@ def matching_elim_callback(model, **kwds):
     eq_cons = get_equality_constraints(model)
 
     # We need an incidence graph on only equality constraints to enforce lower
-    # triangularity of the eliminated variables and constraints. Using ampl_repn
-    # allows a potentially less conservative elimination order, but
-    # identify_variables should still be valid.
+    # triangularity of the eliminated variables and constraints.
     timer.start("subgraph")
     eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
     timer.stop("subgraph")
