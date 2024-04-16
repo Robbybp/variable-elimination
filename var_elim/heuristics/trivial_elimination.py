@@ -122,7 +122,11 @@ def get_trivial_constraint_elimination(
         # Using this subgraph avoids the expression processing in the matching algorithm.
         # If we were not given a linear incidence graph, there is no advantage to
         # creating one from scratch here.
-        variables = list(temp_block.component_data_objects(Var))
+        varset = set(id(var) for var in linear_igraph.variables)
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
         linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
     return generate_elimination_via_matching(
         temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
@@ -149,7 +153,11 @@ def get_linear_degree_two_elimination(
         # Using this subgraph avoids the expression processing in the matching algorithm.
         # If we were not given a linear incidence graph, there is no advantage to
         # creating one from scratch here.
-        variables = list(temp_block.component_data_objects(Var))
+        varset = set(id(var) for var in linear_igraph.variables)
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
         linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
     return generate_elimination_via_matching(
         temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
@@ -170,7 +178,11 @@ def get_degree_one_elimination(model, linear_igraph=None, eq_igraph=None):
         # Using this subgraph avoids the expression processing in the matching algorithm.
         # If we were not given a linear incidence graph, there is no advantage to
         # creating one from scratch here.
-        variables = list(temp_block.component_data_objects(Var))
+        varset = set(id(var) for var in linear_igraph.variables)
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
         linear_igraph = linear_igraph.subgraph(variables, d1_cons)
     return generate_elimination_via_matching(
         temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
@@ -192,7 +204,13 @@ def get_degree_two_elimination(model, linear_igraph=None, eq_igraph=None):
         # Using this subgraph avoids the expression processing in the matching algorithm.
         # If we were not given a linear incidence graph, there is no advantage to
         # creating one from scratch here.
-        variables = list(temp_block.component_data_objects(Var))
+        varset = set(id(var) for var in linear_igraph.variables)
+        # Because temp_block can contain variables that aren't in the incidence graph
+        # (e.g. they have a coefficient of zero), we need to filter these out.
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
         linear_igraph = linear_igraph.subgraph(variables, d2_cons)
     return generate_elimination_via_matching(
         temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
