@@ -174,6 +174,11 @@ def d1_elim_callback(model, **kwds):
             # We need to perform the elimination on the linear and equality-only
             # incidence graphs so we can choose new degree-1 constraints that
             # were potentially revealed.
+            #
+            # We don't have the potential bug where we add a nonlinear edge
+            # to the linear incidence graph because eliminating a degree-1
+            # constraint never adds edges. This allows us to reuse the linear
+            # incidence graph and be slightly more efficient here.
             eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
             eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
@@ -205,7 +210,11 @@ def d2_elim_callback(model, **kwds):
     total_con_elim = []
     total_var_exprs = []
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph=linear_igraph, eq_igraph=eq_igraph)
+        var_elim, con_elim = get_degree_one_elimination(
+            model,
+            #linear_igraph=linear_igraph,
+            eq_igraph=eq_igraph,
+        )
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
             var_exprs, _, _ = eliminate_variables(
@@ -215,14 +224,18 @@ def d2_elim_callback(model, **kwds):
                 igraph=igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
-            eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
+            #eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
             eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
             print(f"Eliminated {len(var_elim)} constraints of degree 1")
             total_con_elim.extend(con_elim)
             total_var_exprs.extend(var_exprs)
             continue
 
-        var_elim, con_elim = get_degree_two_elimination(model, linear_igraph=linear_igraph, eq_igraph=eq_igraph)
+        var_elim, con_elim = get_degree_two_elimination(
+            model,
+            #linear_igraph=linear_igraph,
+            eq_igraph=eq_igraph,
+        )
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
             var_exprs, _, _ = eliminate_variables(
@@ -232,7 +245,7 @@ def d2_elim_callback(model, **kwds):
                 igraph=igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
-            eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
+            #eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
             eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             total_con_elim.extend(con_elim)
@@ -265,27 +278,9 @@ def trivial_elim_callback(model, **kwds):
     total_con_elim = []
     total_var_exprs = []
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(
-                model,
-                var_elim,
-                con_elim,
-                igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
-            )
-            eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
-            eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        var_elim, con_elim = get_trivial_constraint_elimination(
+        var_elim, con_elim = get_degree_one_elimination(
             model,
-            allow_affine=True,
-            linear_igraph=linear_igraph,
+            #linear_igraph=linear_igraph,
             eq_igraph=eq_igraph,
         )
         if var_elim:
@@ -297,7 +292,29 @@ def trivial_elim_callback(model, **kwds):
                 igraph=igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
-            eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
+            #eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
+            eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
+            print(f"Eliminated {len(var_elim)} constraints of degree 1")
+            total_con_elim.extend(con_elim)
+            total_var_exprs.extend(var_exprs)
+            continue
+
+        var_elim, con_elim = get_trivial_constraint_elimination(
+            model,
+            allow_affine=True,
+            #linear_igraph=linear_igraph,
+            eq_igraph=eq_igraph,
+        )
+        if var_elim:
+            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
+            var_exprs, _, _ = eliminate_variables(
+                model,
+                var_elim,
+                con_elim,
+                igraph=igraph,
+                use_named_expressions=USE_NAMED_EXPRESSIONS,
+            )
+            #eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
             eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             total_con_elim.extend(con_elim)
@@ -329,25 +346,10 @@ def linear_d2_elim_callback(model, **kwds):
     total_con_elim = []
     total_var_exprs = []
     while True:
-        var_elim, con_elim = get_degree_one_elimination(model, linear_igraph = linear_igraph, eq_igraph = eq_igraph)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            var_exprs, _, _ = eliminate_variables(
-                model,
-                var_elim,
-                con_elim,
-                igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
-            )
-            eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
-            eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            total_con_elim.extend(con_elim)
-            total_var_exprs.extend(var_exprs)
-            continue
-
-        var_elim, con_elim = get_linear_degree_two_elimination(
-            model, allow_affine=True, linear_igraph = linear_igraph, eq_igraph = eq_igraph
+        var_elim, con_elim = get_degree_one_elimination(
+            model,
+            #linear_igraph=linear_igraph,
+            eq_igraph=eq_igraph,
         )
         if var_elim:
             var_elim, con_elim = define_elimination_order(var_elim, con_elim)
@@ -358,7 +360,29 @@ def linear_d2_elim_callback(model, **kwds):
                 igraph=igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
             )
-            eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
+            #eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
+            eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
+            print(f"Eliminated {len(var_elim)} constraints of degree 1")
+            total_con_elim.extend(con_elim)
+            total_var_exprs.extend(var_exprs)
+            continue
+
+        var_elim, con_elim = get_linear_degree_two_elimination(
+            model,
+            allow_affine=True,
+            #linear_igraph=linear_igraph,
+            eq_igraph=eq_igraph,
+        )
+        if var_elim:
+            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
+            var_exprs, _, _ = eliminate_variables(
+                model,
+                var_elim,
+                con_elim,
+                igraph=igraph,
+                use_named_expressions=USE_NAMED_EXPRESSIONS,
+            )
+            #eliminate_nodes_from_graph(linear_igraph, var_elim, con_elim)
             eliminate_nodes_from_graph(eq_igraph, var_elim, con_elim)
             print(f"Eliminated {len(var_elim)} constraints of degree 2")
             total_con_elim.extend(con_elim)
