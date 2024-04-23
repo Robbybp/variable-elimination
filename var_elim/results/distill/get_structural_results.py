@@ -30,6 +30,14 @@ from var_elim.algorithms.replace import eliminate_variables
 from var_elim.algorithms.expr import (
     count_nodes, count_model_nodes, count_amplrepn_nodes
 )
+from var_elim.elimination_callbacks import (
+    get_equality_constraints,
+    matching_elim_callback,
+    trivial_elim_callback,
+    d1_elim_callback,
+    d2_elim_callback,
+    linear_d2_elim_callback,
+)
 
 
 IncStructure = namedtuple(
@@ -76,6 +84,11 @@ def get_structural_results(model, elim_callback, htimer=None):
     orig_linear_nlnode = count_model_nodes(model, amplrepn=True, linear_only=True)
     timer.toc("Count linear nl nodes")
 
+    orig_nvar = len(orig_igraph.variables)
+    orig_ncon = len(orig_igraph.constraints)
+    orig_nnz = orig_igraph.n_edges
+    orig_nnz_linear = orig_linear_igraph.n_edges
+
     elim_res = elim_callback(
         model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph, timer=htimer
     )
@@ -99,11 +112,6 @@ def get_structural_results(model, elim_callback, htimer=None):
         method=IncidenceMethod.ampl_repn,
     )
     timer.toc("Reduced linear subgraph")
-
-    orig_nvar = len(orig_igraph.variables)
-    orig_ncon = len(orig_igraph.constraints)
-    orig_nnz = orig_igraph.n_edges
-    orig_nnz_linear = orig_linear_igraph.n_edges
 
     reduced_nvar = len(reduced_igraph.variables)
     reduced_ncon = len(reduced_igraph.constraints)
@@ -131,173 +139,6 @@ def get_structural_results(model, elim_callback, htimer=None):
 
     results = StructuralResults(orig_struc, reduced_struc, elim_res)
     return results
-
-
-def get_equality_constraints(model):
-    eq_cons = []
-    for con in model.component_data_objects(pyo.Constraint, active=True):
-        if isinstance(con.expr, EqualityExpression):
-            eq_cons.append(con)
-    return eq_cons
-
-
-def matching_elim_callback(model, **kwds):
-    timer = kwds.pop("timer", HierarchicalTimer())
-
-    igraph = kwds.pop("igraph", None)
-    linear_igraph = kwds.pop("linear_igraph", None)
-
-    # Construct all the incidence graphs we will need for this analysis
-    #
-    # The full incidence graph is used to determine variable/constraint incidence.
-    # It does not necessarily need to use ampl_repn, although "unnecessary
-    # replacements" may lead to spurious variables in the NL file (that only
-    # participate with coefficients of zero). (Aside: I'm not sure this is
-    # true. If AMPLRepn is always built root-to-leaf, then I think we should
-    # be fine. Where exactly was the bug that led to me using ampl_repn?)
-    if igraph is None:
-        timer.start("igraph")
-        igraph = IncidenceGraphInterface(
-            model,
-            linear_only=False,
-            include_inequality=True,
-            method=IncidenceMethod.ampl_repn,
-        )
-        timer.stop("igraph")
-    eq_cons = get_equality_constraints(model)
-
-    # We need an incidence graph on only equality constraints to enforce lower
-    # triangularity of the eliminated variables and constraints. Using ampl_repn
-    # allows a potentially less conservative elimination order, but
-    # identify_variables should still be valid.
-    timer.start("subgraph")
-    eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
-    timer.stop("subgraph")
-
-    # We need a linear, equality-only incidence graph to actually select
-    # variable/constraint elimination pairs. This *could potentially* be
-    # constructed as an edge-subgraph, if we stored a linear/nonlinear
-    # indicator for each edge.
-    timer.start("linear_igraph")
-    if linear_igraph is None:
-        linear_igraph = IncidenceGraphInterface(
-            model, linear_only=True, include_inequality=False
-        )
-    timer.stop("linear_igraph")
-
-    timer.start("maximum_matching")
-    matching = linear_igraph.maximum_matching()
-    timer.stop("maximum_matching")
-    ub = len(matching)
-
-    timer.start("generate_elimination")
-    var_elim, con_elim = generate_elimination_via_matching(
-        model,
-        linear_igraph=linear_igraph,
-        igraph=eq_igraph,
-        timer=timer,
-    )
-    timer.stop("generate_elimination")
-
-    #timer.start("define_order")
-    # Not necessary for this algorithm
-    #elim_subgraph = eq_igraph.subgraph(con_elim, var_elim)
-    #var_elim, con_elim = define_elimination_order(
-    #    var_elim, con_elim, igraph=igraph,
-    #)
-    #timer.stop("define_order")
-
-    eliminate_variables(
-        model,
-        var_elim,
-        con_elim,
-        igraph=igraph,
-        use_named_expressions=USE_NAMED_EXPRESSIONS,
-        timer=timer,
-    )
-
-    results = ElimResults(ub)
-    return results
-
-
-def d1_elim_callback(model, **kwds):
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            continue
-        break
-    return ElimResults(None)
-
-
-def d2_elim_callback(model, **kwds):
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            continue
-
-        var_elim, con_elim = get_degree_two_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 2")
-            continue
-
-        # No d1 cons and no d2 cons
-        break
-
-    return ElimResults(None)
-
-
-def trivial_elim_callback(model, **kwds):
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            continue
-
-        var_elim, con_elim = get_trivial_constraint_elimination(model, allow_affine=True)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 2")
-            continue
-
-        # No d1 cons and no d2 cons
-        break
-
-    return ElimResults(None)
-
-
-def linear_d2_elim_callback(model, **kwds):
-    while True:
-        var_elim, con_elim = get_degree_one_elimination(model)
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 1")
-            continue
-
-        var_elim, con_elim = get_linear_degree_two_elimination(
-            model, allow_affine=True
-        )
-        if var_elim:
-            var_elim, con_elim = define_elimination_order(var_elim, con_elim)
-            eliminate_variables(model, var_elim, con_elim, use_named_expressions=USE_NAMED_EXPRESSIONS)
-            print(f"Eliminated {len(var_elim)} constraints of degree 2")
-            continue
-
-        # no d1 cons or d2 cons
-        break
-
-    return ElimResults(None)
 
 
 def solve_original(m, tee=True):
@@ -333,10 +174,10 @@ def main():
     ]
 
     elim_callbacks = [
-        #("Degree=1", d1_elim_callback),
-        #("Trivial", trivial_elim_callback),
-        #("Linear, degree=2", linear_d2_elim_callback),
-        #("Degree=2", d2_elim_callback),
+        ("Degree=1", d1_elim_callback),
+        ("Trivial", trivial_elim_callback),
+        ("Linear, degree=2", linear_d2_elim_callback),
+        ("Degree=2", d2_elim_callback),
         ("Matching", matching_elim_callback),
     ]
     model_cb_elim_prod = list(itertools.product(models, elim_callbacks))
@@ -372,7 +213,8 @@ def main():
             elimination_gap = None
 
         #pyo.SolverFactory("ipopt").solve(model, tee=True)
-        print(results)
+        # Not printing results for now, as the data structure is quite verbose.
+        #print(results)
         print()
         print(f"N. var eliminated: {n_elim}")
         # Note the ncon here includes inequalities, which we could be adding

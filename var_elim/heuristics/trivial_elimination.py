@@ -19,19 +19,14 @@
 #  ___________________________________________________________________________
 
 from pyomo.core.base.constraint import Constraint
+from pyomo.core.base.var import Var
 from pyomo.repn import generate_standard_repn
 from pyomo.core.expr import EqualityExpression, value as pyo_value
 from pyomo.util.subsystems import create_subsystem_block
 from var_elim.heuristics.matching import generate_elimination_via_matching
 
 
-def expr_filter(
-    expr,
-    degree=None,
-    linear=None,
-    affine=None,
-    equal_coefficients=None,
-):
+def expr_filter(expr, degree=None, linear=None, affine=None, equal_coefficients=None):
     # This function does not actually need the expressions generated
     # by standard repn. TODO: explore using ampl_repn for consistency.
     repn = generate_standard_repn(
@@ -41,7 +36,7 @@ def expr_filter(
         compute_values=True,
         quadratic=False,
     )
-    con_is_affine = (len(repn.nonlinear_vars) == 0)
+    con_is_affine = len(repn.nonlinear_vars) == 0
     if linear is not None:
         # We filter according to whether the constraint's linearity
         # matches the provided flag.
@@ -54,7 +49,7 @@ def expr_filter(
     if affine is not None:
         # This specifically checks whether the constraint is affine,
         # i.e. "affine and not linear"
-        con_is_linear = (con_is_affine and pyo_value(repn.constant == 0))
+        con_is_linear = con_is_affine and pyo_value(repn.constant == 0)
         if affine != (con_is_affine and not con_is_linear):
             # We fail the affine check
             return False
@@ -64,9 +59,8 @@ def expr_filter(
         # Note that we only care whether the *magnitude* of the coefficients is
         # equal. This flag could probably use a better name...
         coef = pyo_value(repn.linear_coefs[0])
-        if (
-            equal_coefficients
-            != all(abs(pyo_value(c)) == abs(coef) for c in repn.linear_coefs)
+        if equal_coefficients != all(
+            abs(pyo_value(c)) == abs(coef) for c in repn.linear_coefs
         ):
             return False
     if degree is not None:
@@ -74,7 +68,7 @@ def expr_filter(
         # method of determining degree is consistent with get_incidence_variables.
         linear_var_ids = set(id(var) for var in repn.linear_vars)
         nonlinear_var_ids = set(id(var) for var in repn.nonlinear_vars)
-        var_ids = (linear_var_ids | nonlinear_var_ids)
+        var_ids = linear_var_ids | nonlinear_var_ids
         con_degree = len(var_ids)
         if con_degree != degree:
             return False
@@ -90,22 +84,27 @@ def filter_constraints(
     affine=None,
     equal_coefficients=None,
 ):
-    return list(filter(
-        lambda constraint: (
-            include_inequality or isinstance(constraint.expr, EqualityExpression)
-            and expr_filter(
-                constraint.body,
-                degree=degree,
-                linear=linear,
-                affine=affine,
-                equal_coefficients=equal_coefficients,
-            )
-        ),
-        model.component_data_objects(Constraint, active=active),
-    ))
+    return list(
+        filter(
+            lambda constraint: (
+                include_inequality
+                or isinstance(constraint.expr, EqualityExpression)
+                and expr_filter(
+                    constraint.body,
+                    degree=degree,
+                    linear=linear,
+                    affine=affine,
+                    equal_coefficients=equal_coefficients,
+                )
+            ),
+            model.component_data_objects(Constraint, active=active),
+        )
+    )
 
 
-def get_trivial_constraint_elimination(model, allow_affine=False):
+def get_trivial_constraint_elimination(
+    model, allow_affine=False, linear_igraph=None, eq_igraph=None
+):
     if allow_affine:
         # None is the correct argument to the filter to skip the affine-ness
         # check altogether.
@@ -114,19 +113,31 @@ def get_trivial_constraint_elimination(model, allow_affine=False):
         # This enforces that constraints must be linear but not affine
         affine = False
     trivial_cons = filter_constraints(
-        model,
-        degree=2,
-        linear=True,
-        affine=affine,
-        equal_coefficients=True,
+        model, degree=2, linear=True, affine=affine, equal_coefficients=True
     )
     temp_block = create_subsystem_block(trivial_cons)
-    return generate_elimination_via_matching(temp_block)
+    if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
+        varset = set(id(var) for var in linear_igraph.variables)
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
+        linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
+    return generate_elimination_via_matching(
+        temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
+    )
 
 
 # TODO: Does this *really* need to be its own function? It just omits the
 # equal_coefficients flag from get_trivial_constraint_elimination.
-def get_linear_degree_two_elimination(model, allow_affine=False):
+def get_linear_degree_two_elimination(
+    model, allow_affine=False, linear_igraph=None, eq_igraph=None
+):
     if allow_affine:
         # None is the correct argument to the filter to skip the affine-ness
         # check altogether.
@@ -134,17 +145,26 @@ def get_linear_degree_two_elimination(model, allow_affine=False):
     else:
         # This enforces that constraints must be linear but not affine
         affine = False
-    trivial_cons = filter_constraints(
-        model,
-        degree=2,
-        linear=True,
-        affine=affine,
-    )
+    trivial_cons = filter_constraints(model, degree=2, linear=True, affine=affine)
     temp_block = create_subsystem_block(trivial_cons)
-    return generate_elimination_via_matching(temp_block)
+    if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
+        varset = set(id(var) for var in linear_igraph.variables)
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
+        linear_igraph = linear_igraph.subgraph(variables, trivial_cons)
+    return generate_elimination_via_matching(
+        temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
+    )
 
 
-def get_degree_one_elimination(model):
+def get_degree_one_elimination(model, linear_igraph=None, eq_igraph=None):
     # If we are eliminating a constraint with degree one, it must be linear.
     # We always allow affine constraints here, as otherwise we would only
     # replace constraints of the form x = 0.
@@ -152,10 +172,24 @@ def get_degree_one_elimination(model):
     # nonzeros in the Jacobian.
     d1_cons = filter_constraints(model, linear=True, degree=1)
     temp_block = create_subsystem_block(d1_cons)
-    return generate_elimination_via_matching(temp_block)
+    if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
+        varset = set(id(var) for var in linear_igraph.variables)
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
+        linear_igraph = linear_igraph.subgraph(variables, d1_cons)
+    return generate_elimination_via_matching(
+        temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
+    )
 
 
-def get_degree_two_elimination(model):
+def get_degree_two_elimination(model, linear_igraph=None, eq_igraph=None):
     """Get elimination order that considers all degree-two constraints
 
     These include nonlinear constraints, although, as always, nonlinear
@@ -164,7 +198,23 @@ def get_degree_two_elimination(model):
     """
     d2_cons = filter_constraints(model, degree=2)
     temp_block = create_subsystem_block(d2_cons)
-    return generate_elimination_via_matching(temp_block)
+    if linear_igraph is not None:
+        # If we were given a linear incidence graph (of the model), we must
+        # extract a subgraph in order for this graph to match the block.
+        # Using this subgraph avoids the expression processing in the matching algorithm.
+        # If we were not given a linear incidence graph, there is no advantage to
+        # creating one from scratch here.
+        varset = set(id(var) for var in linear_igraph.variables)
+        # Because temp_block can contain variables that aren't in the incidence graph
+        # (e.g. they have a coefficient of zero), we need to filter these out.
+        variables = [
+            var for var in temp_block.component_data_objects(Var)
+            if id(var) in varset
+        ]
+        linear_igraph = linear_igraph.subgraph(variables, d2_cons)
+    return generate_elimination_via_matching(
+        temp_block, linear_igraph=linear_igraph, igraph=eq_igraph
+    )
 
 
 if __name__ == "__main__":
