@@ -449,29 +449,7 @@ class TestRemoveNodes:
         new_igraph = IncidenceGraphInterface(m, include_inequality=True)
         assert len(new_igraph.variables) == 1
         assert len(new_igraph.constraints) == 1
-    
-    def test_edges_linear_igraph(self):
-        m = pyo.ConcreteModel()
-        m.x = pyo.Var([1,2,3])
-        m.eq1 = pyo.Constraint(expr= m.x[1] == m.x[2])
-        m.eq2 = pyo.Constraint(expr= m.x[1] == m.x[2]*m.x[3])
-        m.eq3 = pyo.Constraint(expr = m.x[1] == m.x[3]) 
-        vars_to_elim = [m.x[1]]
-        cons_to_elim =[m.eq1]
 
-        orig_igraph = IncidenceGraphInterface(m, include_inequality=True, method=IncidenceMethod.ampl_repn)
-        orig_linear_igraph = IncidenceGraphInterface(m,include_inequality=True, linear_only=True, method=IncidenceMethod.ampl_repn)
-        eq_cons = [m.eq1, m.eq2, m.eq3]
-        orig_eq_igraph = orig_igraph.subgraph(orig_igraph.variables, eq_cons)
-
-        var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
-        eliminate_variables(m, var_order, con_order, igraph = orig_igraph)
-        eliminate_nodes_from_graph(orig_linear_igraph, var_order, con_order, linear = True)
-        eliminate_nodes_from_graph(orig_eq_igraph, var_order, con_order)
-        
-        #There shouldn't be an edge between (x[2], eq2) but there should be an edge between (x[2], eq3)
-        assert m.eq2 not in ComponentSet(orig_linear_igraph.get_adjacent_to(m.x[2])) 
-        assert m.eq3 in ComponentSet(orig_linear_igraph.get_adjacent_to(m.x[2])) 
 
 if __name__ == "__main__":
     pytest.main([__file__])

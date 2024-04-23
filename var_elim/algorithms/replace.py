@@ -200,7 +200,7 @@ def _get_elimination_map(
     return substitution_map, elim_var_set, elim_var_expr
 
 
-def eliminate_nodes_from_graph(igraph, variables, constraints, timer=None, linear = False):
+def eliminate_nodes_from_graph(igraph, variables, constraints, timer=None):
     """Update an incidence graph to account for eliminated variables and
     constraints
 
@@ -231,13 +231,6 @@ def eliminate_nodes_from_graph(igraph, variables, constraints, timer=None, linea
         adj_cons = igraph.get_adjacent_to(var)
         for adjvar in adj_vars:
             for adjcon in adj_cons:
-                #If we are modifying a linear incidence graph then only linear edges 
-                #should be added to the graph
-                if linear:
-                    repn = generate_standard_repn(adjcon.body, compute_values = False, quadratic = False)
-                    if adjvar in ComponentSet(repn.nonlinear_vars):
-                        continue
-                    
                 igraph.add_edge(adjvar, adjcon)
     timer.stop("add_edge")
     timer.start("remove_nodes")
