@@ -44,6 +44,15 @@ def get_argparser():
     argparser.add_argument("--results-dir", default=get_results_dir())
     return argparser
 
+def get_sweep_argparser():
+    argparser = get_argparser()
+    argparser.add_argument(
+        "--nsamples",
+        type=int,
+        default=11,
+        help="Number of samples per parameter in parameter sweep"
+    )
+
 def get_plot_argparser():
     argparser = get_argparser()
     argparser.add_argument("--image-dir", default=get_image_dir())

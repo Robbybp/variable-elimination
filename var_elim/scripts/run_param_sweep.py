@@ -52,7 +52,7 @@ SolveResults = namedtuple(
     ["objective", "feasible", "timer"],
 )
 
-N_SAMPLES = 11
+#N_SAMPLES = 11
 
 testset = pselib.TestSet()
 
@@ -89,7 +89,7 @@ def main(args):
             sweep.set_sampling_method(UniformSampling)
             sample_sizes = []
             for param in problem.parameters:
-                sample_sizes.append(N_SAMPLES)
+                sample_sizes.append(args.nsamples)
                 lb, ub = problem.parameter_ranges[param]
                 sweep.add_sampled_input(
                     str(param),
@@ -211,6 +211,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    argparser = config.get_argparser()
+    argparser = config.get_sweep_argparser()
     args = argparser.parse_args()
     main(args)
