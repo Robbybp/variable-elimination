@@ -35,14 +35,17 @@ PARAMETER_NAMES = [
         "fs.moving_bed.solid_phase.properties[0,1].temperature",
         "fs.moving_bed.solid_phase.properties[0,1].flow_mass",
     ),
+    ("vol", "x_Feed"),
 ]
 
 PARAMETER_LABELS = [
     ("Temperature (K)", "Flow rate (kg/s)"),
+    ("Relative volatility", "Feed mole fraction"),
 ]
 
 MODEL_NAMES = [
     "mb-steady",
+    "distill",
 ]
 
 PARAMETER_LOOKUP = dict(zip(MODEL_NAMES, PARAMETER_NAMES))
