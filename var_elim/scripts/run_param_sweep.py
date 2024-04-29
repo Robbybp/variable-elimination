@@ -39,6 +39,10 @@ from var_elim.elimination_callbacks import (
     d2_elim_callback,
     matching_elim_callback,
 )
+from var_elim.models.testproblems import (
+    DistillationTestProblem,
+)
+
 
 import os
 import var_elim.scripts.config as config
@@ -63,10 +67,14 @@ def main(args):
         ("matching", matching_elim_callback),
     ]
 
+    # Instead of defining model construction callbacks, we will define TestProblems,
+    # which define parameters and ranges as well as construction callbacks
     problems = [
-        ("mb-steady", pselib.get_problem("MBCLC-METHANE-STEADY")),
+        #("mb-steady", pselib.get_problem("MBCLC-METHANE-STEADY")),
+        ("distill", DistillationTestProblem()),
     ]
-    
+    scale_problem = dict([("mb-steady", True), ("distill", False)])
+
     # We will store the results in a dict mapping callback name and problem
     # name to the results for a specific parameter sweep. We do this instead
     # of storing the results in a flattened list so sweep result files for
@@ -113,12 +121,13 @@ def main(args):
 
                 # Optional: re-initialize
                 # model.fs.moving_bed.initialize()
-                timer.start("scale")
-                # We scale the model here so we don't have to convert parameters into
-                # the scaled space (parameters are set before this function is called).
-                # This is really inconvenient... TODO: Re-consider scaling
-                pyo.TransformationFactory("core.scale_model").apply_to(model)
-                timer.stop("scale")
+                if scale_problem[problem_name]:
+                    timer.start("scale")
+                    # We scale the model here so we don't have to convert parameters into
+                    # the scaled space (parameters are set before this function is called).
+                    # This is really inconvenient... TODO: Re-consider scaling
+                    pyo.TransformationFactory("core.scale_model").apply_to(model)
+                    timer.stop("scale")
 
                 # Run the elimination method
                 timer.start("elimination")
