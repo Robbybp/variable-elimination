@@ -415,5 +415,5 @@ def linear_d2_elim_callback(model, **kwds):
     return ElimResults(None, total_con_elim, total_var_exprs)
 
 
-def no_elim_callback(model):
+def no_elim_callback(model, **kwds):
     return ElimResults(None, [], [])
