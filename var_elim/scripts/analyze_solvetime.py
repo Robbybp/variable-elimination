@@ -1,3 +1,23 @@
+#  ___________________________________________________________________________
+#
+#  Variable Elimination: Research code for variable elimination in NLPs
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
+#  ___________________________________________________________________________
+
 import pyomo.environ as pyo
 from pyomo.common.collections import ComponentMap
 from pyomo.common.timing import TicTocTimer, HierarchicalTimer
@@ -31,17 +51,10 @@ from var_elim.algorithms.expr import (
 )
 from var_elim.algorithms.validate import validate_solution
 
+import var_elim.scripts.config as config
+
 
 USE_NAMED_EXPRESSIONS = True
-
-
-from var_elim.elimination_callbacks import (
-    matching_elim_callback,
-    d2_elim_callback,
-    trivial_elim_callback,
-    linear_d2_elim_callback,
-    no_elim_callback,
-)
 
 
 def solve_original(m, tee=True):
@@ -70,13 +83,7 @@ def main():
     #m1 = its.get_problem("MBCLC-METHANE-STEADY").create_instance()
     #m2 = its.get_problem("MBCLC-METHANE-STEADY").create_instance()
 
-    elim_callbacks = [
-        ("No elimination", no_elim_callback),
-        ("Trivial", trivial_elim_callback),
-        ("Linear, degree=2", linear_d2_elim_callback),
-        ("Degree=2", d2_elim_callback),
-        ("Matching", matching_elim_callback),
-    ]
+    elim_callbacks = config.ELIM_CALLBACKS
 
     solvers = []
     # Note that these options may not be applicable for all models.
