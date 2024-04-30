@@ -20,8 +20,29 @@
 
 import os
 import argparse
+from var_elim.elimination_callbacks import (
+    no_elim_callback,
+    d1_elim_callback,
+    trivial_elim_callback,
+    linear_d2_elim_callback,
+    d2_elim_callback,
+    matching_elim_callback,
+)
 
 filedir = os.path.dirname(__file__)
+
+ELIM_CALLBACKS = [
+    # These names are used in the "method" column in dataframes, or in the
+    # filename of parameter sweep results.
+    ("no-elim", no_elim_callback),
+    ("d1", d1_elim_callback),
+    ("trivial", trivial_elim_callback),
+    ("linear-d2", linear_d2_elim_callback),
+    ("d2", d2_elim_callback),
+    ("matching", matching_elim_callback),
+]
+
+# TODO: Global list of "test problems" corresponding to each model
 
 def get_results_dir():
     resdir = os.path.join(filedir, "results")

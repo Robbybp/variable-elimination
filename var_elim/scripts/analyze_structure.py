@@ -1,3 +1,23 @@
+#  ___________________________________________________________________________
+#
+#  Variable Elimination: Research code for variable elimination in NLPs
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
+#  ___________________________________________________________________________
+
 import pyomo.environ as pyo
 from pyomo.core.expr import EqualityExpression
 from pyomo.common.collections import ComponentMap
@@ -14,7 +34,7 @@ import matplotlib.pyplot as plt
 
 from var_elim.models.distillation.distill import create_instance as create_distill
 #from var_elim.models.opf.opf_model import make_model as create_opf
-#from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
+from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 from var_elim.heuristics.matching import (
     generate_elimination_via_matching,
     define_elimination_order,
@@ -38,6 +58,12 @@ from var_elim.elimination_callbacks import (
     d2_elim_callback,
     linear_d2_elim_callback,
 )
+
+import os
+import var_elim.scripts.config as config
+import pandas as pd
+
+import pselib
 
 
 IncStructure = namedtuple(
@@ -164,22 +190,17 @@ def solve_reduced(m, tee=True):
     return m
 
 
-def main():
+def main(args):
     horizon = 300
     nfe = 300
     models = [
+        ("mb-steady", pselib.get_problem("MBCLC-METHANE-STEADY").create_instance),
         ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
         #("OPF-4917", create_opf),
-        #("Pipeline", create_pipeline()),
+        ("Pipeline", create_pipeline),
     ]
 
-    elim_callbacks = [
-        ("Degree=1", d1_elim_callback),
-        ("Trivial", trivial_elim_callback),
-        ("Linear, degree=2", linear_d2_elim_callback),
-        ("Degree=2", d2_elim_callback),
-        ("Matching", matching_elim_callback),
-    ]
+    elim_callbacks = config.ELIM_CALLBACKS
     model_cb_elim_prod = list(itertools.product(models, elim_callbacks))
     model_elim_prod = []
     for (mname, model_cb), (ename, elim_cb) in model_cb_elim_prod:
@@ -190,6 +211,20 @@ def main():
     #m2 = create_distill(horizon=horizon, nfe=nfe)
     #solve_original(m1, tee=True)
     #solve_reduced(m2, tee=True)
+
+    data = {
+        "model": [],
+        "method": [],
+        "nvar": [],
+        "ncon": [],
+        "n-elim": [],
+        "n-elim-bound": [],
+        "nnz": [],
+        "nnz-linear": [],
+        "nnode-pyomo": [],
+        "nnode-nl-linear": [],
+        "nnode-nl-nonlinear": [],
+    }
 
     timer = HierarchicalTimer()
     timer.start("root")
@@ -243,9 +278,34 @@ def main():
         print(f"Original n. nonlinear nodes: {orig_nonlin_nodes}")
         print(f"Reduced n. nonlinear nodes: {reduced_nonlin_nodes}")
 
+        data["model"].append(mname)
+        data["method"].append(elim_name)
+        data["nvar"].append(results.reduced.nvar)
+        data["ncon"].append(results.reduced.ncon)
+        data["n-elim"].append(n_elim)
+        data["n-elim-bound"].append(results.elim.upper_bound)
+        data["nnz"].append(results.reduced.nnz)
+        data["nnz-linear"].append(results.reduced.nnz_linear)
+        data["nnode-pyomo"].append(results.reduced.nnode)
+        # TODO: Just count linear terms and nonlinear nodes separately; don't attempt
+        # to combine them.
+        data["nnode-nl-linear"].append(results.reduced.n_linear_node)
+        data["nnode-nl-nonlinear"].append(reduced_nonlin_nodes)
+
+    df = pd.DataFrame(data)
+    fname = "structure.csv" if args.fname is None else args.fname
+    fpath = os.path.join(args.results_dir, fname)
+    df.to_csv(fpath)
+    print(df)
+
     timer.stop("root")
     print(timer)
 
 
 if __name__ == "__main__":
-    main()
+    argparser = config.get_argparser()
+    argparser.add_argument(
+        "--fname", default=None, help="Basename for output file (optional)"
+    )
+    args = argparser.parse_args()
+    main(args)
