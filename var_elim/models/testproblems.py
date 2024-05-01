@@ -19,7 +19,7 @@
 #  ___________________________________________________________________________
 
 from pselib.testproblem import PseTestProblemBase
-from var_elim.models.distillation.distill import create_instance
+from var_elim.models.distillation.distill import create_distill
 
 
 #
@@ -40,6 +40,7 @@ class DistillationTestProblem(PseTestProblemBase):
         self._nfe = nfe
         self._horizon = horizon
 
+        # TODO: Does "x" here signify some actual chemical components?
         self._parameters = ["vol", "x_Feed"]
         _parameter_range_list = [(1.01, 10.0), (0.01, 0.99)]
         self._parameter_ranges = dict(zip(self._parameters, _parameter_range_list))
@@ -66,7 +67,7 @@ class DistillationTestProblem(PseTestProblemBase):
     # This method does not need to set parameters that we will vary in the sweep.
     # Those are handled separately.
     def create_instance(self):
-        return create_instance(
+        return create_distill(
             horizon=self._horizon,
             nfe=self._nfe,
         )
