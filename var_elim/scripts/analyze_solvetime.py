@@ -52,6 +52,7 @@ from var_elim.algorithms.expr import (
 from var_elim.algorithms.validate import validate_solution
 
 import var_elim.scripts.config as config
+from var_elim.elimination_callbacks import matching_elim_callback
 
 
 USE_NAMED_EXPRESSIONS = True
