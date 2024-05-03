@@ -19,7 +19,7 @@
 #  ___________________________________________________________________________
 
 from pselib.testproblem import PseTestProblemBase
-from var_elim.models.distillation.distill import create_distill
+from var_elim.models.distillation.distill import create_instance as create_distill
 
 
 #
@@ -40,7 +40,6 @@ class DistillationTestProblem(PseTestProblemBase):
         self._nfe = nfe
         self._horizon = horizon
 
-        # TODO: Does "x" here signify some actual chemical components?
         self._parameters = ["vol", "x_Feed"]
         _parameter_range_list = [(1.01, 10.0), (0.01, 0.99)]
         self._parameter_ranges = dict(zip(self._parameters, _parameter_range_list))
@@ -48,7 +47,6 @@ class DistillationTestProblem(PseTestProblemBase):
     # For our parameter sweeps, we need to implement the parameters property. This
     # should a list of 2 strings or ComponentUIDs corresponding to fixed variables
     # or mutable parameters on the model.
-
     @property
     def parameters(self):
         return self._parameters
