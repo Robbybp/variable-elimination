@@ -193,12 +193,10 @@ def solve_reduced(m, tee=True):
 def main(args):
     horizon = 300
     nfe = 300
-    models = [
-        ("mb-steady", pselib.get_problem("MBCLC-METHANE-STEADY").create_instance),
-        ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
-        #("OPF-4917", create_opf),
-        ("Pipeline", create_pipeline),
-    ]
+    if args.model is not None:
+        models = [(args.model, config.CONSTRUCTOR_LOOKUP[args.model])]
+    else:
+        models = list(zip(config.MODEL_NAMES, config.MODEL_CONSTRUCTORS))
 
     elim_callbacks = config.ELIM_CALLBACKS
     model_cb_elim_prod = list(itertools.product(models, elim_callbacks))
@@ -295,7 +293,8 @@ def main(args):
     df = pd.DataFrame(data)
     fname = "structure.csv" if args.fname is None else args.fname
     fpath = os.path.join(args.results_dir, fname)
-    df.to_csv(fpath)
+    if not args.no_save:
+        df.to_csv(fpath)
     print(df)
 
     timer.stop("root")

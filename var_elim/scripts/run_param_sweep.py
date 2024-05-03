@@ -52,27 +52,24 @@ SolveResults = namedtuple(
     ["objective", "feasible", "timer"],
 )
 
-#N_SAMPLES = 11
-
 testset = pselib.TestSet()
 
 
 def main(args):
 
-    elimination_callbacks = [
-        ("no-elim", no_elim_callback),
-        ("trivial-elim", trivial_elim_callback),
-        ("linear-d2", linear_d2_elim_callback),
-        ("d2", d2_elim_callback),
-        ("matching", matching_elim_callback),
-    ]
+    elimination_callbacks = config.ELIM_CALLBACKS
 
-    # Instead of defining model construction callbacks, we will define TestProblems,
-    # which define parameters and ranges as well as construction callbacks
-    problems = [
-        #("mb-steady", pselib.get_problem("MBCLC-METHANE-STEADY")),
-        ("distill", DistillationTestProblem()),
-    ]
+    if args.model is None:
+        raise RuntimeError("--model argument must be provided for parameter sweep")
+    # For now, this script is only set up to run with a single test problem at a time
+    problems = [(args.model, config.TESTPROBLEM_LOOKUP[args.model])]
+
+    # Annoyingly, the MB problem requires scaling. Because the input parameters
+    # will be scaled, we need to do this scaling *after* setting these input
+    # parameters. We don't want to unnecessarily try to scale models if it is
+    # not necessary (or actively harmful), so we set this flag if the model needs
+    # to be scaled.
+    # ... This should really be handled better in pselib...
     scale_problem = dict([("mb-steady", True), ("distill", False)])
 
     # We will store the results in a dict mapping callback name and problem
@@ -201,7 +198,8 @@ def main(args):
 
             fname = f"{problem_name}-{elim_name}-sweep.csv"
             fpath = os.path.join(args.results_dir, fname)
-            sweep_data_df.to_csv(fpath)
+            if not args.no_save:
+                sweep_data_df.to_csv(fpath)
 
     for problem_name, problem in problems:
         n_instances = N_SAMPLES ** len(problem.parameters)

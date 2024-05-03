@@ -28,6 +28,12 @@ from var_elim.elimination_callbacks import (
     d2_elim_callback,
     matching_elim_callback,
 )
+from var_elim.models.testproblems import (
+    DistillationTestProblem,
+)
+from var_elim.models.opf.opf_model import make_model as create_opf
+from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
+import pselib
 
 filedir = os.path.dirname(__file__)
 
@@ -42,7 +48,29 @@ ELIM_CALLBACKS = [
     ("matching", matching_elim_callback),
 ]
 
-# TODO: Global list of "test problems" corresponding to each model
+MODEL_NAMES = [
+    # These names are used in the "model" column in dataframes, or in the
+    # filename of parameter sweep results.
+    "mb-steady",
+    "opf",
+    "distill",
+    "pipeline",
+]
+
+MODEL_CONSTRUCTORS = [
+    pselib.get_problem("MBCLC-METHANE-STEADY").create_instance,
+    create_opf,
+    DistillationTestProblem().create_instance,
+    create_pipeline,
+]
+
+CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
+
+TESTPROBLEM_LOOKUP = {
+    "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
+    "distill": DistillationTestProblem(),
+}
+
 
 def get_results_dir():
     resdir = os.path.join(filedir, "results")
@@ -63,6 +91,16 @@ def get_image_dir():
 def get_argparser():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--results-dir", default=get_results_dir())
+    model_list_str = ", ".join(MODEL_NAMES)
+    argparser.add_argument(
+        "--model",
+        default=None,
+        help=(
+            "Model to analyze or use for parameter sweep (optional). Options are: "
+            + model_list_str
+        ),
+    )
+    argparser.add_argument("--no-save", action="store_true", help="Don't save results")
     return argparser
 
 def get_sweep_argparser():
@@ -73,6 +111,7 @@ def get_sweep_argparser():
         default=11,
         help="Number of samples per parameter in parameter sweep"
     )
+    return argparser
 
 def get_plot_argparser():
     argparser = get_argparser()
