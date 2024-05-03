@@ -97,11 +97,15 @@ def plot_convergence(
 
     # Label every grid cell; turn off (major) tick marks
     x_ticks = [i for i in range(len(parameters[0]))]
+    # TODO: If any two labels are the same (rounded to nearest int), then
+    # add a decimal place.
     x_tick_labels = [str(round(parameters[0][i])) if i%2 else "" for i in x_ticks]
     ax.set_xticks(x_ticks, labels=x_tick_labels)
+
     y_ticks = [i for i in range(len(parameters[1]))]
     y_tick_labels = [str(round(parameters[1][i])) if i%2 else "" for i in y_ticks]
     ax.set_yticks(y_ticks, labels=y_tick_labels)
+
     # Turn off (major) tick marks for both axes
     ax.tick_params(length=0)
 
