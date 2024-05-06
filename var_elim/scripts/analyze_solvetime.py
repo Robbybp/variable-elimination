@@ -53,6 +53,11 @@ from var_elim.algorithms.validate import validate_solution
 
 import var_elim.scripts.config as config
 from var_elim.elimination_callbacks import matching_elim_callback
+# We need to import the callback here so we can re-construct it for every model
+from var_elim.cyipopt import Callback
+
+import os
+import pandas as pd
 
 
 USE_NAMED_EXPRESSIONS = True
@@ -76,30 +81,20 @@ def solve_reduced(m, tee=True, callback=matching_elim_callback):
 def main():
     horizon = 300
     nfe = 300
+
+    # TODO: Get models from config.MODEL_CONSTRUCTORS
+    # Potentially use a different set of models for this script, but this
+    # should still use the global CONSTRUCTOR_LOOKUP from config.
     models = [
         ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
-        #("OPF-4917", create_opf),
-        #("Pipeline", create_pipeline),
+        ("OPF-4917", create_opf),
+        ("Pipeline", create_pipeline),
     ]
-    #m1 = its.get_problem("MBCLC-METHANE-STEADY").create_instance()
-    #m2 = its.get_problem("MBCLC-METHANE-STEADY").create_instance()
 
     elim_callbacks = config.ELIM_CALLBACKS
-
     solvers = []
-    # Note that these options may not be applicable for all models.
-    # (i.e. 100 iterations may not be sufficient to solve)
-    options = {
-        "print_user_options": "yes",
-        "max_iter": 100,
-    }
-
-    from var_elim.cyipopt import TimedPyomoCyIpoptSolver, Callback
-
-    # Note that we allow any solver to be used here. However, below we assume
-    # that the HierarchicalTimer will get populated with timing categories that
-    # are specific to TimedPyomoCyIpoptSolver
-    solvers.append(TimedPyomoCyIpoptSolver(options=options))
+    solver = config.get_optimization_solver()
+    solvers.append(solver)
 
     model_cb_elim_solver_prod = list(itertools.product(models, elim_callbacks, solvers))
 
@@ -108,6 +103,25 @@ def main():
         model = model_cb()
         model_elim_solver_prod.append(((mname, model_cb, model), (ename, elim_cb), solver))
 
+    data = {
+        "model": [],
+        "method": [],
+        "success": [],
+        "feasible": [],
+        "elim-time": [],
+        "solve-time": [],
+        # I don't see any reason to distinguish between e.g. constraint and objective
+        # time here.
+        "function-time": [],
+        "jacobian-time": [],
+        "hessian-time": [],
+        "n-iter": [],
+        "ave-ls-trials": [],
+        "function-per100": [],
+        "jacobian-per100": [],
+        "hessian-per100": [],
+    }
+
     timer = TicTocTimer()
     htimer = HierarchicalTimer()
     htimer.start("root")
@@ -115,10 +129,11 @@ def main():
         print(mname, elim_name)
         timer.tic()
         elim_res = elim_callback(model)
-        timer.toc("Apply elimination")
-        
+        elim_time = timer.toc("Apply elimination")
+
         label = "-".join((mname, elim_name))
         htimer.start(label)
+        # We need to re-set the callback each time we solve a model
         solver.config.intermediate_callback = Callback()
         res = solver.solve(model, tee=False, timer=htimer)
         htimer.stop(label)
@@ -136,10 +151,12 @@ def main():
             # all we need to do is take sufficiently many iterations that noise
             # is negligible.
             pyo.assert_optimal_termination(res)
+            success = pyo.check_optimal_termination(res)
         except RuntimeError as err:
             print(err)
             print("ERROR: BAD SOLVER STATUS. CONTINUING ANYWAY.")
         valid, violations = validate_solution(
+            # TODO: Use args.feastol here?
             model, elim_res.var_expressions, elim_res.constraints, tolerance=1e-6
         )
         if not valid:
@@ -199,8 +216,31 @@ def main():
         print(f"Other time per 100 iterations:     {100*other_solve_time_periter}")
         print()
 
+        data["model"].append(mname)
+        data["method"].append(elim_name)
+        data["elim-time"].append(elim_time)
+        data["success"].append(success)
+        data["feasible"].append(valid)
+        data["solve-time"].append(solve_time)
+        function_time = con_timer.total_time + obj_timer.total_time
+        data["function-time"].append(function_time)
+        jacobian_time = conjac_timer.total_time + objgrad_timer.total_time
+        data["jacobian-time"].append(jacobian_time)
+        hessian_time = laghess_timer.total_time
+        data["hessian-time"].append(hessian_time)
+        data["n-iter"].append(n_iter)
+        data["ave-ls-trials"].append(ave_ls_trials)
+        data["function-per100"].append(function_eval_per100)
+        data["jacobian-per100"].append(jacobian_eval_per100)
+        data["hessian-per100"].append(laghess_eval_per100)
+
     htimer.stop("root")
     print(htimer)
+
+    df = pd.DataFrame(data)
+    fpath = os.path.join("results", "solvetime.csv")
+    print(f"Writing results to {fpath}")
+    df.to_csv(fpath)
 
 
 if __name__ == "__main__":
