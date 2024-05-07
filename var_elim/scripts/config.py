@@ -84,6 +84,8 @@ def get_optimization_solver():
         options=options,
         # Note that we don't set the intermediate callback here, as we don't want
         # to accidentally use it for multiple solves.
+        # The alternative is just to construct a new solver each time it needs
+        # to be used.
         #intermediate_callback=callback,
     )
     return solver
