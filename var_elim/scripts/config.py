@@ -52,24 +52,24 @@ ELIM_CALLBACKS = [
 MODEL_NAMES = [
     # These names are used in the "model" column in dataframes, or in the
     # filename of parameter sweep results.
+    "distill",
     "mb-steady",
     "opf",
-    "distill",
     "pipeline",
 ]
 
 MODEL_CONSTRUCTORS = [
+    DistillationTestProblem().create_instance,
     pselib.get_problem("MBCLC-METHANE-STEADY").create_instance,
     create_opf,
-    DistillationTestProblem().create_instance,
     create_pipeline,
 ]
 
 CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 
 TESTPROBLEM_LOOKUP = {
-    "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
     "distill": DistillationTestProblem(),
+    "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
 }
 
 
