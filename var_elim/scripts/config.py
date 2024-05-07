@@ -34,6 +34,7 @@ from var_elim.models.testproblems import (
 from var_elim.models.opf.opf_model import make_model as create_opf
 from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 import pselib
+from var_elim.cyipopt import TimedPyomoCyIpoptSolver, Callback
 
 filedir = os.path.dirname(__file__)
 
@@ -72,6 +73,24 @@ TESTPROBLEM_LOOKUP = {
 }
 
 
+def get_optimization_solver():
+    options = {
+        "print_user_options": "yes",
+        "max_iter": 1000,
+    }
+    # Simple callback to get the number of iterations
+    #callback = Callback()
+    solver = TimedPyomoCyIpoptSolver(
+        options=options,
+        # Note that we don't set the intermediate callback here, as we don't want
+        # to accidentally use it for multiple solves.
+        # The alternative is just to construct a new solver each time it needs
+        # to be used.
+        #intermediate_callback=callback,
+    )
+    return solver
+
+
 def get_results_dir():
     resdir = os.path.join(filedir, "results")
     if os.path.isfile(resdir):
@@ -101,6 +120,8 @@ def get_argparser():
         ),
     )
     argparser.add_argument("--no-save", action="store_true", help="Don't save results")
+    # TODO: feastol argument, include max infeasibility in parameter sweep results.
+    #argparser.add_argument("--feastol", type=float, default=1e-5, help="Tolerance for checking feasibility")
     return argparser
 
 def get_sweep_argparser():
