@@ -78,18 +78,17 @@ def solve_reduced(m, tee=True, callback=matching_elim_callback):
     return m
 
 
-def main():
+def main(args):
     horizon = 300
     nfe = 300
-
-    # TODO: Get models from config.MODEL_CONSTRUCTORS
-    # Potentially use a different set of models for this script, but this
-    # should still use the global CONSTRUCTOR_LOOKUP from config.
-    models = [
-        ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
-        ("OPF-4917", create_opf),
-        ("Pipeline", create_pipeline),
-    ]
+    if args.model is not None:
+        models = [(args.model, config.CONSTRUCTOR_LOOKUP[args.model])]
+    else:
+        # Note that this is a hard-coded subset of models that are the default
+        # to use for the timing analysis
+        # TODO: Add 100-discr version of mb-steady
+        model_names = ["distill", "opf", "pipeline"]
+        models = [(name, config.CONSTRUCTOR_LOOKUP[name]) for name in model_names]
 
     elim_callbacks = config.ELIM_CALLBACKS
     solvers = []
@@ -120,6 +119,7 @@ def main():
         "function-per100": [],
         "jacobian-per100": [],
         "hessian-per100": [],
+        "other-per100": [],
     }
 
     timer = TicTocTimer()
@@ -213,7 +213,8 @@ def main():
         for subtimer in solve_timer.timers.values():
             other_solve_time -= subtimer.total_time
         other_solve_time_periter = other_solve_time / n_iter
-        print(f"Other time per 100 iterations:     {100*other_solve_time_periter}")
+        other_solve_time_per100 = 100 * other_solve_time_periter
+        print(f"Other time per 100 iterations:     {other_solve_time_per100}")
         print()
 
         data["model"].append(mname)
@@ -233,15 +234,25 @@ def main():
         data["function-per100"].append(function_eval_per100)
         data["jacobian-per100"].append(jacobian_eval_per100)
         data["hessian-per100"].append(laghess_eval_per100)
+        data["other-per100"].append(other_solve_time_per100)
 
     htimer.stop("root")
     print(htimer)
 
     df = pd.DataFrame(data)
-    fpath = os.path.join("results", "solvetime.csv")
-    print(f"Writing results to {fpath}")
-    df.to_csv(fpath)
+    print(df)
+    if not args.no_save:
+        fpath = os.path.join(args.results_dir, args.fpath)
+        print(f"Writing results to {fpath}")
+        df.to_csv(fpath)
 
 
 if __name__ == "__main__":
-    main()
+    argparser = config.get_argparser()
+    argparser.add_argument(
+        "--fname",
+        default="solvetime.csv",
+        help="Basename for file to write results to",
+    )
+    args = argparser.parse_args()
+    main(args)
