@@ -73,7 +73,22 @@ def _generate_structure_table(df):
 
 
 def _generate_solvetime_table(df):
-    return dataframe_to_latex(df)
+    columns = [
+        "model",
+        "method",
+        "elim-time",
+        "solve-time",
+        "function-time",
+        "jacobian-time",
+        "hessian-time",
+        "n-iter",
+        "ave-ls-trials",
+        "function-per100",
+        "jacobian-per100",
+        "hessian-per100",
+        "other-per100",
+    ]
+    return dataframe_to_latex(df, columns=columns)
 
 
 def generate_table(df, which):
@@ -100,8 +115,16 @@ def main(args):
         )
     table_str = generate_table(df, which)
 
-    if args.fname is not None:
-        output_fpath = os.path.join(args.results_dir, args.fname)
+    if not args.no_save:
+        if args.fname is not None:
+            output_fname = args.fname
+        else:
+            input_basename = os.path.basename(args.input_fpath)
+            # exclude the .csv or .CSV extension
+            input_noext = input_basename[:-4]
+            output_fname = input_noext + ".txt"
+
+        output_fpath = os.path.join(args.results_dir, output_fname)
         print(f"Writing output to {output_fpath}")
         with open(output_fpath, "w") as f:
             f.write(table_str)
@@ -115,11 +138,7 @@ if __name__ == "__main__":
         "input_fpath",
         help="CSV file containing results to write to a table",
     )
-    argparser.add_argument(
-        "--fname",
-        default=None,
-        help="Basename of output file. Default (None) is to not write a file.",
-    )
+    argparser.add_argument("--fname", default=None, help="Basename of output file.")
     argparser.add_argument(
         "--which",
         default=None,
