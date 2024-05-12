@@ -69,7 +69,19 @@ def dataframe_to_latex(df, columns=None):
 
 
 def _generate_structure_table(df):
-    return dataframe_to_latex(df)
+    columns = [
+        "model",
+        "method",
+        "nvar",
+        "ncon",
+        "n-elim",
+        "n-elim-bound",
+        "nnz",
+        "nnz-linear",
+        "nnode-nl-linear",
+        "nnode-nl-nonlinear",
+    ]
+    return dataframe_to_latex(df, columns=columns)
 
 
 def _generate_solvetime_table(df):
@@ -78,11 +90,11 @@ def _generate_solvetime_table(df):
         "method",
         "elim-time",
         "solve-time",
-        "function-time",
-        "jacobian-time",
-        "hessian-time",
+        #"function-time",
+        #"jacobian-time",
+        #"hessian-time",
         "n-iter",
-        "ave-ls-trials",
+        #"ave-ls-trials",
         "function-per100",
         "jacobian-per100",
         "hessian-per100",
