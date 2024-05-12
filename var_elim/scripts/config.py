@@ -48,6 +48,7 @@ ELIM_CALLBACKS = [
     ("d2", d2_elim_callback),
     ("matching", matching_elim_callback),
 ]
+ELIM_LOOKUP = dict(ELIM_CALLBACKS)
 
 MODEL_NAMES = [
     # These names are used in the "model" column in dataframes, or in the
