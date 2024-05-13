@@ -35,6 +35,7 @@ from var_elim.models.opf.opf_model import make_model as create_opf
 from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 import pselib
 from var_elim.cyipopt import TimedPyomoCyIpoptSolver, Callback
+import pyomo.environ as pyo
 
 filedir = os.path.dirname(__file__)
 
@@ -59,9 +60,17 @@ MODEL_NAMES = [
     "pipeline",
 ]
 
+def mb_steady_constructor():
+    model = pselib.get_problem("MBCLC-METHANE-STEADY").create_instance()
+    pyo.TransformationFactory("core.scale_model").apply_to(model)
+    return model
+
 MODEL_CONSTRUCTORS = [
     DistillationTestProblem().create_instance,
-    pselib.get_problem("MBCLC-METHANE-STEADY").create_instance,
+    # Note that the mb-steady constructor already scales, it *should not*
+    # be used for parameter sweeps. This should be handled by the TestProblem
+    # constructor below.
+    mb_steady_constructor,
     create_opf,
     create_pipeline,
 ]
