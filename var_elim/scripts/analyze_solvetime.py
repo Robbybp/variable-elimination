@@ -241,9 +241,11 @@ def main(args):
     print(htimer)
 
     df = pd.DataFrame(data)
+    suffix = "" if args.suffix is None else "-" + args.suffix
+    fname = f"solvetime{suffix}.csv" if args.fname is None else args.fname
     print(df)
     if not args.no_save:
-        fpath = os.path.join(args.results_dir, args.fname)
+        fpath = os.path.join(args.results_dir, fname)
         print(f"Writing results to {fpath}")
         df.to_csv(fpath)
 
@@ -252,7 +254,7 @@ if __name__ == "__main__":
     argparser = config.get_argparser()
     argparser.add_argument(
         "--fname",
-        default="solvetime.csv",
+        default=None,
         help="Basename for file to write results to",
     )
     args = argparser.parse_args()

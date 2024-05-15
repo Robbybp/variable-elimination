@@ -291,9 +291,11 @@ def main(args):
         data["nnode-nl-nonlinear"].append(reduced_nonlin_nodes)
 
     df = pd.DataFrame(data)
-    fname = "structure.csv" if args.fname is None else args.fname
+    suffix = "" if args.suffix is None else "-" + args.suffix
+    fname = f"structure{suffix}.csv" if args.fname is None else args.fname
     fpath = os.path.join(args.results_dir, fname)
     if not args.no_save:
+        print(f"Writing results to {fpath}")
         df.to_csv(fpath)
     print(df)
 

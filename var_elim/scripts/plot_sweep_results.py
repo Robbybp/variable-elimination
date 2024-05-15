@@ -169,6 +169,11 @@ def main(args):
 
     if not args.no_save:
         input_basename = os.path.basename(args.fpath)
+        if args.suffix is not None:
+            # Since we just replace the extension of the input file, we don't allow
+            # adding a suffix here. The suffix should just be added to the input
+            # file name.
+            raise ValueError("--suffix is not supported when plotting convergence")
         if input_basename.endswith(".csv"):
             plot_fname = input_basename.replace(".csv", "-convergence.pdf")
         elif input_basename.endswith(".CSV"):
