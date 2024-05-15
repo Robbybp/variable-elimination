@@ -30,6 +30,7 @@ from var_elim.elimination_callbacks import (
 )
 from var_elim.models.testproblems import (
     DistillationTestProblem,
+    PipelineTestProblem
 )
 from var_elim.models.opf.opf_model import make_model as create_opf
 from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
@@ -62,7 +63,7 @@ MODEL_CONSTRUCTORS = [
     pselib.get_problem("MBCLC-METHANE-STEADY").create_instance,
     create_opf,
     DistillationTestProblem().create_instance,
-    create_pipeline,
+    PipelineTestProblem().create_instance,
 ]
 
 CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
@@ -70,6 +71,7 @@ CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 TESTPROBLEM_LOOKUP = {
     "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
     "distill": DistillationTestProblem(),
+    "gaspipeline": PipelineTestProblem()
 }
 
 
