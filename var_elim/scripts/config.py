@@ -36,6 +36,7 @@ from var_elim.models.opf.opf_model import make_model as create_opf
 from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 import pselib
 from var_elim.cyipopt import TimedPyomoCyIpoptSolver, Callback
+import pyomo.environ as pyo
 
 filedir = os.path.dirname(__file__)
 
@@ -49,29 +50,38 @@ ELIM_CALLBACKS = [
     ("d2", d2_elim_callback),
     ("matching", matching_elim_callback),
 ]
+ELIM_LOOKUP = dict(ELIM_CALLBACKS)
 
 MODEL_NAMES = [
     # These names are used in the "model" column in dataframes, or in the
     # filename of parameter sweep results.
+    "distill",
     "mb-steady",
     "opf",
-    "distill",
     "pipeline",
 ]
 
+def mb_steady_constructor():
+    model = pselib.get_problem("MBCLC-METHANE-STEADY").create_instance()
+    pyo.TransformationFactory("core.scale_model").apply_to(model)
+    return model
+
 MODEL_CONSTRUCTORS = [
-    pselib.get_problem("MBCLC-METHANE-STEADY").create_instance,
-    create_opf,
     DistillationTestProblem().create_instance,
     PipelineTestProblem().create_instance,
+    # Note that the mb-steady constructor already scales, it *should not*
+    # be used for parameter sweeps. This should be handled by the TestProblem
+    # constructor below.
+    mb_steady_constructor,
+    create_opf
 ]
 
 CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 
 TESTPROBLEM_LOOKUP = {
-    "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
     "distill": DistillationTestProblem(),
     "gaspipeline": PipelineTestProblem()
+    "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
 }
 
 

@@ -87,7 +87,7 @@ def main(args):
         # Note that this is a hard-coded subset of models that are the default
         # to use for the timing analysis
         # TODO: Add 100-discr version of mb-steady
-        model_names = ["distill", "opf", "pipeline"]
+        model_names = ["distill", "mb-steady", "opf", "pipeline"]
         models = [(name, config.CONSTRUCTOR_LOOKUP[name]) for name in model_names]
 
     elim_callbacks = config.ELIM_CALLBACKS
@@ -192,6 +192,7 @@ def main(args):
         #
         # This accesses the second element of the last tuple of iterate data.
         # We add 1 to account for iteration zero.
+        # (Unclear if we should actually include iteration zero...)
         n_iter = solver.config.intermediate_callback.iterate_data[-1][1] + 1
         solve_time = htimer.timers["root"].timers[label].timers["solve"].total_time
         ls_trials = [data[-1] for data in solver.config.intermediate_callback.iterate_data]
@@ -242,7 +243,7 @@ def main(args):
     df = pd.DataFrame(data)
     print(df)
     if not args.no_save:
-        fpath = os.path.join(args.results_dir, args.fpath)
+        fpath = os.path.join(args.results_dir, args.fname)
         print(f"Writing results to {fpath}")
         df.to_csv(fpath)
 

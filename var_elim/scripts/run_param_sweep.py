@@ -202,7 +202,7 @@ def main(args):
                 sweep_data_df.to_csv(fpath)
 
     for problem_name, problem in problems:
-        n_instances = N_SAMPLES ** len(problem.parameters)
+        n_instances = args.nsamples ** len(problem.parameters)
         for elim_name, _ in elimination_callbacks:
             n_converged = n_converged_lookup[problem_name, elim_name]
             print(f"{problem_name}-{elim_name} converged {n_converged} / {n_instances} instances")
