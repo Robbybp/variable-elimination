@@ -189,9 +189,6 @@ def main(args):
 if __name__ == "__main__":
     argparser = config.get_plot_argparser()
     argparser.add_argument("fpath", help="CSV file with parameter sweep results to plot")
-    argparser.add_argument(
-        "--model", default=None, help="Name of model the sweep file corresponds to"
-    )
     args = argparser.parse_args()
     if not args.fpath.endswith(".csv") and not args.fpath.endswith(".CSV"):
         raise ValueError("fpath must end with .csv or .CSV")

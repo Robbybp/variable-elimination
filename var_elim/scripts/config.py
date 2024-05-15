@@ -156,7 +156,6 @@ def get_plot_argparser():
     argparser = get_argparser()
     argparser.add_argument("--image-dir", default=get_image_dir())
     argparser.add_argument("--show", action="store_true")
-    argparser.add_argument("--no-save", action="store_true")
     argparser.add_argument("--opaque", action="store_true")
     argparser.add_argument("--title", default=None)
     return argparser
