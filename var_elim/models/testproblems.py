@@ -20,6 +20,7 @@
 
 from pselib.testproblem import PseTestProblemBase
 from var_elim.models.distillation.distill import create_instance as create_distill
+from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 
 
 #
@@ -68,4 +69,31 @@ class DistillationTestProblem(PseTestProblemBase):
         return create_distill(
             horizon=self._horizon,
             nfe=self._nfe,
+        )
+
+class PipelineTestProblem(PseTestProblemBase):
+    uid = "GASPIPELINE"
+
+    def __init__(self, nxfe = 4, ntfe = 24, horizon = 24.0):
+        self._nxfe = nxfe
+        self._ntfe = ntfe
+        self._horizon = horizon
+    
+        self._parameters = ["temperature_param", "pressure_param"]
+        _parameter_range_list = [(273, 323), (10, 100)]
+        self._parameter_ranges = dict(zip(self._parameters, _parameter_range_list))
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @property
+    def parameter_ranges(self):
+        return self._parameter_ranges
+
+    def create_instance(self):
+        return create_pipeline(
+                nxfe = self._nxfe,
+                ntfe = self._ntfe,
+                horizon = self._horizon
         )
