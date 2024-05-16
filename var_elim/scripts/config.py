@@ -132,6 +132,14 @@ def get_argparser():
         ),
     )
     argparser.add_argument("--no-save", action="store_true", help="Don't save results")
+    argparser.add_argument(
+        "--suffix",
+        default=None,
+        help=(
+            "Suffix to append to result file names. This is useful for storing"
+            " preliminary results created with different dependency versions."
+        ),
+    )
     # TODO: feastol argument, include max infeasibility in parameter sweep results.
     #argparser.add_argument("--feastol", type=float, default=1e-5, help="Tolerance for checking feasibility")
     return argparser
@@ -150,7 +158,6 @@ def get_plot_argparser():
     argparser = get_argparser()
     argparser.add_argument("--image-dir", default=get_image_dir())
     argparser.add_argument("--show", action="store_true")
-    argparser.add_argument("--no-save", action="store_true")
     argparser.add_argument("--opaque", action="store_true")
     argparser.add_argument("--title", default=None)
     return argparser

@@ -169,6 +169,11 @@ def main(args):
 
     if not args.no_save:
         input_basename = os.path.basename(args.fpath)
+        if args.suffix is not None:
+            # Since we just replace the extension of the input file, we don't allow
+            # adding a suffix here. The suffix should just be added to the input
+            # file name.
+            raise ValueError("--suffix is not supported when plotting convergence")
         if input_basename.endswith(".csv"):
             plot_fname = input_basename.replace(".csv", "-convergence.pdf")
         elif input_basename.endswith(".CSV"):
@@ -184,9 +189,6 @@ def main(args):
 if __name__ == "__main__":
     argparser = config.get_plot_argparser()
     argparser.add_argument("fpath", help="CSV file with parameter sweep results to plot")
-    argparser.add_argument(
-        "--model", default=None, help="Name of model the sweep file corresponds to"
-    )
     args = argparser.parse_args()
     if not args.fpath.endswith(".csv") and not args.fpath.endswith(".CSV"):
         raise ValueError("fpath must end with .csv or .CSV")

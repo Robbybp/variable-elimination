@@ -193,7 +193,8 @@ def main(args):
             print(f"Sweep data for {problem_name}-{elim_name}:")
             print(sweep_data_df)
 
-            fname = f"{problem_name}-{elim_name}-sweep.csv"
+            suffix = "" if args.suffix is None else "-" + args.suffix
+            fname = f"{problem_name}-{elim_name}-sweep{suffix}.csv"
             fpath = os.path.join(args.results_dir, fname)
             if not args.no_save:
                 sweep_data_df.to_csv(fpath)
