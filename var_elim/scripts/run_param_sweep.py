@@ -70,7 +70,7 @@ def main(args):
     # not necessary (or actively harmful), so we set this flag if the model needs
     # to be scaled.
     # ... This should really be handled better in pselib...
-    scale_problem = dict([("mb-steady", True), ("distill", False)])
+    scale_problem = dict([("mb-steady", True), ("distill", False), ("gaspipeline", False)])
 
     # We will store the results in a dict mapping callback name and problem
     # name to the results for a specific parameter sweep. We do this instead
@@ -98,7 +98,6 @@ def main(args):
 
             print("Samples:")
             print(sweep.samples)
-
             # Why is this necessary? It seems like a reasonable default could
             # just return results
             def build_outputs(model, results):
@@ -150,10 +149,8 @@ def main(args):
 
                 # Why is "solved" returned separately from the rest of the results
                 results = SolveResults(pyo.value(obj), valid, timer)
-
                 # Should runner check that solved is bool?
                 return solved, results
-
             runner = SequentialSweepRunner(
                 build_model=problem.create_instance,
                 run_model=run_model,
