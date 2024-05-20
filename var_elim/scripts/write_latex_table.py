@@ -18,6 +18,9 @@ FORMAT = {
     "nnode-nl-linear":    lambda item: str(int(item)).rjust(7),
     "nnode-nl-nonlinear": lambda item: str(int(item)).rjust(7),
 
+    "nnz/con":        lambda item: "%3.2f" % item,
+    "nnz-linear/con": lambda item: "%3.2f" % item,
+
     "success":         lambda item: str(item).ljust(5),
     "feasible":        lambda item: str(item).ljust(5),
     "elim-time":       lambda item: "%5.2f" % item,
@@ -34,6 +37,13 @@ FORMAT = {
 }
 
 
+# Derived quantities that are more reader-friendly to display
+CALCULATE = {
+    "nnz/con":        lambda row: row["nnz"] / row["ncon"],
+    "nnz-linear/con": lambda row: row["nnz-linear"] / row["ncon"],
+}
+
+
 def dataframe_to_latex(df, columns=None):
     if columns is None:
         # If not specified, we will use all columns
@@ -45,7 +55,9 @@ def dataframe_to_latex(df, columns=None):
 
     lines = []
     for i, row in df.iterrows():
-        lines.append([row[c] for c in columns])
+        lines.append(
+            [row[c] if c in row else CALCULATE[c](row) for c in columns]
+        )
 
     # TODO: Any formatting for column headers?
     header_line = " & ".join(columns) + "\\\\\n"
@@ -76,8 +88,8 @@ def _generate_structure_table(df):
         "ncon",
         "n-elim",
         "n-elim-bound",
-        "nnz",
-        "nnz-linear",
+        "nnz/con",
+        "nnz-linear/con",
         "nnode-nl-linear",
         "nnode-nl-nonlinear",
     ]
