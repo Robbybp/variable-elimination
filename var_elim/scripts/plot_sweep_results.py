@@ -48,7 +48,7 @@ PARAMETER_LABELS = [
 MODEL_NAMES = [
     "mb-steady",
     "distill",
-    "gaspipeline",
+    "pipeline",
 ]
 
 PARAMETER_LOOKUP = dict(zip(MODEL_NAMES, PARAMETER_NAMES))

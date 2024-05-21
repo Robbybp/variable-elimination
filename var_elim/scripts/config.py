@@ -80,7 +80,7 @@ CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 
 TESTPROBLEM_LOOKUP = {
     "distill": DistillationTestProblem(),
-    "gaspipeline": PipelineTestProblem(),
+    "pipeline": PipelineTestProblem(),
     "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
 }
 
