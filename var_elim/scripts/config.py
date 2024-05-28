@@ -68,20 +68,20 @@ def mb_steady_constructor():
 
 MODEL_CONSTRUCTORS = [
     DistillationTestProblem().create_instance,
-    PipelineTestProblem().create_instance,
     # Note that the mb-steady constructor already scales, it *should not*
     # be used for parameter sweeps. This should be handled by the TestProblem
     # constructor below.
     mb_steady_constructor,
     create_opf
+    PipelineTestProblem().create_instance,
 ]
 
 CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 
 TESTPROBLEM_LOOKUP = {
     "distill": DistillationTestProblem(),
-    "pipeline": PipelineTestProblem(),
     "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
+    "pipeline": PipelineTestProblem(),
 }
 
 
