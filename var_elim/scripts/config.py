@@ -72,7 +72,7 @@ MODEL_CONSTRUCTORS = [
     # be used for parameter sweeps. This should be handled by the TestProblem
     # constructor below.
     mb_steady_constructor,
-    create_opf
+    create_opf,
     PipelineTestProblem().create_instance,
 ]
 
