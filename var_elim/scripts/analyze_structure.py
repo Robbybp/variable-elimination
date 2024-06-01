@@ -62,13 +62,23 @@ from var_elim.elimination_callbacks import (
 import os
 import var_elim.scripts.config as config
 import pandas as pd
+from pyomo.contrib.pynumero.interfaces.pyomo_nlp import PyomoNLP
 
 import pselib
 
 
 IncStructure = namedtuple(
     "IncStructure",
-    ["nvar", "ncon", "nnz", "nnz_linear", "nnode", "n_nl_node", "n_linear_node"],
+    [
+        "nvar",
+        "ncon",
+        "nnz",
+        "nnz_linear",
+        "nnz_hessian",
+        "nnode",
+        "n_nl_node",
+        "n_linear_node",
+    ],
 )
 ElimResults = namedtuple("ElimResults", ["upper_bound"])
 StructuralResults = namedtuple(
@@ -79,6 +89,13 @@ StructuralResults = namedtuple(
 
 # TODO: Command line argument
 USE_NAMED_EXPRESSIONS = True
+
+
+def get_nnz_in_hessian(model, nlp=None):
+    if nlp is None:
+        nlp = PyomoNLP(model)
+    hessian = nlp.evaluate_hessian_lag()
+    return hessian.nnz
 
 
 def get_structural_results(model, elim_callback, htimer=None):
@@ -115,6 +132,8 @@ def get_structural_results(model, elim_callback, htimer=None):
     orig_nnz = orig_igraph.n_edges
     orig_nnz_linear = orig_linear_igraph.n_edges
 
+    orig_nnz_hessian = get_nnz_in_hessian(model)
+
     elim_res = elim_callback(
         model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph, timer=htimer
     )
@@ -144,11 +163,14 @@ def get_structural_results(model, elim_callback, htimer=None):
     reduced_nnz = reduced_igraph.n_edges
     reduced_nnz_linear = reduced_linear_igraph.n_edges
 
+    reduced_nnz_hessian = get_nnz_in_hessian(model)
+
     orig_struc = IncStructure(
         orig_nvar,
         orig_ncon,
         orig_nnz,
         orig_nnz_linear,
+        orig_nnz_hessian,
         orig_nnode,
         orig_nlnode,
         orig_linear_nlnode,
@@ -158,6 +180,7 @@ def get_structural_results(model, elim_callback, htimer=None):
         reduced_ncon,
         reduced_nnz,
         reduced_nnz_linear,
+        reduced_nnz_hessian,
         reduced_nnode,
         reduced_nlnode,
         reduced_linear_nlnode,
@@ -219,6 +242,7 @@ def main(args):
         "n-elim-bound": [],
         "nnz": [],
         "nnz-linear": [],
+        "nnz-hessian": [],
         "nnode-pyomo": [],
         "nnode-nl-linear": [],
         "nnode-nl-nonlinear": [],
@@ -257,6 +281,8 @@ def main(args):
         print(f"Reduced total NNZ: {results.reduced.nnz}")
         print(f"Original linear NNZ: {results.orig.nnz_linear}")
         print(f"Reduced linear NNZ: {results.reduced.nnz_linear}")
+        print(f"Original Hessian NNZ: {results.orig.nnz_hessian}")
+        print(f"Reduced Hessian NNZ: {results.reduced.nnz_hessian}")
 
         print(f"Original NNZ/con: {orig_nnz_per_con}")
         print(f"Reduced NNZ/con: {reduced_nnz_per_con}")
@@ -284,6 +310,7 @@ def main(args):
         data["n-elim-bound"].append(results.elim.upper_bound)
         data["nnz"].append(results.reduced.nnz)
         data["nnz-linear"].append(results.reduced.nnz_linear)
+        data["nnz-hessian"].append(results.reduced.nnz_hessian)
         data["nnode-pyomo"].append(results.reduced.nnode)
         # TODO: Just count linear terms and nonlinear nodes separately; don't attempt
         # to combine them.
