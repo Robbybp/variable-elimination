@@ -66,6 +66,8 @@ def mb_steady_constructor():
     pyo.TransformationFactory("core.scale_model").apply_to(model)
     return model
 
+# NOTE: Via the construction of CONSTRUCTOR_LOOKUP below, we rely on
+# MODEL_CONSTRUCTORS and MODEL_NAMES having the same order.
 MODEL_CONSTRUCTORS = [
     DistillationTestProblem().create_instance,
     # Note that the mb-steady constructor already scales, it *should not*
@@ -75,7 +77,6 @@ MODEL_CONSTRUCTORS = [
     create_opf,
     PipelineTestProblem().create_instance,
 ]
-
 CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 
 TESTPROBLEM_LOOKUP = {
