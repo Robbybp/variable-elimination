@@ -29,6 +29,11 @@ from pyomo.repn.plugins.nl_writer import (
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
 
 
+import pyomo
+pyomo_version = pyomo.version.version_info[:3]
+pyomo_ge_673 = pyomo_version >= (6, 7, 3)
+
+
 class NodeCounter(StreamBasedExpressionVisitor):
 
     def __init__(self, descend_into_named_expressions=True):
@@ -95,7 +100,17 @@ def count_model_nodes(
         symbolic_solver_labels = False
         export_defined_variables = True
         sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-        visitor = AMPLRepnVisitor(
+        visitor_args = (
+            text_nl_template,
+            subexpression_cache,
+            #subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        ) if pyomo_ge_673 else (
             text_nl_template,
             subexpression_cache,
             subexpression_order,
@@ -106,6 +121,7 @@ def count_model_nodes(
             export_defined_variables,
             sorter,
         )
+        visitor = AMPLRepnVisitor(*visitor_args)
     else:
         visitor = NodeCounter(descend_into_named_expressions=False)
 
@@ -226,9 +242,19 @@ def count_amplrepn_nodes(
         used_named_expressions = set()
         symbolic_solver_labels = False
         sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-        visitor = AMPLRepnVisitor(
+        visitor_args = (
             text_nl_template,
             local_subexpression_cache,
+            #subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        ) if pyomo_ge_673 else (
+            text_nl_template,
+            subexpression_cache,
             subexpression_order,
             external_functions,
             var_map,
@@ -237,6 +263,7 @@ def count_amplrepn_nodes(
             export_defined_variables,
             sorter,
         )
+        visitor = AMPLRepnVisitor(*visitor_args)
     AMPLRepn.ActiveVisitor = visitor
     try:
         repn = visitor.walk_expression((expr, None, 0, 1.0))
