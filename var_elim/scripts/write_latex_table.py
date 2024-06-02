@@ -14,6 +14,7 @@ FORMAT = {
     "n-elim-bound":       lambda item: str(int(item)).rjust(5) if not math.isnan(item) else "--".rjust(5),
     "nnz":                lambda item: str(int(item)).rjust(6),
     "nnz-linear":         lambda item: str(int(item)).rjust(6),
+    "nnz-hessian":        lambda item: str(int(item)).rjust(6),
     "nnode-pyomo":        lambda item: str(int(item)).rjust(7),
     "nnode-nl-linear":    lambda item: str(int(item)).rjust(7),
     "nnode-nl-nonlinear": lambda item: str(int(item)).rjust(7),
@@ -90,6 +91,7 @@ def _generate_structure_table(df):
         "n-elim-bound",
         "nnz/con",
         "nnz-linear/con",
+        "nnz-hessian",
         "nnode-nl-linear",
         "nnode-nl-nonlinear",
     ]
