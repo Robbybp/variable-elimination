@@ -25,6 +25,7 @@ from var_elim.algorithms.expr import (
     count_nodes,
     count_model_nodes,
     count_amplrepn_nodes,
+    count_model_amplrepn_nodes,
 )
 from var_elim.models.distillation.distill import create_instance as create_distill_instance
 from var_elim.models.opf.opf_model import make_model as make_opf_model
@@ -122,89 +123,104 @@ class TestAmplNodeCounter:
 
         nodecount = count_amplrepn_nodes(expr)
         assert nodecount.linear == 3
-        assert nodecount.nonlinear == 5
-        #assert n_nodes == 17
+        assert nodecount.nonlinear == 7
 
-    #def test_count_nodes_model(self):
-    #    m = pyo.ConcreteModel()
-    #    m.x = pyo.Var([1, 2, 3])
-    #    m.eq = pyo.Constraint(pyo.Integers)
-    #    m.subexpr = pyo.Expression(pyo.Integers)
+    def test_count_nodes_model(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
 
-    #    # 6 nodes (somehow)
-    #    m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
+        # 6 nodes
+        m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
 
-    #    # 14 nodes in body (somehow)
-    #    m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[1] == 1.5
+        # 14 nodes in body (somehow)
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[1] == 1.5
 
-    #    # 9 nodes
-    #    m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
+        # 9 nodes
+        m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
 
-    #    n_nodes = count_model_nodes(m, amplrepn=True)
-    #    assert n_nodes == 24
+        n_nodes = count_model_amplrepn_nodes(m)
+        assert n_nodes.linear == 4
+        assert n_nodes.nonlinear == 6 + 2 + 5
 
-    #    n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
-    #    assert n_linear_nodes == 14
+        m.obj = pyo.Objective(expr=m.x[3]**2 + m.subexpr[1]**2)
+        n_nodes = count_model_amplrepn_nodes(m)
+        assert n_nodes.nonlinear == 6 + 2 + 5 + 7
 
-    #    m.obj = pyo.Objective(expr=m.x[3]**2 + m.subexpr[1]**2)
-    #    n_nodes = count_model_nodes(m, amplrepn=True)
-    #    # I count 7 nodes in the objective, but somehow the nl repn contains 8 nodes
-    #    assert n_nodes == 29
+    def test_count_nodes_nested_expr(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
 
-    #def test_count_nodes_nested_expr(self):
-    #    m = pyo.ConcreteModel()
-    #    m.x = pyo.Var([1, 2, 3])
-    #    m.eq = pyo.Constraint(pyo.Integers)
-    #    m.subexpr = pyo.Expression(pyo.Integers)
+        # 6 nodes
+        m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
 
-    #    # 6 nodes
-    #    m.subexpr[1] = m.x[2] * pyo.exp(3*m.x[1])
+        # I count 7 nodes, all nonlinear
+        # The (- x[3]) seems to get expanded into -1 * x[3]
+        m.subexpr[2] = (1 - m.x[3])**2 * m.subexpr[1]
 
-    #    # I count 7 nodes, all nonlinear
-    #    m.subexpr[2] = (1 - m.x[3])**2 * m.subexpr[1]
+        # 3 linear terms + 2 nonlinear nodes
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
 
-    #    # 14 nodes in body (somehow)
-    #    m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
+        # 1 linear term + 5 nonlinear nodes
+        m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] == 0.0
 
-    #    # 9 nodes
-    #    m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] == 0.0
+        n_nodes = count_model_amplrepn_nodes(m)
+        assert n_nodes.linear == 4
+        assert n_nodes.nonlinear == 22
 
-    #    n_nodes = count_model_nodes(m, amplrepn=True)
-    #    assert n_nodes == 31
+    def test_count_nodes_nlfragment(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
+        # 2 linear terms + 8 nonlinear nodes
+        m.subexpr[1] = m.x[3] + 2*m.x[1] - m.x[2] * pyo.exp(3*m.x[1])
+        # To maximize the size of the linear subexpression, the subexpr[1] term
+        # is split into linear(subexpr[1]) and nonlinear(subexpr[1]) (the latter
+        # is the NLFragment). The linear terms are then inserted directly into
+        # this expression (as linear subexpressions can't contain defined variables).
+        # This increases node count, but decreases the work that must be done
+        # to take derivatives.
+        #
+        # 1 linear term + 2 linear terms from subexpr[1] + 11 nonlinear nodes
+        # sub[1] + (1 + -1*x[3])**2 * sub[1]
+        m.subexpr[2] = m.subexpr[1] + 3*m.x[2] + (1 - m.x[3])**2 * m.subexpr[1]
 
-    #    n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
-    #    assert n_linear_nodes == 14
+        # Similarly, linear portions of common subexpressions are "lifted" into
+        # the constraints.
 
-    #def test_count_nodes_nlfragment(self):
-    #    m = pyo.ConcreteModel()
-    #    m.x = pyo.Var([1, 2, 3])
-    #    m.eq = pyo.Constraint(pyo.Integers)
-    #    m.subexpr = pyo.Expression(pyo.Integers)
-    #    # 15 nodes
-    #    m.subexpr[1] = m.x[3] + 2*m.x[1] - m.x[2] * pyo.exp(3*m.x[1])
-    #    # To maximize the size of the linear subexpression, the subexpr[1] term
-    #    # is split into linear(subexpr[1]) and nonlinear(subexpr[1]) (the latter
-    #    # is the NLFragment). The linear terms are then inserted directly into
-    #    # this expression (as linear subexpressions can't contain defined variables).
-    #    # This increases node count, but decreases the work that must be done
-    #    # to take derivatives.
-    #    #
-    #    # Linear: 11 nodes, nonlinear: 11 nodes (and the plus to combine them)
-    #    # Then we add 1 to account for the indirection required to access the
-    #    # NLFragment.
-    #    # Total: 24 nodes
-    #    m.subexpr[2] = m.subexpr[1] + 3*m.x[2] + (1 - m.x[3])**2 * m.subexpr[1]
-    #    # Similarly, linear portions of common subexpressions are "lifted" into
-    #    # the constraints.
-    #    # Linear: 11 nodes. Nonlinear: 2 nodes.
-    #    # Total: 15 nodes
-    #    m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
-    #    # Linear: 7 nodes. Nonlinear: 7 nodes.
-    #    # Total: 16 nodes
-    #    m.eq[2] = m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
+        # 3 linear terms, 2 nonlinear nodes (Maybe 3 nl nodes?)
+        m.eq[1] = m.x[1] + m.x[2] + 2*m.x[3] - m.subexpr[2] == 1.5
 
-    #    n_nodes = count_model_nodes(m, amplrepn=True)
-    #    assert n_nodes == 61
+        # 7 nonlinear nodes, ... 2 linear terms from subexpr[1]?
+        m.eq[2] = m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
+
+        n_nodes = count_model_amplrepn_nodes(m)
+        # This linear node count doesn't seem right.
+        # Linear nodes in subexpressions should be counted... as nonlinear if they
+        # appear nonlinearly anywhere, or linearly if they don't.
+        # Right now I double count them. They are inserted into constraints, where
+        # I count them as linear nodes, but then I also count them as linear nodes
+        # in the subexpressions.
+        # If I encounter an expression, I shouldn't count its linear nodes.
+        # Or should I count them as nonlinear.
+        # It kind of depends on how the expression appears in the constraints. If
+        # it appears nonlinearly anywhere, I need to count the nodes as nonlinear.
+        # If it only appears linearly, I need to ignore the nodes. That's a little
+        # tricky.
+        assert n_nodes.linear == 2 + 3
+        # I count 28, but somehow this is 27 nodes...
+        # m.eq[2] gives 7 nonlinear node
+        # eq[1] gives 3 nonlinear nodes
+        # sub[1] fragment gives 8 nonlinear nodes
+        # sub[2] fragment gives 11 nonlinear nodes
+        # sub[1] expr (in sub[2]) gives 3 nodes
+        # sub[2] expr (in eq[2]) gives 2 nodes
+        # 34 = 7 + 3 + 8 + 11 * 3 + 2
+        assert n_nodes.nonlinear == 34
 
 
 if __name__ == "__main__":
