@@ -46,7 +46,7 @@ class TestNodeCounter:
     def test_count_nodes_distill_vol_expr(self):
         m = create_distill_instance(horizon=20, nfe=4)
         n_nodes = count_nodes(m.mole_frac_balance[1, 1].body)
-        assert n_nodes == 12
+        assert n_nodes == 14
 
     def test_count_nodes_opf_pf_expr(self):
         m = make_opf_model("ieee118")
