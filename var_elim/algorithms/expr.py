@@ -28,10 +28,14 @@ from pyomo.repn.plugins.nl_writer import (
 )
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
 
-
 import pyomo
 pyomo_version = pyomo.version.version_info[:3]
 pyomo_ge_673 = pyomo_version >= (6, 7, 3)
+
+from collections import namedtuple
+# I don't really care about the constant node. We either have zero or one
+# constant nodes... not a huge difference.
+NodeCount = namedtuple("NodeCount", ["linear", "nonlinear"])
 
 
 class NodeCounter(StreamBasedExpressionVisitor):
@@ -223,7 +227,10 @@ def count_amplrepn_nodes(
     expr,
     export_defined_variables=True,
     expression_cache=None,
-    linear_only=False,
+    # I'd like to deprecate the linear_only option in factor of returning a
+    # NodeCount tuple. This will automatically partition nodes into linear and
+    # nonlinear
+    #linear_only=False,
     visitor=None
 ):
     """
@@ -270,38 +277,132 @@ def count_amplrepn_nodes(
     finally:
         AMPLRepn.ActiveVisitor = None
 
-    count = 0
+    #count = 0
 
-    if repn.const != 0.0:
-        # Add the nodes for the +(const) operation
-        count += 2
+    #if repn.const != 0.0:
+    #    # Add the nodes for the +(const) operation
+    #    count += 2
 
     # We model each linear term as +(*(coef, var)), which is four nodes
-    count += max(
-        0,
-        # Subtract one as, for n terms, we only need n-1 (+) operations
-        4 * len([vid for vid, coef in repn.linear.items() if coef != 0.0]) - 1,
-    )
+    #count += max(
+    #    0,
+    #    # Subtract one as, for n terms, we only need n-1 (+) operations
+    #    4 * len([vid for vid, coef in repn.linear.items() if coef != 0.0]) - 1,
+    #)
+    n_linear_nodes = len(repn.linear)
 
-    if not linear_only:
+    #if not linear_only:
         # If we only want to count linear nodes, we ignore the nonlinear
         # subexpression. We also ignore named subexpressions, as these are only
         # ever referenced in the nonlinear portion of the constraint expression.
 
-        if repn.nonlinear is not None:
-            if count > 0:
-                # Add one node for the (+) that connects the linear and nonlinear
-                # subexpressions. This is only necessary if we have some constant
-                # or linear subexpression.
-                count += 1
-            # Each line is a new node in the nonlinear expression
-            count += repn.nonlinear[0].count("\n")
+    if repn.nonlinear is not None:
+        # Counting this node seems a little arbitrary. We'll just count the number
+        # of newlines in the expression, as that is easier to explain
+        #if count > 0:
+        #    # Add one node for the (+) that connects the linear and nonlinear
+        #    # subexpressions. This is only necessary if we have some constant
+        #    # or linear subexpression.
+        #    count += 1
+        # Each line is a new node in the nonlinear expression
+        n_nonlinear_nodes = repn.nonlinear[0].count("\n")
+    else:
+        n_nonlinear_nodes = 0
 
-        if (
-            expression_cache is not None
-            and export_defined_variables
-            and repn.named_exprs # Is not an empty set
-        ):
-            expression_cache.update(local_subexpression_cache)
+    if (
+        expression_cache is not None
+        and export_defined_variables
+        and repn.named_exprs # Is not an empty set
+    ):
+        expression_cache.update(local_subexpression_cache)
 
-    return count
+    nodecount = NodeCount(n_linear_nodes, n_nonlinear_nodes)
+    return nodecount
+
+
+def count_model_amplrepn_nodes(model, **kwds):
+    # Initialize walker
+    subexpression_cache = {}
+    subexpression_order = []
+    external_functions = {}
+    var_map = {}
+    used_named_expressions = set()
+    symbolic_solver_labels = False
+    export_defined_variables = True
+    sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+    visitor_args = (
+        text_nl_template,
+        subexpression_cache,
+        #subexpression_order,
+        external_functions,
+        var_map,
+        used_named_expressions,
+        symbolic_solver_labels,
+        export_defined_variables,
+        sorter,
+    ) if pyomo_ge_673 else (
+        text_nl_template,
+        subexpression_cache,
+        subexpression_order,
+        external_functions,
+        var_map,
+        used_named_expressions,
+        symbolic_solver_labels,
+        export_defined_variables,
+        sorter,
+    )
+    visitor = AMPLRepnVisitor(*visitor_args)
+
+    component_exprs = (
+        [con.body for con in model.component_data_objects(Constraint, active=True)]
+        + [obj.expr for obj in model.component_data_objects(Objective, active=True)]
+    )
+    for expr in component_exprs:
+        expr_cache = subexpression_cache
+        nodecount = count_amplrepn_nodes(
+            expr,
+            visitor=visitor,
+            **kwds,
+        )
+
+    n_linear_nodes = nodecount.linear
+    n_nonlinear_nodes = nodecount.nonlinear
+
+    expr_ids = list(expr_cache)
+    while expr_ids:
+        e_id = expr_ids.pop()
+        e_obj, repn, _ = expr_cache[e_id]
+        if isinstance(e_obj, NLFragment):
+            # NLFragment objects store the nonlinear portion of a named
+            # expression, as linear and nonlinear portions are written
+            # separately in the nl file. We skip this, as we will encounter
+            # and process the full named expression later.
+            continue
+
+        # NOTE: The named expression subtree will replace at least one node
+        # in each nonlinear constraint where it appears. We don't attempt
+        # to account for this.
+
+        # Re-set subexpression cache so we know which expressions are the
+        # new ones.
+        visitor.subexpression_cache = {}
+        new_expr_cache = visitor.subexpression_cache
+        expr_node_count += count_amplrepn_nodes(
+            e_obj.expr,
+            visitor=visitor,
+            **kwds,
+        )
+        n_linear_nodes += expr_node_count.linear
+        n_nonlinear_nodes += expr_node_count.nonlinear
+
+        # Add the newly encountered named expressions to cache and stack
+        for new_e_id in new_expr_cache:
+            if new_e_id not in expr_cache:
+                # Update "global" dict with newly discovered
+                # subexpressions
+                expr_cache[new_e_id] = new_expr_cache[new_e_id]
+                # Push to the top of our stack
+                expr_ids.append(new_e_id)
+
+    model_nodecount = NodeCount(n_linear_nodes, n_nonlinear_nodes)
+    return model_nodecount
