@@ -40,7 +40,8 @@ class TestNodeCounter:
         n_nodes = count_nodes(expr)
         # Would have expected 6 nodes, but looks like x[1] and x[2] terms are
         # represented as MonomialTermExpressions...
-        assert n_nodes == 10
+        # This has been updated somewhere between Pyomo 6.7.2 and 6.7.3
+        assert n_nodes == 6
 
     def test_count_nodes_distill_vol_expr(self):
         m = create_distill_instance(horizon=20, nfe=4)
@@ -66,12 +67,12 @@ class TestNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
 
         n_nodes = count_nodes(m.eq[1].body, descend_into_named_expressions=False)
-        assert n_nodes == 13
+        assert n_nodes == 9
 
         # Note that the named subexpression still occupys a node even when
         # we descend into it.
         n_nodes = count_nodes(m.eq[1].body, descend_into_named_expressions=True)
-        assert n_nodes == 19
+        assert n_nodes == 15
 
         n_nodes = count_nodes(m.eq[2].body, descend_into_named_expressions=False)
         assert n_nodes == 9
@@ -93,7 +94,7 @@ class TestNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=False)
-        assert n_nodes == 28
+        assert n_nodes == 24
 
     def test_count_nodes_nested_expr(self):
         m = pyo.ConcreteModel()
@@ -110,7 +111,7 @@ class TestNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=False)
-        assert n_nodes == 38
+        assert n_nodes == 34
 
 class TestAmplNodeCounter:
 
@@ -120,7 +121,7 @@ class TestAmplNodeCounter:
         expr = m.x[1] + m.x[2] + 2*m.x[3] - m.x[2] * pyo.exp(3*m.x[1])
 
         n_nodes = count_amplrepn_nodes(expr)
-        assert n_nodes == 19
+        assert n_nodes == 17
 
     def test_count_nodes_model(self):
         m = pyo.ConcreteModel()
@@ -138,7 +139,7 @@ class TestAmplNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 29
+        assert n_nodes == 24
 
         n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
         assert n_linear_nodes == 14
@@ -146,7 +147,7 @@ class TestAmplNodeCounter:
         m.obj = pyo.Objective(expr=m.x[3]**2 + m.subexpr[1]**2)
         n_nodes = count_model_nodes(m, amplrepn=True)
         # I count 7 nodes in the objective, but somehow the nl repn contains 8 nodes
-        assert n_nodes == 36
+        assert n_nodes == 29
 
     def test_count_nodes_nested_expr(self):
         m = pyo.ConcreteModel()
@@ -167,7 +168,7 @@ class TestAmplNodeCounter:
         m.eq[2] = 4*m.x[2] + m.x[3]**3 * m.subexpr[2] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 38
+        assert n_nodes == 31
 
         n_linear_nodes = count_model_nodes(m, amplrepn=True, linear_only=True)
         assert n_linear_nodes == 14
@@ -201,7 +202,7 @@ class TestAmplNodeCounter:
         m.eq[2] = m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
 
         n_nodes = count_model_nodes(m, amplrepn=True)
-        assert n_nodes == 70
+        assert n_nodes == 61
 
 
 if __name__ == "__main__":
