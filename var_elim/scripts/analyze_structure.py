@@ -79,7 +79,7 @@ IncStructure = namedtuple(
         "nnz_linear",
         "nnz_hessian",
         "nnode",
-        "n_nl_node",
+        "n_nonlinear_node",
         "n_linear_node",
     ],
 )
@@ -302,14 +302,14 @@ def main(args):
         print(f"Gap to maximum elimination: {elimination_gap}")
         print(f"Original n. nodes: {results.orig.nnode}")
         print(f"Reduced n. nodes: {results.reduced.nnode}")
-        print(f"Original n. nl nodes (total): {results.orig.n_nl_node}")
-        print(f"Reduced n. nl nodes (total): {results.reduced.n_nl_node}")
+        print(f"Original n. nl nodes (total): {results.orig.n_nonlinear_node}")
+        print(f"Reduced n. nl nodes (total): {results.reduced.n_nonlinear_node}")
         # Note that these are number of linear nodes in the nl file. We can't
         # (easily) extract the linear nodes directly from the Pyomo expression tree.
         print(f"Original n. linear nodes: {results.orig.n_linear_node}")
         print(f"Reduced n. linear nodes: {results.reduced.n_linear_node}")
-        orig_nonlin_nodes = results.orig.n_nl_node - results.orig.n_linear_node
-        reduced_nonlin_nodes = results.reduced.n_nl_node - results.reduced.n_linear_node
+        orig_nonlin_nodes = results.orig.n_nonlinear_node
+        reduced_nonlin_nodes = results.reduced.n_nonlinear_node
         print(f"Original n. nonlinear nodes: {orig_nonlin_nodes}")
         print(f"Reduced n. nonlinear nodes: {reduced_nonlin_nodes}")
 
@@ -323,8 +323,6 @@ def main(args):
         data["nnz-linear"].append(results.reduced.nnz_linear)
         data["nnz-hessian"].append(results.reduced.nnz_hessian)
         data["nnode-pyomo"].append(results.reduced.nnode)
-        # TODO: Just count linear terms and nonlinear nodes separately; don't attempt
-        # to combine them.
         data["nnode-nl-linear"].append(results.reduced.n_linear_node)
         data["nnode-nl-nonlinear"].append(reduced_nonlin_nodes)
 
