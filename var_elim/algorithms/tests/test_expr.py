@@ -199,20 +199,7 @@ class TestAmplNodeCounter:
         m.eq[2] = m.x[3]**3 * m.subexpr[2] + m.subexpr[1] == 0.0
 
         n_nodes = count_model_amplrepn_nodes(m)
-        # This linear node count doesn't seem right.
-        # Linear nodes in subexpressions should be counted... as nonlinear if they
-        # appear nonlinearly anywhere, or linearly if they don't.
-        # Right now I double count them. They are inserted into constraints, where
-        # I count them as linear nodes, but then I also count them as linear nodes
-        # in the subexpressions.
-        # If I encounter an expression, I shouldn't count its linear nodes.
-        # Or should I count them as nonlinear.
-        # It kind of depends on how the expression appears in the constraints. If
-        # it appears nonlinearly anywhere, I need to count the nodes as nonlinear.
-        # If it only appears linearly, I need to ignore the nodes. That's a little
-        # tricky.
         assert n_nodes.linear == 2 + 3
-        # I count 28, but somehow this is 27 nodes...
         # m.eq[2] gives 7 nonlinear node
         # eq[1] gives 3 nonlinear nodes
         # sub[1] fragment gives 8 nonlinear nodes
@@ -221,6 +208,25 @@ class TestAmplNodeCounter:
         # sub[2] expr (in eq[2]) gives 2 nodes
         # 34 = 7 + 3 + 8 + 11 * 3 + 2
         assert n_nodes.nonlinear == 34
+
+    def test_fragment_used_but_not_expression(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.Integers)
+        m.subexpr = pyo.Expression(pyo.Integers)
+        m.subexpr[1] = m.x[1] + 2*m.x[2]**2 + m.x[1]*pyo.exp(m.x[3])
+        m.eq[1] = 2*m.x[2] - m.subexpr[1] == 1
+        m.eq[2] = m.x[3] + m.subexpr[1] == 2
+        nnode = count_model_amplrepn_nodes(m)
+
+        # The linear part of subexpr[1] gets inserted directly into eq[1] and
+        # eq[2].
+        assert nnode.linear == 4
+        # The subexpresion has 10 nodes. The +subexpr[1] terms is one node,
+        # while the -subexpr[1] term is two nodes.
+        # This tests that we don't count the nodes in the full subexpression,
+        # as this is not used anywhere.
+        assert nnode.nonlinear == 13 # 3 + 10
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+from pyomo.common.timing import TicTocTimer
 from pyomo.core.expr.numvalue import NumericValue
 from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
@@ -227,10 +228,6 @@ def count_amplrepn_nodes(
     expr,
     export_defined_variables=True,
     expression_cache=None,
-    # I'd like to deprecate the linear_only option in factor of returning a
-    # NodeCount tuple. This will automatically partition nodes into linear and
-    # nonlinear
-    #linear_only=False,
     visitor=None
 ):
     """
@@ -274,38 +271,16 @@ def count_amplrepn_nodes(
     AMPLRepn.ActiveVisitor = visitor
     try:
         repn = visitor.walk_expression((expr, None, 0, 1.0))
+        local_subexpression_cache = visitor.subexpression_cache
     finally:
         AMPLRepn.ActiveVisitor = None
 
-    #count = 0
-
-    #if repn.const != 0.0:
-    #    # Add the nodes for the +(const) operation
-    #    count += 2
-
-    # We model each linear term as +(*(coef, var)), which is four nodes
-    #count += max(
-    #    0,
-    #    # Subtract one as, for n terms, we only need n-1 (+) operations
-    #    4 * len([vid for vid, coef in repn.linear.items() if coef != 0.0]) - 1,
-    #)
     n_linear_nodes = len(repn.linear)
 
-    #if not linear_only:
-        # If we only want to count linear nodes, we ignore the nonlinear
-        # subexpression. We also ignore named subexpressions, as these are only
-        # ever referenced in the nonlinear portion of the constraint expression.
-
     if repn.nonlinear is not None:
-        # Counting this node seems a little arbitrary. We'll just count the number
-        # of newlines in the expression, as that is easier to explain
-        #if count > 0:
-        #    # Add one node for the (+) that connects the linear and nonlinear
-        #    # subexpressions. This is only necessary if we have some constant
-        #    # or linear subexpression.
-        #    count += 1
-        # Each line is a new node in the nonlinear expression
-
+        # We count nonlinear nodes by counting the number of newlines in the
+        # nl string.
+        #
         # NOTE: As of Pyomo 6.7.3, variables nodes in the nl template string
         # (i.e. "%s") no longer have newlines appended. We now need to count these
         # substrings as well.
@@ -327,22 +302,23 @@ def count_amplrepn_nodes(
         # The possibilities are:
         # - the subexpression participates nonlinearly => add NLFragment and expression
         # - The subexpression participates linearly => add only NLFragment
-        # What does this AMPLRepn (and aux. data structures) look like in each
-        # of these cases?
-        # Ideally, it contains a list/tuple of the ids (which are keys into
-        # local_subexpresion_cache) that are actually used.
-
-        used_local_subexpressions = filter(repn.named_exprs.__contains__, local_subexpression_cache)
-        # We only update the global cache with subexpressions that are actually used.
-        # This could the the expression and its fragment (nonlinear part), or just
-        # the fragment.
-        # We must be able to handle both of these later.
-        # In the subexpression cache, I think I have all the information I need. If the
-        # full expression is used, the AMPLRepn I get back is already broken into
-        # linear/nonlinear, using the fragment. So I don't have to worry about counting
-        # the fragment twice.
-        # So I just have to be able to handle the fragment, which I'm currently not
-        # doing.
+        used_local_subexpressions = {}
+        for e_id in repn.named_exprs:
+            # Is e_id guaranteed to exist in this cache? I believe so.
+            data = local_subexpression_cache[e_id]
+            if isinstance(data[0], ExpressionData):
+                used_local_subexpressions[e_id] = data
+            elif isinstance(data[0], NLFragment):
+                # A new NLFragment is constructed every time we encounter
+                # the same subexpression, so using the id as a key will result
+                # in this expression be counted multiple times. We need a key
+                # that is unique to this expression, so we use the NLFragment's
+                # name, which is e.g. "nl(subexpression[1])"
+                # The key doesn't really matter here, as we'll iterate over
+                # the values later to count the subexpression nodes.
+                used_local_subexpressions[data[0].name] = data
+            else:
+                raise TypeError(f"Unrecognized expression type {data[0].__class__}")
         expression_cache.update(used_local_subexpressions)
 
     nodecount = NodeCount(n_linear_nodes, n_nonlinear_nodes)
@@ -389,12 +365,16 @@ def count_model_amplrepn_nodes(model, **kwds):
     n_linear_nodes = 0
     n_nonlinear_nodes = 0
 
+    # We'll build up a new cache of subexpressions, out of only the subexpressions
+    # that are actually used
+    used_expr_cache = {}
     for expr in component_exprs:
         nodecount = count_amplrepn_nodes(
             expr,
+            # NOTE: This is too slow if I don't pass in the visitor here
             visitor=visitor,
             export_defined_variables=True,
-            #expression_cache=expr_cache,
+            expression_cache=used_expr_cache,
             **kwds,
         )
         # Note that these linear nodes include any linear nodes from subexpressions
@@ -402,34 +382,12 @@ def count_model_amplrepn_nodes(model, **kwds):
         n_linear_nodes += nodecount.linear
         n_nonlinear_nodes += nodecount.nonlinear
 
-    expr_cache = subexpression_cache
+    expr_cache = used_expr_cache
     expr_ids = list(expr_cache)
-    while expr_ids:
-        e_id = expr_ids.pop()
-        e_obj, repn, _ = expr_cache[e_id]
-        if isinstance(e_obj, NLFragment):
-            # NLFragment objects store the nonlinear portion of a named
-            # expression, as linear and nonlinear portions are written
-            # separately in the nl file. We skip this, as we will encounter
-            # and process the full named expression later.
-            #
-            # Do we need to process nodes from NLFragment? I think so.
-            # Is this exported as its own defined variable in the NL file? I think so.
-            # If an expression with linear and nonlinear parts only appears linearly,
-            # does the expression itself get exported/cached? I would hope it does not.
-            #
-            # Both the expression and the Fragment get cached.
-            # Only the defined variables that actually get used, including the
-            # fragments, actually get exported.
-            # If an expression with linear and nonlinear part is encountered,
-            # the fragment is exported, whether or not it is actually used
-            # independently of the expression. (The fragment is always used
-            # within the expression.) How can I tell if an expression is actually
-            # used?
-            #
-            # Need to record which subexpressions are actually used (as opposed
-            # to just their fragments.
 
+    for data in expr_cache.values():
+        e_obj, repn, _ = data
+        if isinstance(e_obj, NLFragment):
             # NLFragment should never have a linear part
             assert repn.linear is None
             # NLFragment should always have a nonlinear part
@@ -451,37 +409,7 @@ def count_model_amplrepn_nodes(model, **kwds):
                     + repn.nonlinear[0].count("%s")
                 )
         else:
-            raise RuntimeError("Unrecognized expression object")
-
-        # Now we need to update our stack and cache with any named expressions
-        # we encountered.
-
-        #new_exprs = repn.named_exprs if repn.named_exprs is not None else set()
-        # These should already have been added to the expression cache?
-        # Otherwise, I need to be able to get the repn for each of these.
-        # (Or, rather, add them to the cache somehow)
-
-        # Re-set subexpression cache so we know which expressions are the
-        # new ones.
-        #visitor.subexpression_cache = {}
-        #new_expr_cache = visitor.subexpression_cache
-        #expr_node_count = count_amplrepn_nodes(
-        #    e_obj.expr,
-        #    visitor=visitor,
-        #    **kwds,
-        #)
-        #n_linear_nodes += expr_node_count.linear
-        #n_nonlinear_nodes += expr_node_count.nonlinear
-
-        # Add the newly encountered named expressions to cache and stack
-        # These should already have been added?
-        #for new_e_id in new_expr_cache:
-        #    if new_e_id not in expr_cache:
-        #        # Update "global" dict with newly discovered
-        #        # subexpressions
-        #        expr_cache[new_e_id] = new_expr_cache[new_e_id]
-        #        # Push to the top of our stack
-        #        expr_ids.append(new_e_id)
+            raise TypeError(f"Unrecognized expression type {e_obj.__class__}")
 
     model_nodecount = NodeCount(n_linear_nodes, n_nonlinear_nodes)
     return model_nodecount
