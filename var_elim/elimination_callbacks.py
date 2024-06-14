@@ -443,4 +443,7 @@ def ampl_elim_callback(model, **kwds):
                 igraph = igraph,
                 use_named_expressions=USE_NAMED_EXPRESSIONS,
                 )
+    else:
+        con_elim = []
+        var_exprs = []
     return ElimResults(None, con_elim, var_exprs)
