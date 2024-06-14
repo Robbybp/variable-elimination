@@ -199,6 +199,7 @@ def main(args):
             if not args.no_save:
                 sweep_data_df.to_csv(fpath)
 
+    # TODO: Write a sweep summary dataframe.
     for problem_name, problem in problems:
         n_instances = args.nsamples ** len(problem.parameters)
         for elim_name, _ in elimination_callbacks:
