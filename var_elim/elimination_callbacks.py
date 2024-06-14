@@ -37,6 +37,7 @@ from var_elim.heuristics.trivial_elimination import (
     get_trivial_constraint_elimination,
     filter_constraints,
 )
+from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
 from var_elim.algorithms.replace import eliminate_variables, eliminate_nodes_from_graph
 
 
@@ -417,3 +418,29 @@ def linear_d2_elim_callback(model, **kwds):
 
 def no_elim_callback(model, **kwds):
     return ElimResults(None, [], [])
+
+def ampl_elim_callback(model, **kwds):
+    igraph = kwds.pop('igraph', None)
+    if igraph is None:
+        igraph = IncidenceGraphInterface(
+            model,
+            linear_only=False,
+            include_inequality=True,
+            method=IncidenceMethod.ampl_repn,
+        )
+
+    randomize = kwds.pop('randomize', False)
+    eliminate_bounded_vars =kwds.pop('eliminate_bounded_vars', False)
+    eliminate_linear_cons_only =kwds.pop('eliminate_lineaR_cons_only', False)
+    
+    var_elim, con_elim = identify_vars_for_elim_ampl(model, randomize, eliminate_bounded_vars, eliminate_linear_cons_only)
+    if var_elim:
+        var_elim, con_elim = define_elimination_order(var_elim, con_elim)
+        var_exprs, _, _ = eliminate_variables(
+                model,
+                var_elim,
+                con_elim,
+                igraph = igraph,
+                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                )
+    return ElimResults(None, con_elim, var_exprs)
