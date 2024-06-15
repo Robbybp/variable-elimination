@@ -92,6 +92,7 @@ def _generate_structure_table(df):
         "nnz/con",
         "nnz-linear/con",
         "nnz-hessian",
+        "nnode-pyomo",
         "nnode-nl-linear",
         "nnode-nl-nonlinear",
     ]
