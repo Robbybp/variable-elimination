@@ -220,6 +220,7 @@ def count_model_nodes(
                     encountered_expr_ids.add(e_id)
                     # need to link the id to the actual expression
                     expr_stack.append(new_expr)
+        # Are we double-counting expressions here?
 
     return count
 
