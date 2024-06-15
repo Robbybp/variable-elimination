@@ -29,6 +29,7 @@ from var_elim.algorithms.expr import (
 )
 from var_elim.models.distillation.distill import create_instance as create_distill_instance
 from var_elim.models.opf.opf_model import make_model as make_opf_model
+from var_elim.algorithms.replace import eliminate_variables
 
 
 class TestNodeCounter:
@@ -113,6 +114,20 @@ class TestNodeCounter:
 
         n_nodes = count_model_nodes(m, amplrepn=False)
         assert n_nodes == 34
+
+    def test_model_nodecounter_replace_bounds(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3], bounds=(-1, 10))
+        m.eq = pyo.Constraint(pyo.PositiveIntegers)
+        m.subexpr = pyo.Expression(pyo.PositiveIntegers)
+        m.eq[1] = m.x[1] + m.x[2] * m.x[3] == 2
+        m.eq[2] = m.x[1] * m.x[2] * m.x[3] == 7
+        var_elim = [m.x[1]]
+        con_elim = [m.eq[1]]
+        eliminate_variables(m, var_elim, con_elim, use_named_expressions=True)
+        nnode = count_model_nodes(m, amplrepn=False)
+        # Getting 25 here. This seems like too many nodes.
+        assert nnode == 9
 
 class TestAmplNodeCounter:
 
