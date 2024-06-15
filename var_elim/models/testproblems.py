@@ -79,8 +79,8 @@ class PipelineTestProblem(PseTestProblemBase):
         self._ntfe = ntfe
         self._horizon = horizon
     
-        self._parameters = ["temperature_param", "pressure_param"]
-        _parameter_range_list = [(273, 323), (10, 100)]
+        self._parameters = ["fs.nodes[0].state[*].temperature", "fs.nodes[0].state[*].pressure"]
+        _parameter_range_list = [(298, 388), (10, 100)]
         self._parameter_ranges = dict(zip(self._parameters, _parameter_range_list))
 
     @property
