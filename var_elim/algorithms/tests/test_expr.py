@@ -115,19 +115,38 @@ class TestNodeCounter:
         n_nodes = count_model_nodes(m, amplrepn=False)
         assert n_nodes == 34
 
+    def test_count_nodes_of_named_expr(self):
+        # If the root node of an expression *is* a named expression, we appear
+        # to not be handling it properly
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.subexpr = pyo.Expression(expr=m.x[1] * m.x[2] + 2 * m.x[3])
+        m.eq = pyo.Constraint(expr=m.subexpr == 3)
+
+        visitor = NodeCounter(descend_into_named_expressions=False)
+        # The root node of eq.body is a named expression. This should have
+        # a node-count of 1 if we do not descend.
+        assert m.eq.body.is_named_expression_type()
+        count = visitor.walk_expression(m.eq.body)
+        assert count == 1
+
     def test_model_nodecounter_replace_bounds(self):
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2, 3], bounds=(-1, 10))
         m.eq = pyo.Constraint(pyo.PositiveIntegers)
-        m.subexpr = pyo.Expression(pyo.PositiveIntegers)
         m.eq[1] = m.x[1] + m.x[2] * m.x[3] == 2
         m.eq[2] = m.x[1] * m.x[2] * m.x[3] == 7
+        m.eq[3] = m.x[1] + m.x[3] == 2
         var_elim = [m.x[1]]
         con_elim = [m.eq[1]]
         eliminate_variables(m, var_elim, con_elim, use_named_expressions=True)
         nnode = count_model_nodes(m, amplrepn=False)
-        # Getting 25 here. This seems like too many nodes.
-        assert nnode == 9
+        # Expresion for x: 6 nodes
+        # eq[2]: 5 nodes
+        # eq[3]: 3 nodes
+        # x[1]_lb: 1
+        # x[1]_ub: 1
+        assert nnode == 16
 
 class TestAmplNodeCounter:
 

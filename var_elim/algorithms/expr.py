@@ -52,7 +52,16 @@ class NodeCounter(StreamBasedExpressionVisitor):
 
     def initializeWalker(self, expr):
         self.count = 0
-        return True, expr
+        if (
+            expr.is_named_expression_type()
+            and not self._descend_into_named_expressions
+        ):
+            self.count += 1
+            # self.count is returned as the result of this walk. We increment
+            # here as enterNode is not called.
+            return False, self.count
+        else:
+            return True, None
 
     def beforeChild(self, parent, child, idx):
         if (
@@ -206,6 +215,10 @@ def count_model_nodes(
             # lots of named expressions.
             visitor.named_expr_map.clear()
             visitor.named_expressions = []
+            # We "already counted" the named expression node itself, so we just
+            # count the expression that defines it here. Since we have
+            # visitor._descend_into_named_expressions==False, counting the
+            # expression itself would give us a trivial result.
             count += visitor.walk_expression(named_expr.expr)
 
             # Add new expressions to the "global set"
