@@ -36,7 +36,7 @@ PARAMETER_NAMES = [
         "fs.moving_bed.solid_phase.properties[0,1].flow_mass",
     ),
     ("vol", "x_Feed"),
-    ("temperature_param", "pressure_param")
+    ("fs.nodes[0].state[*].temperature", "fs.nodes[0].state[*].pressure")
 ]
 
 PARAMETER_LABELS = [
@@ -73,11 +73,9 @@ def plot_convergence(
     for i in range(len(df)):
         key = tuple(df[name][i] for name in parameter_names)
         success_lookup[key] = int(df["success"][i])
-
     n_success = list(success_lookup.values()).count(1)
     n_total = len(df)
     print(f"Converged {n_success} / {n_total} instances")
-
     convergence_array = np.zeros(tuple(len(params) for params in parameters))
     for params in itertools.product(*parameters):
         indices = tuple(idx_map[p] for idx_map, p in zip(param_index_maps, params))
@@ -93,20 +91,19 @@ def plot_convergence(
         vmin=0,
         vmax=1,
     )
-
     # Since we are plotting on a 2D grid, it is unclear if the more general code
     # above to parse an arbitrary number of parameters has any value.
     assert len(parameters) == 2
 
     # Label every grid cell; turn off (major) tick marks
-    x_ticks = [i for i in range(len(parameters[0]))]
+    x_ticks = [i for i in range(len(parameters[1]))]
     # TODO: If any two labels are the same (rounded to nearest int), then
     # add a decimal place.
-    x_tick_labels = [str(round(parameters[0][i])) if i%2 else "" for i in x_ticks]
+    x_tick_labels = [str(round(parameters[1][i])) if i%2 else "" for i in x_ticks]
     ax.set_xticks(x_ticks, labels=x_tick_labels)
 
-    y_ticks = [i for i in range(len(parameters[1]))]
-    y_tick_labels = [str(round(parameters[1][i])) if i%2 else "" for i in y_ticks]
+    y_ticks = [i for i in range(len(parameters[0]))]
+    y_tick_labels = [str(round(parameters[0][i])) if i%2 else "" for i in y_ticks]
     ax.set_yticks(y_ticks, labels=y_tick_labels)
 
     # Turn off (major) tick marks for both axes
@@ -115,13 +112,13 @@ def plot_convergence(
     # Set gridlines
     ax.grid(which="minor", linestyle="-", linewidth=1.5)
     ax.tick_params(length=0)
-    ax.set_xticks(np.arange(-0.5, len(parameters[0]), 1), minor=True)
-    ax.set_yticks(np.arange(-0.5, len(parameters[1]), 1), minor=True)
+    ax.set_xticks(np.arange(-0.5, len(parameters[1]), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, len(parameters[0]), 1), minor=True)
 
     if parameter_labels is None:
         parameter_labels = parameter_names
-    xlabel = parameter_labels[0]
-    ylabel = parameter_labels[1]
+    xlabel = parameter_labels[1]
+    ylabel = parameter_labels[0]
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
