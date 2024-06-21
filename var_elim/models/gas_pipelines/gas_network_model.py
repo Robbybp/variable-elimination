@@ -293,7 +293,6 @@ def demand_data_helper():
 def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     demand = demand_data_helper()
     ipopt = pyo.SolverFactory("ipopt")
-    nxfe = 4
     demand_nodes = [2, 3, 4, 5, 6]
     nominal_steady_inputs = {
         "fs.nodes[0].state[*].pressure": 100.0,
