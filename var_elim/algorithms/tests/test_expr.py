@@ -29,7 +29,9 @@ from var_elim.algorithms.expr import (
 )
 from var_elim.models.distillation.distill import create_instance as create_distill_instance
 from var_elim.models.opf.opf_model import make_model as make_opf_model
-from var_elim.algorithms.replace import eliminate_variables
+from var_elim.algorithms.replace import (
+    eliminate_variables, define_variable_from_constraint
+)
 
 
 class TestNodeCounter:
@@ -148,6 +150,35 @@ class TestNodeCounter:
         # x[1]_ub: 1
         assert nnode == 16
 
+    def test_defining_expression_with_subexpression(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3], bounds=(0, 10))
+        m.eq = pyo.Constraint(pyo.PositiveIntegers)
+        m.subexpr = pyo.Expression(pyo.PositiveIntegers)
+        m.subexpr[1] = sum(
+            (i + j/2) * m.x[1]**i * m.x[2]**j
+            for i in range(1, 6) for j in range(1, 6)
+        )
+        m.eq[1] = 2*m.x[3] + m.subexpr[1] == 5
+        expr = define_variable_from_constraint(m.x[3], m.eq[1])
+        n_nodes_subexpr = count_nodes(m.subexpr[1].expr, descend_into_named_expressions=True)
+        n_nodes_total = count_nodes(expr, descend_into_named_expressions=True)
+        n_nodes_nodescend = count_nodes(expr, descend_into_named_expressions=False)
+
+        # NOTE: Standard repn breaks apart named expression in order to separate linear
+        # and nonlinear parts. This this way, we cannot exploit nested defined variables.
+        # This is why we see large jumps in Pyomo node counts with matching-based
+        # elimination sometimes.
+        # Standard repn does not attempt to exploit a "subexpression fragment" that
+        # represents the nonlinear portion, as AMPLRepn does.
+        # We do not necessarily rely on this behavior (in fact, we would like nonlinear
+        # subexpression fragments to be exploited...), but this test is here to remind
+        # us that this behavior exists, as it significantly impacts our structural
+        # results.
+        assert n_nodes_total == n_nodes_nodescend
+        assert n_nodes_total == 211
+
+
 class TestAmplNodeCounter:
 
     def test_count_nodes_simple(self):
@@ -264,4 +295,5 @@ class TestAmplNodeCounter:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    #pytest.main([__file__])
+    TestNodeCounter().test_defining_expression_with_subexpression()
