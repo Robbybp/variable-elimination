@@ -293,7 +293,6 @@ def demand_data_helper():
 def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     demand = demand_data_helper()
     ipopt = pyo.SolverFactory("ipopt")
-    nxfe = 4
     demand_nodes = [2, 3, 4, 5, 6]
     nominal_steady_inputs = {
         "fs.nodes[0].state[*].pressure": 100.0,
@@ -401,29 +400,6 @@ def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     )
 
     print("DOF of the dynamic problem:", degrees_of_freedom(m))
-    m = add_modifications_for_param_sweep(m)
-    return m
-
-def add_modifications_for_param_sweep(m):
-    #Unfix temperature and supply pressure for node 0
-    #This is done so that we can apply a parameter sweep
-    #on indexed variables using the parameter_sweep functionality
-    m.fs.nodes[0].state[:].pressure.unfix()
-    m.fs.nodes[0].state[:].temperature.unfix()
-
-    #Introduce parameters for temperatures and pressures
-    m.temperature_param = pyo.Param(initialize = 298.15, mutable = True)
-    m.pressure_param = pyo.Param(initialize = 100, mutable = True)
-
-    #Write linking constraints between parameters and temperature and 
-    #pressure variables 
-    def _link_supply_temperature(m, t):
-        return m.fs.nodes[0].state[t].temperature == m.temperature_param
-    m.link_supply_temperature = pyo.Constraint(m.fs.time, rule = _link_supply_temperature)
-
-    def _link_supply_pressure(m, t):
-        return m.fs.nodes[0].state[t].pressure == m.pressure_param
-    m.link_supply_pressure = pyo.Constraint(m.fs.time, rule = _link_supply_pressure)
     return m
 
 def main():

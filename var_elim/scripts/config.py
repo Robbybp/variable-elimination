@@ -27,6 +27,7 @@ from var_elim.elimination_callbacks import (
     linear_d2_elim_callback,
     d2_elim_callback,
     matching_elim_callback,
+    ampl_elim_callback,
 )
 from var_elim.models.testproblems import (
     DistillationTestProblem,
@@ -48,6 +49,7 @@ ELIM_CALLBACKS = [
     ("trivial", trivial_elim_callback),
     ("linear-d2", linear_d2_elim_callback),
     ("d2", d2_elim_callback),
+    ("ampl", ampl_elim_callback),
     ("matching", matching_elim_callback),
 ]
 ELIM_LOOKUP = dict(ELIM_CALLBACKS)
