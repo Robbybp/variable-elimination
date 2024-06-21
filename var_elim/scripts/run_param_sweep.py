@@ -70,7 +70,7 @@ def main(args):
     # not necessary (or actively harmful), so we set this flag if the model needs
     # to be scaled.
     # ... This should really be handled better in pselib...
-    scale_problem = dict([("mb-steady", True), ("distill", False), ("gaspipeline", False)])
+    scale_problem = dict([("mb-steady", True), ("distill", False), ("pipeline", False)])
 
     # We will store the results in a dict mapping callback name and problem
     # name to the results for a specific parameter sweep. We do this instead
@@ -114,7 +114,6 @@ def main(args):
 
             def run_model(model, solver):
                 timer = HierarchicalTimer()
-
                 # Optional: re-initialize
                 # model.fs.moving_bed.initialize()
                 if scale_problem[problem_name]:
