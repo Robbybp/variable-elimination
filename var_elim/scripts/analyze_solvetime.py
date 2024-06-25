@@ -1,3 +1,23 @@
+#  ___________________________________________________________________________
+#
+#  Variable Elimination: Research code for variable elimination in NLPs
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
+#  ___________________________________________________________________________
+
 import pyomo.environ as pyo
 from pyomo.common.collections import ComponentMap
 from pyomo.common.timing import TicTocTimer, HierarchicalTimer
@@ -31,17 +51,16 @@ from var_elim.algorithms.expr import (
 )
 from var_elim.algorithms.validate import validate_solution
 
+import var_elim.scripts.config as config
+from var_elim.elimination_callbacks import matching_elim_callback
+# We need to import the callback here so we can re-construct it for every model
+from var_elim.cyipopt import Callback
+
+import os
+import pandas as pd
+
 
 USE_NAMED_EXPRESSIONS = True
-
-
-from var_elim.elimination_callbacks import (
-    matching_elim_callback,
-    d2_elim_callback,
-    trivial_elim_callback,
-    linear_d2_elim_callback,
-    no_elim_callback,
-)
 
 
 def solve_original(m, tee=True):
@@ -59,39 +78,22 @@ def solve_reduced(m, tee=True, callback=matching_elim_callback):
     return m
 
 
-def main():
+def main(args):
     horizon = 300
     nfe = 300
-    models = [
-        ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
-        #("OPF-4917", create_opf),
-        #("Pipeline", create_pipeline),
-    ]
-    #m1 = its.get_problem("MBCLC-METHANE-STEADY").create_instance()
-    #m2 = its.get_problem("MBCLC-METHANE-STEADY").create_instance()
+    if args.model is not None:
+        models = [(args.model, config.CONSTRUCTOR_LOOKUP[args.model])]
+    else:
+        # Note that this is a hard-coded subset of models that are the default
+        # to use for the timing analysis
+        # TODO: Add 100-discr version of mb-steady
+        model_names = ["distill", "mb-steady", "opf", "pipeline"]
+        models = [(name, config.CONSTRUCTOR_LOOKUP[name]) for name in model_names]
 
-    elim_callbacks = [
-        ("No elimination", no_elim_callback),
-        ("Trivial", trivial_elim_callback),
-        ("Linear, degree=2", linear_d2_elim_callback),
-        ("Degree=2", d2_elim_callback),
-        ("Matching", matching_elim_callback),
-    ]
-
+    elim_callbacks = config.ELIM_CALLBACKS
     solvers = []
-    # Note that these options may not be applicable for all models.
-    # (i.e. 100 iterations may not be sufficient to solve)
-    options = {
-        "print_user_options": "yes",
-        "max_iter": 100,
-    }
-
-    from var_elim.cyipopt import TimedPyomoCyIpoptSolver, Callback
-
-    # Note that we allow any solver to be used here. However, below we assume
-    # that the HierarchicalTimer will get populated with timing categories that
-    # are specific to TimedPyomoCyIpoptSolver
-    solvers.append(TimedPyomoCyIpoptSolver(options=options))
+    solver = config.get_optimization_solver()
+    solvers.append(solver)
 
     model_cb_elim_solver_prod = list(itertools.product(models, elim_callbacks, solvers))
 
@@ -100,6 +102,26 @@ def main():
         model = model_cb()
         model_elim_solver_prod.append(((mname, model_cb, model), (ename, elim_cb), solver))
 
+    data = {
+        "model": [],
+        "method": [],
+        "success": [],
+        "feasible": [],
+        "elim-time": [],
+        "solve-time": [],
+        # I don't see any reason to distinguish between e.g. constraint and objective
+        # time here.
+        "function-time": [],
+        "jacobian-time": [],
+        "hessian-time": [],
+        "n-iter": [],
+        "ave-ls-trials": [],
+        "function-per100": [],
+        "jacobian-per100": [],
+        "hessian-per100": [],
+        "other-per100": [],
+    }
+
     timer = TicTocTimer()
     htimer = HierarchicalTimer()
     htimer.start("root")
@@ -107,10 +129,11 @@ def main():
         print(mname, elim_name)
         timer.tic()
         elim_res = elim_callback(model)
-        timer.toc("Apply elimination")
-        
+        elim_time = timer.toc("Apply elimination")
+
         label = "-".join((mname, elim_name))
         htimer.start(label)
+        # We need to re-set the callback each time we solve a model
         solver.config.intermediate_callback = Callback()
         res = solver.solve(model, tee=False, timer=htimer)
         htimer.stop(label)
@@ -128,10 +151,12 @@ def main():
             # all we need to do is take sufficiently many iterations that noise
             # is negligible.
             pyo.assert_optimal_termination(res)
+            success = pyo.check_optimal_termination(res)
         except RuntimeError as err:
             print(err)
             print("ERROR: BAD SOLVER STATUS. CONTINUING ANYWAY.")
         valid, violations = validate_solution(
+            # TODO: Use args.feastol here?
             model, elim_res.var_expressions, elim_res.constraints, tolerance=1e-6
         )
         if not valid:
@@ -167,6 +192,7 @@ def main():
         #
         # This accesses the second element of the last tuple of iterate data.
         # We add 1 to account for iteration zero.
+        # (Unclear if we should actually include iteration zero...)
         n_iter = solver.config.intermediate_callback.iterate_data[-1][1] + 1
         solve_time = htimer.timers["root"].timers[label].timers["solve"].total_time
         ls_trials = [data[-1] for data in solver.config.intermediate_callback.iterate_data]
@@ -188,12 +214,48 @@ def main():
         for subtimer in solve_timer.timers.values():
             other_solve_time -= subtimer.total_time
         other_solve_time_periter = other_solve_time / n_iter
-        print(f"Other time per 100 iterations:     {100*other_solve_time_periter}")
+        other_solve_time_per100 = 100 * other_solve_time_periter
+        print(f"Other time per 100 iterations:     {other_solve_time_per100}")
         print()
+
+        data["model"].append(mname)
+        data["method"].append(elim_name)
+        data["elim-time"].append(elim_time)
+        data["success"].append(success)
+        data["feasible"].append(valid)
+        data["solve-time"].append(solve_time)
+        function_time = con_timer.total_time + obj_timer.total_time
+        data["function-time"].append(function_time)
+        jacobian_time = conjac_timer.total_time + objgrad_timer.total_time
+        data["jacobian-time"].append(jacobian_time)
+        hessian_time = laghess_timer.total_time
+        data["hessian-time"].append(hessian_time)
+        data["n-iter"].append(n_iter)
+        data["ave-ls-trials"].append(ave_ls_trials)
+        data["function-per100"].append(function_eval_per100)
+        data["jacobian-per100"].append(jacobian_eval_per100)
+        data["hessian-per100"].append(laghess_eval_per100)
+        data["other-per100"].append(other_solve_time_per100)
 
     htimer.stop("root")
     print(htimer)
 
+    df = pd.DataFrame(data)
+    suffix = "" if args.suffix is None else "-" + args.suffix
+    fname = f"solvetime{suffix}.csv" if args.fname is None else args.fname
+    print(df)
+    if not args.no_save:
+        fpath = os.path.join(args.results_dir, fname)
+        print(f"Writing results to {fpath}")
+        df.to_csv(fpath)
+
 
 if __name__ == "__main__":
-    main()
+    argparser = config.get_argparser()
+    argparser.add_argument(
+        "--fname",
+        default=None,
+        help="Basename for file to write results to",
+    )
+    args = argparser.parse_args()
+    main(args)

@@ -40,9 +40,9 @@ def make_model(horizon=52, vol=1.6, x_Feed=0.5):
     model = AbstractModel()
 
     model.Feed = Param(initialize=24.0 / 60.0)
-    model.x_Feed = Param(initialize=x_Feed)
+    model.x_Feed = Param(initialize=x_Feed, mutable=True)
     model.D = Param(initialize=model.x_Feed * model.Feed)
-    model.vol = Param(initialize=vol)
+    model.vol = Param(initialize=vol, mutable=True)
     model.atray = Param(initialize=0.25)
     model.acond = Param(initialize=0.5)
     model.areb = Param(initialize=1.0)

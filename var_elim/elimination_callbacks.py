@@ -1,3 +1,23 @@
+#  ___________________________________________________________________________
+#
+#  Variable Elimination: Research code for variable elimination in NLPs
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
+#  ___________________________________________________________________________
+
 import pyomo.environ as pyo
 from pyomo.core.expr import EqualityExpression
 from pyomo.common.timing import TicTocTimer, HierarchicalTimer
@@ -17,6 +37,7 @@ from var_elim.heuristics.trivial_elimination import (
     get_trivial_constraint_elimination,
     filter_constraints,
 )
+from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
 from var_elim.algorithms.replace import eliminate_variables, eliminate_nodes_from_graph
 
 
@@ -395,5 +416,34 @@ def linear_d2_elim_callback(model, **kwds):
     return ElimResults(None, total_con_elim, total_var_exprs)
 
 
-def no_elim_callback(model):
+def no_elim_callback(model, **kwds):
     return ElimResults(None, [], [])
+
+def ampl_elim_callback(model, **kwds):
+    igraph = kwds.pop('igraph', None)
+    if igraph is None:
+        igraph = IncidenceGraphInterface(
+            model,
+            linear_only=False,
+            include_inequality=True,
+            method=IncidenceMethod.ampl_repn,
+        )
+
+    randomize = kwds.pop('randomize', False)
+    eliminate_bounded_vars = kwds.pop('eliminate_bounded_vars', True)
+    eliminate_linear_cons_only = kwds.pop('eliminate_linear_cons_only', False)
+    
+    var_elim, con_elim = identify_vars_for_elim_ampl(model, randomize, eliminate_bounded_vars, eliminate_linear_cons_only)
+    if var_elim:
+        var_elim, con_elim = define_elimination_order(var_elim, con_elim)
+        var_exprs, _, _ = eliminate_variables(
+                model,
+                var_elim,
+                con_elim,
+                igraph = igraph,
+                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                )
+    else:
+        con_elim = []
+        var_exprs = []
+    return ElimResults(None, con_elim, var_exprs)

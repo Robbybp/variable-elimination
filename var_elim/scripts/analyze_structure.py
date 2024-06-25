@@ -1,3 +1,23 @@
+#  ___________________________________________________________________________
+#
+#  Variable Elimination: Research code for variable elimination in NLPs
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
+#  ___________________________________________________________________________
+
 import pyomo.environ as pyo
 from pyomo.core.expr import EqualityExpression
 from pyomo.common.collections import ComponentMap
@@ -14,7 +34,7 @@ import matplotlib.pyplot as plt
 
 from var_elim.models.distillation.distill import create_instance as create_distill
 #from var_elim.models.opf.opf_model import make_model as create_opf
-#from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
+from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 from var_elim.heuristics.matching import (
     generate_elimination_via_matching,
     define_elimination_order,
@@ -39,10 +59,26 @@ from var_elim.elimination_callbacks import (
     linear_d2_elim_callback,
 )
 
+import os
+import var_elim.scripts.config as config
+import pandas as pd
+from pyomo.contrib.pynumero.interfaces.pyomo_nlp import PyomoNLP
+
+import pselib
+
 
 IncStructure = namedtuple(
     "IncStructure",
-    ["nvar", "ncon", "nnz", "nnz_linear", "nnode", "n_nl_node", "n_linear_node"],
+    [
+        "nvar",
+        "ncon",
+        "nnz",
+        "nnz_linear",
+        "nnz_hessian",
+        "nnode",
+        "n_nl_node",
+        "n_linear_node",
+    ],
 )
 ElimResults = namedtuple("ElimResults", ["upper_bound"])
 StructuralResults = namedtuple(
@@ -53,6 +89,13 @@ StructuralResults = namedtuple(
 
 # TODO: Command line argument
 USE_NAMED_EXPRESSIONS = True
+
+
+def get_nnz_in_hessian(model, nlp=None):
+    if nlp is None:
+        nlp = PyomoNLP(model)
+    hessian = nlp.evaluate_hessian_lag()
+    return hessian.nnz
 
 
 def get_structural_results(model, elim_callback, htimer=None):
@@ -89,6 +132,8 @@ def get_structural_results(model, elim_callback, htimer=None):
     orig_nnz = orig_igraph.n_edges
     orig_nnz_linear = orig_linear_igraph.n_edges
 
+    orig_nnz_hessian = get_nnz_in_hessian(model)
+
     elim_res = elim_callback(
         model, igraph=orig_igraph, linear_igraph=orig_linear_eq_igraph, timer=htimer
     )
@@ -118,11 +163,14 @@ def get_structural_results(model, elim_callback, htimer=None):
     reduced_nnz = reduced_igraph.n_edges
     reduced_nnz_linear = reduced_linear_igraph.n_edges
 
+    reduced_nnz_hessian = get_nnz_in_hessian(model)
+
     orig_struc = IncStructure(
         orig_nvar,
         orig_ncon,
         orig_nnz,
         orig_nnz_linear,
+        orig_nnz_hessian,
         orig_nnode,
         orig_nlnode,
         orig_linear_nlnode,
@@ -132,6 +180,7 @@ def get_structural_results(model, elim_callback, htimer=None):
         reduced_ncon,
         reduced_nnz,
         reduced_nnz_linear,
+        reduced_nnz_hessian,
         reduced_nnode,
         reduced_nlnode,
         reduced_linear_nlnode,
@@ -164,22 +213,15 @@ def solve_reduced(m, tee=True):
     return m
 
 
-def main():
+def main(args):
     horizon = 300
     nfe = 300
-    models = [
-        ("Distill", lambda : create_distill(horizon=horizon, nfe=nfe)),
-        #("OPF-4917", create_opf),
-        #("Pipeline", create_pipeline()),
-    ]
+    if args.model is not None:
+        models = [(args.model, config.CONSTRUCTOR_LOOKUP[args.model])]
+    else:
+        models = list(zip(config.MODEL_NAMES, config.MODEL_CONSTRUCTORS))
 
-    elim_callbacks = [
-        ("Degree=1", d1_elim_callback),
-        ("Trivial", trivial_elim_callback),
-        ("Linear, degree=2", linear_d2_elim_callback),
-        ("Degree=2", d2_elim_callback),
-        ("Matching", matching_elim_callback),
-    ]
+    elim_callbacks = config.ELIM_CALLBACKS
     model_cb_elim_prod = list(itertools.product(models, elim_callbacks))
     model_elim_prod = []
     for (mname, model_cb), (ename, elim_cb) in model_cb_elim_prod:
@@ -190,6 +232,21 @@ def main():
     #m2 = create_distill(horizon=horizon, nfe=nfe)
     #solve_original(m1, tee=True)
     #solve_reduced(m2, tee=True)
+
+    data = {
+        "model": [],
+        "method": [],
+        "nvar": [],
+        "ncon": [],
+        "n-elim": [],
+        "n-elim-bound": [],
+        "nnz": [],
+        "nnz-linear": [],
+        "nnz-hessian": [],
+        "nnode-pyomo": [],
+        "nnode-nl-linear": [],
+        "nnode-nl-nonlinear": [],
+    }
 
     timer = HierarchicalTimer()
     timer.start("root")
@@ -224,6 +281,8 @@ def main():
         print(f"Reduced total NNZ: {results.reduced.nnz}")
         print(f"Original linear NNZ: {results.orig.nnz_linear}")
         print(f"Reduced linear NNZ: {results.reduced.nnz_linear}")
+        print(f"Original Hessian NNZ: {results.orig.nnz_hessian}")
+        print(f"Reduced Hessian NNZ: {results.reduced.nnz_hessian}")
 
         print(f"Original NNZ/con: {orig_nnz_per_con}")
         print(f"Reduced NNZ/con: {reduced_nnz_per_con}")
@@ -243,9 +302,38 @@ def main():
         print(f"Original n. nonlinear nodes: {orig_nonlin_nodes}")
         print(f"Reduced n. nonlinear nodes: {reduced_nonlin_nodes}")
 
+        data["model"].append(mname)
+        data["method"].append(elim_name)
+        data["nvar"].append(results.reduced.nvar)
+        data["ncon"].append(results.reduced.ncon)
+        data["n-elim"].append(n_elim)
+        data["n-elim-bound"].append(results.elim.upper_bound)
+        data["nnz"].append(results.reduced.nnz)
+        data["nnz-linear"].append(results.reduced.nnz_linear)
+        data["nnz-hessian"].append(results.reduced.nnz_hessian)
+        data["nnode-pyomo"].append(results.reduced.nnode)
+        # TODO: Just count linear terms and nonlinear nodes separately; don't attempt
+        # to combine them.
+        data["nnode-nl-linear"].append(results.reduced.n_linear_node)
+        data["nnode-nl-nonlinear"].append(reduced_nonlin_nodes)
+
+    df = pd.DataFrame(data)
+    suffix = "" if args.suffix is None else "-" + args.suffix
+    fname = f"structure{suffix}.csv" if args.fname is None else args.fname
+    fpath = os.path.join(args.results_dir, fname)
+    if not args.no_save:
+        print(f"Writing results to {fpath}")
+        df.to_csv(fpath)
+    print(df)
+
     timer.stop("root")
     print(timer)
 
 
 if __name__ == "__main__":
-    main()
+    argparser = config.get_argparser()
+    argparser.add_argument(
+        "--fname", default=None, help="Basename for output file (optional)"
+    )
+    args = argparser.parse_args()
+    main(args)

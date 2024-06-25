@@ -293,7 +293,6 @@ def demand_data_helper():
 def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     demand = demand_data_helper()
     ipopt = pyo.SolverFactory("ipopt")
-    nxfe = 4
     demand_nodes = [2, 3, 4, 5, 6]
     nominal_steady_inputs = {
         "fs.nodes[0].state[*].pressure": 100.0,
@@ -318,7 +317,7 @@ def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     print("DOF: %s" % degrees_of_freedom(m_initial))
 
     # Solving a square steady state problem with fixed demands and compressor boost pressures
-    ipopt.solve(m_initial, tee=True)
+    ipopt.solve(m_initial, tee=False)
 
     m_initial_time = m_initial.fs.time
     m_initial_helper = DynamicModelHelper(m_initial, m_initial_time)
@@ -401,9 +400,7 @@ def make_dynamic_model(horizon=24.0, nxfe=4, ntfe=24, eta=0.7):
     )
 
     print("DOF of the dynamic problem:", degrees_of_freedom(m))
-
     return m
-
 
 def main():
     m = make_dynamic_model()
