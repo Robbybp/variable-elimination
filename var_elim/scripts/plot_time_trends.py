@@ -39,10 +39,12 @@ XVAL_GETTER = {
     "nonlinear-nodecount": lambda df, times, model: [row["nnode-nl-nonlinear"] for _, row in df.iterrows() if row["model"] == model],
     "function":            lambda df, times, model: [times[row["model"], row["method"]].function for _, row in df.iterrows() if row["model"] == model],
     "jacobian":            lambda df, times, model: [times[row["model"], row["method"]].jacobian for _, row in df.iterrows() if row["model"] == model],
-    "nvarcon":             lambda df, times, model: [row["nvar"]+row["nvar"] for _, row in df.iterrows() if row["model"] == model],
+    "nvarcon":             lambda df, times, model: [row["nvar"]+row["ncon"] for _, row in df.iterrows() if row["model"] == model],
     "nvarnode":            lambda df, times, model: [row["nvar"]*row["nnode-nl-nonlinear"] for _, row in df.iterrows() if row["model"] == model],
     "nvarfunction":        lambda df, times, model: [row["nvar"]*times[row["model"], row["method"]].function for _, row in df.iterrows() if row["model"] == model],
     "nnz-total":           lambda df, times, model: [2*row["nnz"] + row["nnz-hessian"] for _, row in df.iterrows() if row["model"] == model],
+    "nnz-per-varcon":      lambda df, times, model: [(2*row["nnz"] + row["nnz-hessian"])/(row["nvar"] + row["ncon"]) for _, row in df.iterrows() if row["model"] == model],
+    "nnz-per-dense":       lambda df, times, model: [(2*row["nnz"] + row["nnz-hessian"])/(row["nvar"] + row["ncon"])**2 for _, row in df.iterrows() if row["model"] == model],
 }
 
 
@@ -53,6 +55,8 @@ XTYPE_GETTER = {
     "hessian": "nonlinear-nodecount",
     #"other": "nvarcon",
     "other": "nnz-total",
+    #"other": "nnz-per-varcon",
+    #"other": "nnz-per-dense",
 }
 
 
