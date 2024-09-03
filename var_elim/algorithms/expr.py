@@ -18,20 +18,27 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+from pyomo.common.timing import TicTocTimer
 from pyomo.core.expr.numvalue import NumericValue
 from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.objective import Objective
-from pyomo.core.base.expression import Expression
+from pyomo.core.base.expression import ExpressionData
+from pyomo.repn.ampl import AMPLRepnVisitor, NLFragment
 from pyomo.repn.plugins.nl_writer import (
-    AMPLRepnVisitor, AMPLRepn, text_nl_template, NLFragment
+    AMPLRepn,
 )
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
-
 
 import pyomo
 pyomo_version = pyomo.version.version_info[:3]
 pyomo_ge_673 = pyomo_version >= (6, 7, 3)
+pyomo_ge_680 = pyomo_version >= (6, 8, 0)
+
+from collections import namedtuple
+# I don't really care about the constant node. We either have zero or one
+# constant nodes... not a huge difference.
+NodeCount = namedtuple("NodeCount", ["linear", "nonlinear"])
 
 
 class NodeCounter(StreamBasedExpressionVisitor):
@@ -47,7 +54,16 @@ class NodeCounter(StreamBasedExpressionVisitor):
 
     def initializeWalker(self, expr):
         self.count = 0
-        return True, expr
+        if (
+            expr.is_named_expression_type()
+            and not self._descend_into_named_expressions
+        ):
+            self.count += 1
+            # self.count is returned as the result of this walk. We increment
+            # here as enterNode is not called.
+            return False, self.count
+        else:
+            return True, None
 
     def beforeChild(self, parent, child, idx):
         if (
@@ -100,27 +116,39 @@ def count_model_nodes(
         symbolic_solver_labels = False
         export_defined_variables = True
         sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-        visitor_args = (
-            text_nl_template,
-            subexpression_cache,
-            #subexpression_order,
-            external_functions,
-            var_map,
-            used_named_expressions,
-            symbolic_solver_labels,
-            export_defined_variables,
-            sorter,
-        ) if pyomo_ge_673 else (
-            text_nl_template,
-            subexpression_cache,
-            subexpression_order,
-            external_functions,
-            var_map,
-            used_named_expressions,
-            symbolic_solver_labels,
-            export_defined_variables,
-            sorter,
-        )
+        if pyomo_ge_680:
+            visitor_args = (
+                subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        elif pyomo_ge_673:
+            visitor_args = (
+                text_nl_template,
+                subexpression_cache,
+                subexpression_order,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        else:
+            visitor_args = (
+                text_nl_template,
+                subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
         visitor = AMPLRepnVisitor(*visitor_args)
     else:
         visitor = NodeCounter(descend_into_named_expressions=False)
@@ -201,6 +229,10 @@ def count_model_nodes(
             # lots of named expressions.
             visitor.named_expr_map.clear()
             visitor.named_expressions = []
+            # We "already counted" the named expression node itself, so we just
+            # count the expression that defines it here. Since we have
+            # visitor._descend_into_named_expressions==False, counting the
+            # expression itself would give us a trivial result.
             count += visitor.walk_expression(named_expr.expr)
 
             # Add new expressions to the "global set"
@@ -215,6 +247,7 @@ def count_model_nodes(
                     encountered_expr_ids.add(e_id)
                     # need to link the id to the actual expression
                     expr_stack.append(new_expr)
+        # Are we double-counting expressions here?
 
     return count
 
@@ -223,7 +256,6 @@ def count_amplrepn_nodes(
     expr,
     export_defined_variables=True,
     expression_cache=None,
-    linear_only=False,
     visitor=None
 ):
     """
@@ -242,17 +274,119 @@ def count_amplrepn_nodes(
         used_named_expressions = set()
         symbolic_solver_labels = False
         sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+        if pyomo_ge_680:
+            visitor_args = (
+                local_subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        elif pyomo_ge_673:
+            visitor_args = (
+                text_nl_template,
+                local_subexpression_cache,
+                subexpression_order,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        else:
+            visitor_args = (
+                text_nl_template,
+                local_subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        visitor = AMPLRepnVisitor(*visitor_args)
+    AMPLRepn.ActiveVisitor = visitor
+    try:
+        repn = visitor.walk_expression((expr, None, 0, 1.0))
+        local_subexpression_cache = visitor.subexpression_cache
+    finally:
+        AMPLRepn.ActiveVisitor = None
+
+    n_linear_nodes = len(repn.linear)
+
+    if repn.nonlinear is not None:
+        # We count nonlinear nodes by counting the number of newlines in the
+        # nl string.
+        #
+        # NOTE: As of Pyomo 6.7.3, variables nodes in the nl template string
+        # (i.e. "%s") no longer have newlines appended. We now need to count these
+        # substrings as well.
+        n_nonlinear_nodes = (
+            repn.nonlinear[0].count("\n")
+            + repn.nonlinear[0].count("%s")
+        )
+    else:
+        n_nonlinear_nodes = 0
+
+    if (
+        expression_cache is not None
+        and export_defined_variables
+        and repn.named_exprs # Is not None or an empty set
+    ):
+        # NOTE: To deal with the splitting of subexpressions between NLFragments
+        # and linear parts, we need to only update the cache with subexpressions
+        # that are actually used.
+        # The possibilities are:
+        # - the subexpression participates nonlinearly => add NLFragment and expression
+        # - The subexpression participates linearly => add only NLFragment
+        used_local_subexpressions = {}
+        for e_id in repn.named_exprs:
+            # Is e_id guaranteed to exist in this cache? I believe so.
+            data = local_subexpression_cache[e_id]
+            if isinstance(data[0], ExpressionData):
+                used_local_subexpressions[e_id] = data
+            elif isinstance(data[0], NLFragment):
+                # A new NLFragment is constructed every time we encounter
+                # the same subexpression, so using the id as a key will result
+                # in this expression be counted multiple times. We need a key
+                # that is unique to this expression, so we use the NLFragment's
+                # name, which is e.g. "nl(subexpression[1])"
+                # The key doesn't really matter here, as we'll iterate over
+                # the values later to count the subexpression nodes.
+                used_local_subexpressions[data[0].name] = data
+            else:
+                raise TypeError(f"Unrecognized expression type {data[0].__class__}")
+        expression_cache.update(used_local_subexpressions)
+
+    nodecount = NodeCount(n_linear_nodes, n_nonlinear_nodes)
+    return nodecount
+
+
+def count_model_amplrepn_nodes(model, **kwds):
+    # Initialize walker
+    subexpression_cache = {}
+    subexpression_order = []
+    external_functions = {}
+    var_map = {}
+    used_named_expressions = set()
+    symbolic_solver_labels = False
+    export_defined_variables = True
+    sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
+    if pyomo_ge_680:
         visitor_args = (
-            text_nl_template,
-            local_subexpression_cache,
-            #subexpression_order,
+            subexpression_cache,
             external_functions,
             var_map,
             used_named_expressions,
             symbolic_solver_labels,
             export_defined_variables,
             sorter,
-        ) if pyomo_ge_673 else (
+        )
+    elif pyomo_ge_673:
+        visitor_args = (
             text_nl_template,
             subexpression_cache,
             subexpression_order,
@@ -263,45 +397,71 @@ def count_amplrepn_nodes(
             export_defined_variables,
             sorter,
         )
-        visitor = AMPLRepnVisitor(*visitor_args)
-    AMPLRepn.ActiveVisitor = visitor
-    try:
-        repn = visitor.walk_expression((expr, None, 0, 1.0))
-    finally:
-        AMPLRepn.ActiveVisitor = None
+    else:
+        visitor_args = (
+            text_nl_template,
+            subexpression_cache,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
+    visitor = AMPLRepnVisitor(*visitor_args)
 
-    count = 0
-
-    if repn.const != 0.0:
-        # Add the nodes for the +(const) operation
-        count += 2
-
-    # We model each linear term as +(*(coef, var)), which is four nodes
-    count += max(
-        0,
-        # Subtract one as, for n terms, we only need n-1 (+) operations
-        4 * len([vid for vid, coef in repn.linear.items() if coef != 0.0]) - 1,
+    component_exprs = (
+        [con.body for con in model.component_data_objects(Constraint, active=True)]
+        + [obj.expr for obj in model.component_data_objects(Objective, active=True)]
     )
+    n_linear_nodes = 0
+    n_nonlinear_nodes = 0
 
-    if not linear_only:
-        # If we only want to count linear nodes, we ignore the nonlinear
-        # subexpression. We also ignore named subexpressions, as these are only
-        # ever referenced in the nonlinear portion of the constraint expression.
+    # We'll build up a new cache of subexpressions, out of only the subexpressions
+    # that are actually used
+    used_expr_cache = {}
+    for expr in component_exprs:
+        nodecount = count_amplrepn_nodes(
+            expr,
+            # NOTE: This is too slow if I don't pass in the visitor here
+            visitor=visitor,
+            export_defined_variables=True,
+            expression_cache=used_expr_cache,
+            **kwds,
+        )
+        # Note that these linear nodes include any linear nodes from subexpressions
+        # that participate linearly in this component.
+        n_linear_nodes += nodecount.linear
+        n_nonlinear_nodes += nodecount.nonlinear
 
-        if repn.nonlinear is not None:
-            if count > 0:
-                # Add one node for the (+) that connects the linear and nonlinear
-                # subexpressions. This is only necessary if we have some constant
-                # or linear subexpression.
-                count += 1
-            # Each line is a new node in the nonlinear expression
-            count += repn.nonlinear[0].count("\n")
+    expr_cache = used_expr_cache
+    expr_ids = list(expr_cache)
 
-        if (
-            expression_cache is not None
-            and export_defined_variables
-            and repn.named_exprs # Is not an empty set
-        ):
-            expression_cache.update(local_subexpression_cache)
+    for data in expr_cache.values():
+        e_obj, repn, _ = data
+        if isinstance(e_obj, NLFragment):
+            # NLFragment should never have a linear part
+            assert repn.linear is None
+            # NLFragment should always have a nonlinear part
+            assert repn.nonlinear is not None
+            n_nonlinear_nodes += (
+                repn.nonlinear[0].count("\n")
+                + repn.nonlinear[0].count("%s")
+            )
+        elif isinstance(e_obj, ExpressionData):
+            # We are using the full expression. This means it appears nonlinearly
+            # somewhere.
+            # We count linear terms and nonlinear nodes equally as nonlinear nodes
+            # in the parent expression
+            if repn.linear is not None:
+                n_nonlinear_nodes += len(repn.linear)
+            if repn.nonlinear is not None:
+                n_nonlinear_nodes += (
+                    repn.nonlinear[0].count("\n")
+                    + repn.nonlinear[0].count("%s")
+                )
+        else:
+            raise TypeError(f"Unrecognized expression type {e_obj.__class__}")
 
-    return count
+    model_nodecount = NodeCount(n_linear_nodes, n_nonlinear_nodes)
+    return model_nodecount
