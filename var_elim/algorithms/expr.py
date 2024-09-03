@@ -24,14 +24,16 @@ from pyomo.core.expr.visitor import StreamBasedExpressionVisitor
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.objective import Objective
 from pyomo.core.base.expression import ExpressionData
+from pyomo.repn.ampl import AMPLRepnVisitor, NLFragment
 from pyomo.repn.plugins.nl_writer import (
-    AMPLRepnVisitor, AMPLRepn, text_nl_template, NLFragment
+    AMPLRepn,
 )
 from pyomo.repn.util import FileDeterminism, FileDeterminism_to_SortComponents
 
 import pyomo
 pyomo_version = pyomo.version.version_info[:3]
 pyomo_ge_673 = pyomo_version >= (6, 7, 3)
+pyomo_ge_680 = pyomo_version >= (6, 8, 0)
 
 from collections import namedtuple
 # I don't really care about the constant node. We either have zero or one
@@ -114,27 +116,39 @@ def count_model_nodes(
         symbolic_solver_labels = False
         export_defined_variables = True
         sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-        visitor_args = (
-            text_nl_template,
-            subexpression_cache,
-            #subexpression_order,
-            external_functions,
-            var_map,
-            used_named_expressions,
-            symbolic_solver_labels,
-            export_defined_variables,
-            sorter,
-        ) if pyomo_ge_673 else (
-            text_nl_template,
-            subexpression_cache,
-            subexpression_order,
-            external_functions,
-            var_map,
-            used_named_expressions,
-            symbolic_solver_labels,
-            export_defined_variables,
-            sorter,
-        )
+        if pyomo_ge_680:
+            visitor_args = (
+                subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        elif pyomo_ge_673:
+            visitor_args = (
+                text_nl_template,
+                subexpression_cache,
+                subexpression_order,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        else:
+            visitor_args = (
+                text_nl_template,
+                subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
         visitor = AMPLRepnVisitor(*visitor_args)
     else:
         visitor = NodeCounter(descend_into_named_expressions=False)
@@ -260,27 +274,39 @@ def count_amplrepn_nodes(
         used_named_expressions = set()
         symbolic_solver_labels = False
         sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-        visitor_args = (
-            text_nl_template,
-            local_subexpression_cache,
-            #subexpression_order,
-            external_functions,
-            var_map,
-            used_named_expressions,
-            symbolic_solver_labels,
-            export_defined_variables,
-            sorter,
-        ) if pyomo_ge_673 else (
-            text_nl_template,
-            subexpression_cache,
-            subexpression_order,
-            external_functions,
-            var_map,
-            used_named_expressions,
-            symbolic_solver_labels,
-            export_defined_variables,
-            sorter,
-        )
+        if pyomo_ge_680:
+            visitor_args = (
+                local_subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        elif pyomo_ge_673:
+            visitor_args = (
+                text_nl_template,
+                local_subexpression_cache,
+                subexpression_order,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
+        else:
+            visitor_args = (
+                text_nl_template,
+                local_subexpression_cache,
+                external_functions,
+                var_map,
+                used_named_expressions,
+                symbolic_solver_labels,
+                export_defined_variables,
+                sorter,
+            )
         visitor = AMPLRepnVisitor(*visitor_args)
     AMPLRepn.ActiveVisitor = visitor
     try:
@@ -349,27 +375,39 @@ def count_model_amplrepn_nodes(model, **kwds):
     symbolic_solver_labels = False
     export_defined_variables = True
     sorter = FileDeterminism_to_SortComponents(FileDeterminism.ORDERED)
-    visitor_args = (
-        text_nl_template,
-        subexpression_cache,
-        #subexpression_order,
-        external_functions,
-        var_map,
-        used_named_expressions,
-        symbolic_solver_labels,
-        export_defined_variables,
-        sorter,
-    ) if pyomo_ge_673 else (
-        text_nl_template,
-        subexpression_cache,
-        subexpression_order,
-        external_functions,
-        var_map,
-        used_named_expressions,
-        symbolic_solver_labels,
-        export_defined_variables,
-        sorter,
-    )
+    if pyomo_ge_680:
+        visitor_args = (
+            subexpression_cache,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
+    elif pyomo_ge_673:
+        visitor_args = (
+            text_nl_template,
+            subexpression_cache,
+            subexpression_order,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
+    else:
+        visitor_args = (
+            text_nl_template,
+            subexpression_cache,
+            external_functions,
+            var_map,
+            used_named_expressions,
+            symbolic_solver_labels,
+            export_defined_variables,
+            sorter,
+        )
     visitor = AMPLRepnVisitor(*visitor_args)
 
     component_exprs = (
