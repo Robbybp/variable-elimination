@@ -53,6 +53,7 @@ ELIM_CALLBACKS = [
     ("matching", matching_elim_callback),
 ]
 ELIM_LOOKUP = dict(ELIM_CALLBACKS)
+ELIM_NAMES = [name for name, _ in ELIM_CALLBACKS]
 
 MODEL_NAMES = [
     # These names are used in the "model" column in dataframes, or in the
@@ -106,20 +107,31 @@ def get_optimization_solver():
     return solver
 
 
+def get_basename(basename, *suffixes):
+    if not basename.endswith(".csv") and not basename.endswith(".CSV"):
+        raise ValueError("basename must end with .csv or .CSV")
+    name_noext = basename[:-4]
+    ext = basename[-4:]
+    suffix = "".join(["-" + s for s in suffixes if s is not None])
+    name = name_noext + suffix + ext
+    return name
+
+
+def validate_dir(name):
+    if os.path.isfile(name):
+        raise OSError(f"Default directory {name} is already a file")
+    elif not os.path.isdir(name):
+        os.mkdir(name)
+
+
 def get_results_dir():
     resdir = os.path.join(filedir, "results")
-    if os.path.isfile(resdir):
-        raise OSError(f"Default results directory {resdir} is already a file")
-    elif not os.path.isdir(resdir):
-        os.mkdir(resdir)
+    validate_dir(resdir)
     return resdir
 
 def get_image_dir():
     plotdir = os.path.join(filedir, "images")
-    if os.path.isfile(plotdir):
-        raise OSError(f"Default image directory {plotdir} is already a file")
-    elif not os.path.isdir(plotdir):
-        os.mkdir(plotdir)
+    validate_dir(plotdir)
     return plotdir
 
 def get_argparser():
@@ -132,6 +144,15 @@ def get_argparser():
         help=(
             "Model to analyze or use for parameter sweep (optional). Options are: "
             + model_list_str
+        ),
+    )
+    elim_list_str = ", ".join(ELIM_NAMES)
+    argparser.add_argument(
+        "--method",
+        default=None,
+        help=(
+            f"Method to apply. Options are: {elim_list_str}. Default (None) loops"
+            " over all methods."
         ),
     )
     argparser.add_argument("--no-save", action="store_true", help="Don't save results")
@@ -154,6 +175,13 @@ def get_sweep_argparser():
         type=int,
         default=11,
         help="Number of samples per parameter in parameter sweep"
+    )
+    argparser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        # TODO: Allow subset of samples
+        help="Index of sample to run (default, None, runs all samples)",
     )
     return argparser
 
