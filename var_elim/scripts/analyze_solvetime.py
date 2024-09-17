@@ -79,8 +79,6 @@ def solve_reduced(m, tee=True, callback=matching_elim_callback):
 
 
 def main(args):
-    horizon = 300
-    nfe = 300
     if args.model is not None:
         models = [(args.model, config.CONSTRUCTOR_LOOKUP[args.model])]
     else:
@@ -90,7 +88,11 @@ def main(args):
         model_names = ["distill", "mb-steady", "opf", "pipeline"]
         models = [(name, config.CONSTRUCTOR_LOOKUP[name]) for name in model_names]
 
-    elim_callbacks = config.ELIM_CALLBACKS
+    if args.method is None:
+        elim_callbacks = config.ELIM_CALLBACKS
+    else:
+        elim_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
+
     solvers = []
     solver = config.get_optimization_solver()
     solvers.append(solver)
@@ -241,8 +243,9 @@ def main(args):
     print(htimer)
 
     df = pd.DataFrame(data)
-    suffix = "" if args.suffix is None else "-" + args.suffix
-    fname = f"solvetime{suffix}.csv" if args.fname is None else args.fname
+    suffixes = [args.model, args.method, args.suffix]
+    fname = config.get_basename("solvetime.csv", *suffixes)
+    fpath = os.path.join(args.results_dir, fname)
     print(df)
     if not args.no_save:
         fpath = os.path.join(args.results_dir, fname)
@@ -257,5 +260,24 @@ if __name__ == "__main__":
         default=None,
         help="Basename for file to write results to",
     )
+    # HACK: We change the default of the argparser so we can handle it specially
+    # if --method or --model are used.
+    # It's unclear whether this hack will be worth the convenience, but let's try it.
+    argparser.set_defaults(results_dir=None)
+
     args = argparser.parse_args()
+
+    if args.results_dir is None:
+        if args.method is None and args.model is None:
+            # If neither method nor model is used (we are collecting all results)
+            # we put results in the top-level results directory.
+            args.results_dir = config.get_results_dir()
+        else:
+            # If either method or model is used, we put the results in the
+            # results/structure subdirectory. This is because we don't want the
+            # top-level results getting polluted with a bunch of files.
+            resdir = os.path.join(config.get_results_dir(), "solvetime")
+            config.validate_dir(resdir)
+            args.results_dir = resdir
+
     main(args)

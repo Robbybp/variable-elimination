@@ -57,7 +57,10 @@ testset = pselib.TestSet()
 
 def main(args):
 
-    elimination_callbacks = config.ELIM_CALLBACKS
+    if args.method is None:
+        elimination_callbacks = config.ELIM_CALLBACKS
+    else:
+        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
 
     if args.model is None:
         raise RuntimeError("--model argument must be provided for parameter sweep")
@@ -150,6 +153,7 @@ def main(args):
                 results = SolveResults(pyo.value(obj), valid, timer)
                 # Should runner check that solved is bool?
                 return solved, results
+
             runner = SequentialSweepRunner(
                 build_model=problem.create_instance,
                 run_model=run_model,
@@ -192,6 +196,8 @@ def main(args):
             print(f"Sweep data for {problem_name}-{elim_name}:")
             print(sweep_data_df)
 
+            # TODO: Update this naming convention for consistency with structure
+            # and solvetime. This will require an update to the plotting script.
             suffix = "" if args.suffix is None else "-" + args.suffix
             fname = f"{problem_name}-{elim_name}-sweep{suffix}.csv"
             fpath = os.path.join(args.results_dir, fname)
@@ -208,5 +214,25 @@ def main(args):
 
 if __name__ == "__main__":
     argparser = config.get_sweep_argparser()
+
+    # HACK: We change the default of the argparser so we can handle it specially
+    # if --method or --model are used.
+    # It's unclear whether this hack will be worth the convenience, but let's try it.
+    argparser.set_defaults(results_dir=None)
+
     args = argparser.parse_args()
+
+    if args.results_dir is None:
+        if args.method is None and args.model is None:
+            # If neither method nor model is used (we are collecting all results)
+            # we put results in the top-level results directory.
+            args.results_dir = config.get_results_dir()
+        else:
+            # If either method or model is used, we put the results in the
+            # results/structure subdirectory. This is because we don't want the
+            # top-level results getting polluted with a bunch of files.
+            resdir = os.path.join(config.get_results_dir(), "sweep")
+            config.validate_dir(resdir)
+            args.results_dir = resdir
+
     main(args)
