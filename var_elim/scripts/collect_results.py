@@ -64,7 +64,12 @@ def main(args):
         print(fpath)
     print()
 
-    suff_str = "" if args.suffix is None else f"-{args.suffix}"
+    suff_str = ""
+    if args.suffix is not None:
+        suff_str = f"-{args.suffix}"
+    if args.output_suffix is not None:
+        # output-suffix overrides suffix
+        suff_str = f"-{args.output_suffix}"
     output_fname = args.result_type + suff_str + ".csv"
     output_fpath = os.path.join(config.get_results_dir(), output_fname)
 
@@ -87,6 +92,14 @@ if __name__ == "__main__":
         "--by",
         help="Filenames specified by model, method, or both",
         default="both",
+    )
+    argparser.add_argument(
+        "--output-suffix",
+        help=(
+            "Suffix to apply to the collected result file. This is useful when we don't"
+            " want to overwrite an existing result file, e.g. that was run in serial"
+        ),
+        default=None,
     )
 
     # HACK: We change the default of the argparser so we can handle it specially
