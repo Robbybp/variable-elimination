@@ -68,12 +68,16 @@ def main(args):
     output_fname = args.result_type + suff_str + ".csv"
     output_fpath = os.path.join(config.get_results_dir(), output_fname)
 
-    df = pd.read_csv(files[0])
-    for fname in files[1:]:
-        file_df = pd.read_csv(fname)
-        # - make sure dataframes have same columns
-        # - concatenate rows of dataframes
-    #df.to_csv(output_fname)
+    dfs = [pd.read_csv(fpath) for fpath in fpaths]
+    output_df = pd.concat(dfs, ignore_index=True, join="inner")
+    if not all(all(output_df.columns == df.columns) for df in dfs):
+        raise RuntimeError(
+            "Columns changed as a result of inner join."
+            " At least one dataframe is missing a column"
+        )
+    if not args.no_save:
+        print(f"Writing combined dataframe to {output_fpath}")
+        output_df.to_csv(output_fpath)
 
 
 if __name__ == "__main__":
