@@ -30,6 +30,7 @@ script_lookup = dict(
     solvetime="analyze_solvetime.py",
     sweep="run_param_sweep.py",
 )
+script_lookup["plot-sweep"] = "plot_sweep_results.py"
 
 
 def main(args):
@@ -53,26 +54,39 @@ def main(args):
     if args.method is not None:
         elim_names = [args.method]
 
-    if args.by == "both":
-        cl_lists = [
-            ["python", scriptname, f"--model={mname}", f"--method={ename}"]
+    if args.result_type != "plot-sweep":
+        if args.by == "both":
+            cl_lists = [
+                ["python", scriptname, f"--model={mname}", f"--method={ename}"]
+                for mname in model_names
+                for ename in elim_names
+            ]
+        elif args.by == "model":
+            cl = ["python", scriptname]
+            if args.method is not None:
+                cl.append(f"--method={args.method}")
+            cl_lists = [cl + [f"--model={mname}"] for mname in model_names]
+        elif args.by == "method":
+            cl = ["python", scriptname]
+            if args.model is not None:
+                cl.append(f"--model={args.model}")
+            cl_lists = [cl + [f"--method={ename}"] for ename in elim_names]
+
+        if args.suffix is not None:
+            for cl in cl_lists:
+                cl.append(f"--suffix={args.suffix}")
+    else:
+        results_dir = os.path.join(os.path.dirname(__file__), "results", "sweep")
+        suff_str = "" if args.suffix is None else f"-{args.suffix}"
+        results_fnames = [
+            f"{mname}-{ename}-sweep{suff_str}.csv"
             for mname in model_names
             for ename in elim_names
         ]
-    elif args.by == "model":
-        cl = ["python", scriptname]
-        if args.method is not None:
-            cl.append(f"--method={args.method}")
-        cl_lists = [cl + [f"--model={mname}"] for mname in model_names]
-    elif args.by == "method":
-        cl = ["python", scriptname]
-        if args.model is not None:
-            cl.append(f"--model={args.model}")
-        cl_lists = [cl + [f"--method={ename}"] for ename in elim_names]
-
-    if args.suffix is not None:
-        for cl in cl_lists:
-            cl.append(f"--suffix={args.suffix}")
+        results_fpaths = [os.path.join(results_dir, fname) for fname in results_fnames]
+        # TODO: Allow more arguments to propagate to the command lines we write.
+        # Maybe this should be handled in its own script?
+        cl_lists = [["python", scriptname, fpath] for fpath in results_fpaths]
 
     command_lines = [" ".join(cl) for cl in cl_lists]
 
