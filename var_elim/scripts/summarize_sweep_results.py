@@ -73,9 +73,9 @@ def main(args):
         "ave-solve-time": [],
     }
     for elimname, _ in elimination_callbacks:
-        if elimname == "ampl":
-            # TODO: Actually run this sweep
-            continue
+        #if elimname == "ampl":
+        #    # TODO: Actually run this sweep
+        #    continue
         fname = args.model + "-" + elimname + "-sweep" + suff_str + ".csv"
         fpath = os.path.join(args.results_dir, fname)
         df = pd.read_csv(fpath)
