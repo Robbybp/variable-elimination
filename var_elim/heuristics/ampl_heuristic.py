@@ -26,10 +26,13 @@ from pyomo.core.expr.current import EqualityExpression
 import random
 
 
-def identify_vars_for_elim_ampl(m, 
-                                randomize = False, 
-                                eliminate_bounded_vars = False, 
-                                eliminate_linear_cons_only = False):
+def identify_vars_for_elim_ampl(
+    m, 
+    randomize=False, 
+    eliminate_bounded_vars=False, 
+    eliminate_linear_cons_only=False,
+    first_variable_only=True,
+):
     """Identify defined variables and defining constraints via the heuristic
     from the AMPL preprocessor
 
@@ -48,11 +51,11 @@ def identify_vars_for_elim_ampl(m,
     for c in m.component_data_objects(Constraint, active=True):
         if isinstance(c.expr, EqualityExpression):
             cons.append(c)
-    
+
     #Shuffle constraints for randomizing constraint order
     if randomize == True:
         random.shuffle(cons)
-   
+
     # Identify variables of the type ===> coef*v (+/-) expr = 0
     var_list = []
     con_list = []
@@ -67,23 +70,30 @@ def identify_vars_for_elim_ampl(m,
 
         nonlinear_vars = ComponentSet(repn.nonlinear_vars)
 
-        if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
-            pass
-        elif not eliminate_bounded_vars and (expr_vars[0].lb is not None or expr_vars[0].ub is not None):
-            pass
-        elif expr_vars[0] in nonlinear_vars:
-            pass
-        elif eliminate_linear_cons_only and len(nonlinear_vars) != 0:
-            pass
-        elif id(expr_vars[0]) not in defining_var_ids:
-            if expr_vars[0] in linear_vars:
-                var_list.append(expr_vars[0])
-                con_list.append(c)
-                for var in expr_vars:
-                    defining_var_ids.add(id(var))
-
-                # This will add all vars from the expression to the defining vars list
-                # This works because we anyways don't want to eliminate the same var twice
-                # using 2 different constraints
+        if first_variable_only:
+            variables = [expr_vars[0]]
+        else:
+            variables = expr_vars
+        for var in variables:
+            if var.domain is Integers or var.domain is Binary:
+                pass
+            elif not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
+                pass
+            elif var in nonlinear_vars:
+                pass
+            elif eliminate_linear_cons_only and len(nonlinear_vars) != 0:
+                pass
+            elif id(var) not in defining_var_ids:
+                if var in linear_vars:
+                    var_list.append(var)
+                    con_list.append(c)
+                    # This will add all vars from the expression to the defining vars list
+                    # This works because we anyways don't want to eliminate the same var twice
+                    # using 2 different constraints
+                    for var in expr_vars:
+                        defining_var_ids.add(id(var))
+                    # If we have found a variable to eliminate, go to the next
+                    # constraint
+                    break
 
     return var_list, con_list
