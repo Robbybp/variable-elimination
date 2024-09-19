@@ -99,8 +99,12 @@ def main(args):
             sweep.set_sample_size(sample_sizes)
             sweep.generate_samples()
 
-            print("Samples:")
-            print(sweep.samples)
+            print("Samples: (indices are base-0)")
+            if args.sample is None:
+                print(sweep.samples)
+            else:
+                print(pd.DataFrame(sweep.samples.loc[args.sample-1]).transpose())
+
             # Why is this necessary? It seems like a reasonable default could
             # just return results
             def build_outputs(model, results):
@@ -165,11 +169,20 @@ def main(args):
                 build_outputs=build_outputs,
             )
 
-            runner.execute_parameter_sweep()
+            if args.sample is None:
+                # If a sample was not provided, run the entire sweep
+                runner.execute_parameter_sweep()
+                samples = sweep.samples
+                results = runner.results
+            else:
+                # If a sample was provided, only run the sample.
+                s = args.sample - 1
+                sresults, success, error = runner.execute_single_sample(s)
+                # Mock up our own samples/results data structures
+                samples = pd.DataFrame(sweep.samples.loc[s]).transpose()
+                results = {s: dict(results=sresults, success=success, error=error)}
 
-            sweep_results_lookup[problem_name, elim_name] = (
-                sweep.samples, runner.results
-            )
+            sweep_results_lookup[problem_name, elim_name] = (samples, results)
 
     n_converged_lookup = {}
     for problem_name, problem in problems:
@@ -193,21 +206,31 @@ def main(args):
 
             sweep_data_df = pd.DataFrame(sweep_data_df)
 
-            print(f"Sweep data for {problem_name}-{elim_name}:")
+            print(f"Sweep data for {problem_name}-{elim_name} (indices are base-0):")
             print(sweep_data_df)
 
+            suffix = ""
+            if args.sample is not None:
+                n_instances_total = args.nsamples ** len(problem.parameters)
+                # Note that, to collect these files, I will need to know how many
+                # samples I expect.
+                suffix += f"-{args.sample}of{n_instances_total}"
+            if args.suffix is not None:
+                suffix += f"-{args.suffix}"
             # TODO: Update this naming convention for consistency with structure
             # and solvetime. This will require an update to the plotting script.
-            suffix = "" if args.suffix is None else "-" + args.suffix
             fname = f"{problem_name}-{elim_name}-sweep{suffix}.csv"
             fpath = os.path.join(args.results_dir, fname)
             if not args.no_save:
+                print(f"Writing parameter sweep results to {fpath}")
                 sweep_data_df.to_csv(fpath)
 
     # TODO: Write a sweep summary dataframe.
+    # Should we only do this if args.sample is None?
     for problem_name, problem in problems:
-        n_instances = args.nsamples ** len(problem.parameters)
         for elim_name, _ in elimination_callbacks:
+            samples, results = sweep_results_lookup[problem_name, elim_name]
+            n_instances = len(samples)
             n_converged = n_converged_lookup[problem_name, elim_name]
             print(f"{problem_name}-{elim_name} converged {n_converged} / {n_instances} instances")
 

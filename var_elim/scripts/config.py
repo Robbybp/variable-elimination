@@ -129,6 +129,11 @@ def get_results_dir():
     validate_dir(resdir)
     return resdir
 
+def get_commands_dir():
+    comdir = os.path.join(filedir, "commands")
+    validate_dir(comdir)
+    return comdir
+
 def get_image_dir():
     plotdir = os.path.join(filedir, "images")
     validate_dir(plotdir)
@@ -180,8 +185,7 @@ def get_sweep_argparser():
         "--sample",
         type=int,
         default=None,
-        # TODO: Allow subset of samples
-        help="Index of sample to run (default, None, runs all samples)",
+        help="Index (base-1) of sample to run (default, None, runs all samples)",
     )
     return argparser
 
