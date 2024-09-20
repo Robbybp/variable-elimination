@@ -34,8 +34,10 @@ script_lookup["plot-sweep"] = "plot_sweep_results.py"
 
 def main(args):
     if args.model is None:
-        mnames = config.MODEL_NAMES
+        mnames = list(config.TESTPROBLEM_LOOKUP.keys())
     else:
+        if args.model not in config.TESTPROBLEM_LOOKUP:
+            raise ValueError("--model must have a test problem")
         mnames = [args.model]
     if args.method is None:
         enames = config.ELIM_NAMES
