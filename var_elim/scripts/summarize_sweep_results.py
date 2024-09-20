@@ -56,7 +56,10 @@ testset = pselib.TestSet()
 
 
 def main(args):
-    elimination_callbacks = config.ELIM_CALLBACKS
+    if args.method is None:
+        elimination_callbacks = config.ELIM_CALLBACKS
+    else:
+        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
 
     if args.model is None:
         raise RuntimeError("--model argument must be provided for parameter sweep")
