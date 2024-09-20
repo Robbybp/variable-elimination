@@ -67,6 +67,13 @@ def main(args):
     # For now, this script is only set up to run with a single test problem at a time
     problems = [(args.model, config.TESTPROBLEM_LOOKUP[args.model])]
 
+    print()
+    print("Running parameter sweep with following arguments")
+    print(f"  model={args.method}")
+    print(f"  method={args.method}")
+    print(f"  nsamples={args.nsamples}")
+    print(f"  sample={args.sample}")
+
     # Annoyingly, the MB problem requires scaling. Because the input parameters
     # will be scaled, we need to do this scaling *after* setting these input
     # parameters. We don't want to unnecessarily try to scale models if it is
