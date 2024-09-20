@@ -47,6 +47,7 @@ def main(args):
     nsamples_total = args.nsamples ** NPARAM
 
     parallel_sweep_commands = []
+    collect_commands = []
     suff_str = "" if args.suffix is None else f"-{args.suffix}"
     for mname in mnames:
         for ename in enames:
@@ -78,20 +79,46 @@ def main(args):
                         f.write(cmd)
 
             parallel_sweep_commands.append(["parallel", "-a", sweep_command_fpath])
+            collect_cmd = [
+                "python",
+                "collect_sweep_results.py",
+                f"--model={mname}",
+                f"--method={ename}",
+            ]
+            if args.suffix is not None:
+                collect_cmd.append(f"--suffix={args.suffix}")
+            if args.output_suffix is not None:
+                collect_cmd.append(f"--output_suffix={args.output_suffix}")
+            collect_commands.append(collect_cmd)
 
     parallel_sweep_commands_str = [" ".join(cmd) + "\n" for cmd in parallel_sweep_commands]
+    collect_commands_str = [" ".join(cmd) + "\n" for cmd in collect_commands]
+
+    collect_commands_fname = "collect-sweep-commands"
+
+    def update_fname_from_args(args, fname):
+        if args.model is not None:
+            fname += f"-{args.model}"
+        if args.method is not None:
+            fname += f"-{args.method}"
+        if args.suffix is not None:
+            fname += f"-{args.suffix}"
+        return fname + ".txt"
+
+    collect_commands_fname = update_fname_from_args(args, collect_commands_fname)
+    collect_commands_fpath = os.path.join(args.commands_dir, collect_commands_fname)
+
+    if not args.no_save:
+        print(f"Writing collect-sweep-results commands to {collect_commands_fpath}")
+        with open(collect_commands_fpath, "w") as f:
+            for cmd in collect_commands_str:
+                f.write(cmd)
 
     if args.model is None or args.method is None:
         # We only write this file full of commands if we are looping over something,
-        # so we don't pollute our directory with useless models.
+        # so we don't pollute our directory with useless files.
         parallel_commands_fname = "parallel-sweep-commands"
-        if args.model is not None:
-            parallel_commands_fname += f"-{args.model}"
-        if args.method is not None:
-            parallel_commands_fname += f"-{args.method}"
-        if args.suffix is not None:
-            parallel_commands_fname += f"-{args.suffix}"
-        parallel_commands_fname += ".txt"
+        parallel_commands_fname = update_fname_from_args(args, parallel_commands_fname)
         parallel_commands_fpath = os.path.join(args.commands_dir, parallel_commands_fname)
 
         if not args.no_save:
@@ -104,6 +131,14 @@ def main(args):
 if __name__ == "__main__":
     argparser = config.get_sweep_argparser()
     argparser.add_argument("--commands-dir", default=None)
+    argparser.add_argument(
+        "--output-suffix",
+        help=(
+            "Suffix to apply to the collected result file. This is useful when we don't"
+            " want to overwrite an existing result file, e.g. that was run in serial"
+        ),
+        default=None,
+    )
     args = argparser.parse_args()
     if args.commands_dir is None:
         args.commands_dir = config.get_commands_dir()
