@@ -79,6 +79,8 @@ def main(args):
 
             parallel_sweep_commands.append(["parallel", "-a", sweep_command_fpath])
 
+    parallel_sweep_commands_str = [" ".join(cmd) + "\n" for cmd in parallel_sweep_commands]
+
     if args.model is None or args.method is None:
         # We only write this file full of commands if we are looping over something,
         # so we don't pollute our directory with useless models.
@@ -90,6 +92,13 @@ def main(args):
         if args.suffix is not None:
             parallel_commands_fname += f"-{args.suffix}"
         parallel_commands_fname += ".txt"
+        parallel_commands_fpath = os.path.join(args.commands_dir, parallel_commands_fname)
+
+        if not args.no_save:
+            print(f"Writing `parallel` commands for parameter sweeps to {parallel_commands_fpath}")
+            with open(parallel_commands_fpath, "w") as f:
+                for cmd in parallel_sweep_commands_str:
+                    f.write(cmd)
 
 
 if __name__ == "__main__":
