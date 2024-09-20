@@ -96,7 +96,11 @@ def main(args):
         sweep_data["ave-elim-time"].append(ave_elimtime)
         sweep_data["ave-solve-time"].append(ave_solvetime)
 
-    output_fname = args.model + "-sweep-summary" + suff_str + ".csv"
+    if args.method is None:
+        method_str = ""
+    else:
+        method_str = f"-{args.method}"
+    output_fname = args.model + method_str + "-sweep-summary" + suff_str + ".csv"
     output_df = pd.DataFrame(sweep_data)
     output_fpath = os.path.join(args.results_dir, output_fname)
     if not args.no_save:
@@ -107,5 +111,25 @@ def main(args):
 
 if __name__ == "__main__":
     argparser = config.get_argparser()
+
+    # HACK: We change the default of the argparser so we can handle it specially
+    # if --method or --model are used.
+    # It's unclear whether this hack will be worth the convenience, but let's try it.
+    argparser.set_defaults(results_dir=None)
+
     args = argparser.parse_args()
+
+    if args.results_dir is None:
+        if args.method is None and args.model is None:
+            # If neither method nor model is used (we are collecting all results)
+            # we put results in the top-level results directory.
+            args.results_dir = config.get_results_dir()
+        else:
+            # If either method or model is used, we put the results in the
+            # results/structure subdirectory. This is because we don't want the
+            # top-level results getting polluted with a bunch of files.
+            resdir = os.path.join(config.get_results_dir(), "sweep")
+            config.validate_dir(resdir)
+            args.results_dir = resdir
+
     main(args)
