@@ -101,11 +101,11 @@ def main(args):
             # Here, --output-suffix overrides suffix, as it does in the output file
             # from collect_sweep_results
             output_suffix_str = suff_str if args.output_suffix is None else f"-{args.output_suffix}"
-            plot_cmd = [
-                "python",
-                "plot_sweep_results.py",
-                f"{mname}-{ename}-sweep{output_suffix_str}.csv",
-            ]
+            result_fname = f"{mname}-{ename}-sweep{output_suffix_str}.csv"
+            # NOTE: Hard-coding that these results are in sweep subdirectory. This
+            # should be handled more systematically.
+            result_fpath = os.path.join(args.results_dir, "sweep", result_fname)
+            plot_cmd = ["python", "plot_sweep_results.py", result_fpath]
             plot_commands.append(plot_cmd)
 
     parallel_sweep_commands_str = [" ".join(cmd) + "\n" for cmd in parallel_sweep_commands]
