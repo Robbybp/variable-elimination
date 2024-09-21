@@ -50,6 +50,7 @@ def main(args):
 
     parallel_sweep_commands = []
     collect_commands = []
+    plot_commands = []
     suff_str = "" if args.suffix is None else f"-{args.suffix}"
     for mname in mnames:
         for ename in enames:
@@ -90,13 +91,28 @@ def main(args):
             if args.suffix is not None:
                 collect_cmd.append(f"--suffix={args.suffix}")
             if args.output_suffix is not None:
+                # Here, we potentially send both --suffix and --output-suffix.
+                # suffix will be used to identify the right input files, while
+                # output-suffix will be used for the output file.
                 collect_cmd.append(f"--output_suffix={args.output_suffix}")
             collect_commands.append(collect_cmd)
 
+            # TODO: Maybe send other arguments to the plotting command?
+            # Here, --output-suffix overrides suffix, as it does in the output file
+            # from collect_sweep_results
+            output_suffix_str = suff_str if args.output_suffix is None else f"-{args.output_suffix}"
+            plot_cmd = [
+                "python",
+                "plot_sweep_results.py",
+                f"{mname}-{ename}-sweep{output_suffix_str}.csv",
+            ]
+            plot_commands.append(plot_cmd)
+
     parallel_sweep_commands_str = [" ".join(cmd) + "\n" for cmd in parallel_sweep_commands]
     collect_commands_str = [" ".join(cmd) + "\n" for cmd in collect_commands]
-
+    plot_commands_str = [" ".join(cmd) + "\n" for cmd in plot_commands]
     collect_commands_fname = "collect-sweep-commands"
+    plot_commands_fname = "plot-sweep-commands"
 
     def update_fname_from_args(args, fname):
         if args.model is not None:
@@ -109,11 +125,17 @@ def main(args):
 
     collect_commands_fname = update_fname_from_args(args, collect_commands_fname)
     collect_commands_fpath = os.path.join(args.commands_dir, collect_commands_fname)
+    plot_commands_fname = update_fname_from_args(args, plot_commands_fname)
+    plot_commands_fpath = os.path.join(args.commands_dir, plot_commands_fname)
 
     if not args.no_save:
         print(f"Writing collect-sweep-results commands to {collect_commands_fpath}")
         with open(collect_commands_fpath, "w") as f:
             for cmd in collect_commands_str:
+                f.write(cmd)
+        print(f"Writing plot-sweep commands to {plot_commands_fpath}")
+        with open(plot_commands_fpath, "w") as f:
+            for cmd in plot_commands_str:
                 f.write(cmd)
 
     if args.model is None or args.method is None:
