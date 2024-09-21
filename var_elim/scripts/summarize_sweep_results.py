@@ -102,7 +102,13 @@ def main(args):
         method_str = f"-{args.method}"
     output_fname = args.model + method_str + "-sweep-summary" + suff_str + ".csv"
     output_df = pd.DataFrame(sweep_data)
-    output_fpath = os.path.join(args.results_dir, output_fname)
+
+    if args.method is None:
+        # If this is the summary for a particular model, we put it in the top-level
+        # results dir.
+        output_fpath = os.path.join(config.get_results_dir(), output_fname)
+    else:
+        output_fpath = os.path.join(args.results_dir, output_fname)
     if not args.no_save:
         print(f"Writing sweep summary to {output_fpath}")
         output_df.to_csv(output_fpath)
