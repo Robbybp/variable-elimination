@@ -60,27 +60,27 @@ def identify_vars_for_elim_ampl(m,
     for c in cons:
         # gets all vars in order from left to right in the constraint expression
         expr_vars = list(identify_variables(c.expr))
-
+        
         # gets linear vars in the constraint expression
         repn = generate_standard_repn(c.body, compute_values=False, quadratic=False)
         linear_vars = ComponentSet(repn.linear_vars)
 
         nonlinear_vars = ComponentSet(repn.nonlinear_vars)
-
-        if expr_vars[0].domain is Integers or expr_vars[0].domain is Binary:
-            pass
-        elif not eliminate_bounded_vars and (expr_vars[0].lb is not None or expr_vars[0].ub is not None):
-            pass
-        elif expr_vars[0] in nonlinear_vars:
-            pass
-        elif eliminate_linear_cons_only and len(nonlinear_vars) != 0:
-            pass
-        elif id(expr_vars[0]) not in defining_var_ids:
-            if expr_vars[0] in linear_vars:
-                var_list.append(expr_vars[0])
-                con_list.append(c)
-                for var in expr_vars:
-                    defining_var_ids.add(id(var))
+        
+        if eliminate_linear_cons_only and len(nonlinear_vars) != 0:
+            pass 
+        else:
+            for var in linear_vars:
+                if not eliminate_bounded_vars and (var.lb is not None or var.ub is not None):
+                    pass
+                elif var in nonlinear_vars:
+                    pass
+                elif id(var) not in defining_var_ids:
+                    var_list.append(var)
+                    con_list.append(c)
+                    for defining_vars in expr_vars:
+                        defining_var_ids.add(id(defining_vars))
+            
 
                 # This will add all vars from the expression to the defining vars list
                 # This works because we anyways don't want to eliminate the same var twice
