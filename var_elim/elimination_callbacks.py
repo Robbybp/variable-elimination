@@ -432,8 +432,15 @@ def ampl_elim_callback(model, **kwds):
     randomize = kwds.pop('randomize', False)
     eliminate_bounded_vars = kwds.pop('eliminate_bounded_vars', True)
     eliminate_linear_cons_only = kwds.pop('eliminate_linear_cons_only', False)
+    first_variable_only = kwds.pop("first_variable_only", False)
     
-    var_elim, con_elim = identify_vars_for_elim_ampl(model, randomize, eliminate_bounded_vars, eliminate_linear_cons_only)
+    var_elim, con_elim = identify_vars_for_elim_ampl(
+        model,
+        randomize=randomize,
+        eliminate_bounded_vars=eliminate_bounded_vars,
+        eliminate_linear_cons_only=eliminate_linear_cons_only,
+        first_variable_only=first_variable_only,
+    )
     if var_elim:
         var_elim, con_elim = define_elimination_order(var_elim, con_elim)
         var_exprs, _, _ = eliminate_variables(
