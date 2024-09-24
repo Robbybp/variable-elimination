@@ -21,7 +21,7 @@
 from pselib.testproblem import PseTestProblemBase
 from var_elim.models.distillation.distill import create_instance as create_distill
 from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
-
+from var_elim.models.desalination.desalination_model import integrated_model_build as create_desalination_model
 
 #
 # Sample test problem implementation
@@ -97,3 +97,22 @@ class PipelineTestProblem(PseTestProblemBase):
                 ntfe = self._ntfe,
                 horizon = self._horizon
         )
+    
+class DesalinationTestProblem(PseTestProblemBase):
+    uid = "DESALINATION"
+    
+    def __init__(self):
+        self._parameters = ["m_treatment.eta", "m_treatment.salt_outlet_spec"]
+        _parameter_range_list = [(0.1, 0.99), (200, 300)]
+        self._parameter_ranges = dict(zip(self._parameters, _parameter_range_list))
+        
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @property
+    def parameter_ranges(self):
+        return self._parameter_ranges
+    
+    def create_instance(self):
+        return create_desalination_model()
