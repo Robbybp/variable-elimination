@@ -57,12 +57,22 @@ testset = pselib.TestSet()
 
 def main(args):
 
-    elimination_callbacks = config.ELIM_CALLBACKS
+    if args.method is None:
+        elimination_callbacks = config.ELIM_CALLBACKS
+    else:
+        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
 
     if args.model is None:
         raise RuntimeError("--model argument must be provided for parameter sweep")
     # For now, this script is only set up to run with a single test problem at a time
     problems = [(args.model, config.TESTPROBLEM_LOOKUP[args.model])]
+
+    print()
+    print("Running parameter sweep with following arguments")
+    print(f"  model={args.method}")
+    print(f"  method={args.method}")
+    print(f"  nsamples={args.nsamples}")
+    print(f"  sample={args.sample}")
 
     # Annoyingly, the MB problem requires scaling. Because the input parameters
     # will be scaled, we need to do this scaling *after* setting these input
@@ -96,8 +106,12 @@ def main(args):
             sweep.set_sample_size(sample_sizes)
             sweep.generate_samples()
 
-            print("Samples:")
-            print(sweep.samples)
+            print("Samples: (indices are base-0)")
+            if args.sample is None:
+                print(sweep.samples)
+            else:
+                print(pd.DataFrame(sweep.samples.loc[args.sample-1]).transpose())
+
             # Why is this necessary? It seems like a reasonable default could
             # just return results
             def build_outputs(model, results):
@@ -150,6 +164,7 @@ def main(args):
                 results = SolveResults(pyo.value(obj), valid, timer)
                 # Should runner check that solved is bool?
                 return solved, results
+
             runner = SequentialSweepRunner(
                 build_model=problem.create_instance,
                 run_model=run_model,
@@ -161,11 +176,20 @@ def main(args):
                 build_outputs=build_outputs,
             )
 
-            runner.execute_parameter_sweep()
+            if args.sample is None:
+                # If a sample was not provided, run the entire sweep
+                runner.execute_parameter_sweep()
+                samples = sweep.samples
+                results = runner.results
+            else:
+                # If a sample was provided, only run the sample.
+                s = args.sample - 1
+                sresults, success, error = runner.execute_single_sample(s)
+                # Mock up our own samples/results data structures
+                samples = pd.DataFrame(sweep.samples.loc[s]).transpose()
+                results = {s: dict(results=sresults, success=success, error=error)}
 
-            sweep_results_lookup[problem_name, elim_name] = (
-                sweep.samples, runner.results
-            )
+            sweep_results_lookup[problem_name, elim_name] = (samples, results)
 
     n_converged_lookup = {}
     for problem_name, problem in problems:
@@ -189,24 +213,56 @@ def main(args):
 
             sweep_data_df = pd.DataFrame(sweep_data_df)
 
-            print(f"Sweep data for {problem_name}-{elim_name}:")
+            print(f"Sweep data for {problem_name}-{elim_name} (indices are base-0):")
             print(sweep_data_df)
 
-            suffix = "" if args.suffix is None else "-" + args.suffix
+            suffix = ""
+            if args.sample is not None:
+                n_instances_total = args.nsamples ** len(problem.parameters)
+                # Note that, to collect these files, I will need to know how many
+                # samples I expect.
+                suffix += f"-{args.sample}of{n_instances_total}"
+            if args.suffix is not None:
+                suffix += f"-{args.suffix}"
+            # TODO: Update this naming convention for consistency with structure
+            # and solvetime. This will require an update to the plotting script.
             fname = f"{problem_name}-{elim_name}-sweep{suffix}.csv"
             fpath = os.path.join(args.results_dir, fname)
             if not args.no_save:
+                print(f"Writing parameter sweep results to {fpath}")
                 sweep_data_df.to_csv(fpath)
 
     # TODO: Write a sweep summary dataframe.
+    # Should we only do this if args.sample is None?
     for problem_name, problem in problems:
-        n_instances = args.nsamples ** len(problem.parameters)
         for elim_name, _ in elimination_callbacks:
+            samples, results = sweep_results_lookup[problem_name, elim_name]
+            n_instances = len(samples)
             n_converged = n_converged_lookup[problem_name, elim_name]
             print(f"{problem_name}-{elim_name} converged {n_converged} / {n_instances} instances")
 
 
 if __name__ == "__main__":
     argparser = config.get_sweep_argparser()
+
+    # HACK: We change the default of the argparser so we can handle it specially
+    # if --method or --model are used.
+    # It's unclear whether this hack will be worth the convenience, but let's try it.
+    argparser.set_defaults(results_dir=None)
+
     args = argparser.parse_args()
+
+    if args.results_dir is None:
+        if args.method is None and args.model is None:
+            # If neither method nor model is used (we are collecting all results)
+            # we put results in the top-level results directory.
+            args.results_dir = config.get_results_dir()
+        else:
+            # If either method or model is used, we put the results in the
+            # results/structure subdirectory. This is because we don't want the
+            # top-level results getting polluted with a bunch of files.
+            resdir = os.path.join(config.get_results_dir(), "sweep")
+            config.validate_dir(resdir)
+            args.results_dir = resdir
+
     main(args)

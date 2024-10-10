@@ -56,7 +56,10 @@ testset = pselib.TestSet()
 
 
 def main(args):
-    elimination_callbacks = config.ELIM_CALLBACKS
+    if args.method is None:
+        elimination_callbacks = config.ELIM_CALLBACKS
+    else:
+        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
 
     if args.model is None:
         raise RuntimeError("--model argument must be provided for parameter sweep")
@@ -73,9 +76,9 @@ def main(args):
         "ave-solve-time": [],
     }
     for elimname, _ in elimination_callbacks:
-        if elimname == "ampl":
-            # TODO: Actually run this sweep
-            continue
+        #if elimname == "ampl":
+        #    # TODO: Actually run this sweep
+        #    continue
         fname = args.model + "-" + elimname + "-sweep" + suff_str + ".csv"
         fpath = os.path.join(args.results_dir, fname)
         df = pd.read_csv(fpath)
@@ -93,9 +96,19 @@ def main(args):
         sweep_data["ave-elim-time"].append(ave_elimtime)
         sweep_data["ave-solve-time"].append(ave_solvetime)
 
-    output_fname = args.model + "-sweep-summary" + suff_str + ".csv"
+    if args.method is None:
+        method_str = ""
+    else:
+        method_str = f"-{args.method}"
+    output_fname = args.model + method_str + "-sweep-summary" + suff_str + ".csv"
     output_df = pd.DataFrame(sweep_data)
-    output_fpath = os.path.join(args.results_dir, output_fname)
+
+    if args.method is None:
+        # If this is the summary for a particular model, we put it in the top-level
+        # results dir.
+        output_fpath = os.path.join(config.get_results_dir(), output_fname)
+    else:
+        output_fpath = os.path.join(args.results_dir, output_fname)
     if not args.no_save:
         print(f"Writing sweep summary to {output_fpath}")
         output_df.to_csv(output_fpath)
@@ -104,5 +117,25 @@ def main(args):
 
 if __name__ == "__main__":
     argparser = config.get_argparser()
+
+    # HACK: We change the default of the argparser so we can handle it specially
+    # if --method or --model are used.
+    # It's unclear whether this hack will be worth the convenience, but let's try it.
+    argparser.set_defaults(results_dir=None)
+
     args = argparser.parse_args()
+
+    if args.results_dir is None:
+        if args.method is None and args.model is None:
+            # If neither method nor model is used (we are collecting all results)
+            # we put results in the top-level results directory.
+            args.results_dir = config.get_results_dir()
+        else:
+            # If either method or model is used, we put the results in the
+            # results/structure subdirectory. This is because we don't want the
+            # top-level results getting polluted with a bunch of files.
+            resdir = os.path.join(config.get_results_dir(), "sweep")
+            config.validate_dir(resdir)
+            args.results_dir = resdir
+
     main(args)
