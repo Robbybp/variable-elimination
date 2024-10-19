@@ -247,7 +247,8 @@ def main(args):
         "nvar": [],
         "ncon": [],
         "n-elim": [],
-        "n-elim-bound": [],
+        "n-elim-ub": [],
+        "n-elim-lb": [],
         "nnz": [],
         "nnz-linear": [],
         "nnz-hessian": [],
@@ -315,7 +316,8 @@ def main(args):
         data["nvar"].append(results.reduced.nvar)
         data["ncon"].append(results.reduced.ncon)
         data["n-elim"].append(n_elim)
-        data["n-elim-bound"].append(results.elim.upper_bound)
+        data["n-elim-ub"].append(int(results.elim.upper_bound))
+        data["n-elim-lb"].append(int(results.elim.lower_bound))
         data["nnz"].append(results.reduced.nnz)
         data["nnz-linear"].append(results.reduced.nnz_linear)
         data["nnz-hessian"].append(results.reduced.nnz_hessian)

@@ -57,7 +57,7 @@ IncStructure = namedtuple(
 )
 ElimResults = namedtuple(
     "ElimResults",
-    ["upper_bound", "constraints", "var_expressions"],
+    ["upper_bound", "lower_bound", "constraints", "var_expressions"],
 )
 StructuralResults = namedtuple(
     "StructuralResults",
@@ -126,6 +126,14 @@ def matching_elim_callback(model, **kwds):
     timer.stop("maximum_matching")
     ub = len(matching)
 
+    timer.start("subgraph")
+    matching_subgraph = eq_igraph.subgraph(list(matching.values()), list(matching.keys()))
+    timer.stop("subgraph")
+    timer.start("block_triangularize")
+    vblocks, cblocks = matching_subgraph.block_triangularize()
+    timer.stop("block_triangularize")
+    lb = len(vblocks)
+
     timer.start("generate_elimination")
     var_elim, con_elim = generate_elimination_via_matching(
         model,
@@ -157,7 +165,7 @@ def matching_elim_callback(model, **kwds):
         # overloading the var_expressions field
         var_exprs = var_elim
 
-    results = ElimResults(ub, con_elim, var_exprs)
+    results = ElimResults(ub, lb, con_elim, var_exprs)
     return results
 
 def d1_elim_callback(model, **kwds):
@@ -207,7 +215,7 @@ def d1_elim_callback(model, **kwds):
             total_var_exprs.extend(var_exprs)
             continue
         break
-    return ElimResults(None, total_con_elim, total_var_exprs)
+    return ElimResults(None, None, total_con_elim, total_var_exprs)
 
 def d2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
@@ -276,7 +284,7 @@ def d2_elim_callback(model, **kwds):
         # No d1 cons and no d2 cons
         break
 
-    return ElimResults(None, total_con_elim, total_var_exprs)
+    return ElimResults(None, None, total_con_elim, total_var_exprs)
 
 def trivial_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
@@ -345,7 +353,7 @@ def trivial_elim_callback(model, **kwds):
         # No d1 cons and no d2 cons
         break
 
-    return ElimResults(None, total_con_elim, total_var_exprs)
+    return ElimResults(None, None, total_con_elim, total_var_exprs)
 
 def linear_d2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
@@ -413,11 +421,11 @@ def linear_d2_elim_callback(model, **kwds):
         # no d1 cons or d2 cons
         break
 
-    return ElimResults(None, total_con_elim, total_var_exprs)
+    return ElimResults(None, None, total_con_elim, total_var_exprs)
 
 
 def no_elim_callback(model, **kwds):
-    return ElimResults(None, [], [])
+    return ElimResults(None, None, [], [])
 
 def ampl_elim_callback(model, **kwds):
     igraph = kwds.pop('igraph', None)
@@ -453,4 +461,4 @@ def ampl_elim_callback(model, **kwds):
     else:
         con_elim = []
         var_exprs = []
-    return ElimResults(None, con_elim, var_exprs)
+    return ElimResults(None, None, con_elim, var_exprs)

@@ -45,6 +45,36 @@ CALCULATE = {
 }
 
 
+# Map from names used in the code (e.g. column headers) to names more suitable
+# for the paper
+RENAME = {
+    # TODO: How to avoid hardcoding columns widths?
+    "model": "Model".ljust(9),
+    "method": "Method".ljust(9),
+    "nvar": "Var.".ljust(6),
+    "ncon": "Con.".ljust(6),
+    "n-elim": "Elim.".ljust(5),
+    "nnz/con": "NNZ/Con.",
+    "nnz-linear/con": "Lin. NZ/Con.",
+    "nnz-hessian": "Hess. NNZ",
+    "nnode-nl-linear": "Lin. Nodes",
+    "nnode-nl-nonlinear": "Nonlin. Nodes",
+
+    "distill": "DIST",
+    "mb-steady": "MB",
+    "opf": "OPF",
+    "pipeline": "PIPE",
+
+    "no-elim": "--",
+    "d1": "LD1",
+    "trivial": "JP",
+    "linear-d2": "LD2",
+    "d2": "D2",
+    "ampl": "GR",
+    "matching": "LM",
+}
+
+
 def dataframe_to_latex(df, columns=None):
     if columns is None:
         # If not specified, we will use all columns
@@ -56,12 +86,21 @@ def dataframe_to_latex(df, columns=None):
 
     lines = []
     for i, row in df.iterrows():
-        lines.append(
-            [row[c] if c in row else CALCULATE[c](row) for c in columns]
-        )
+        line = []
+        for c in columns:
+            if c not in row:
+                line.append(CALCULATE[c](row))
+            elif c == "method" or c == "model":
+                line.append(RENAME[row[c]])
+            else:
+                line.append(row[c])
+        lines.append(line)
+        #    [row[c] if c in row else CALCULATE[c](row) for c in columns]
+        #)
 
     # TODO: Any formatting for column headers?
-    header_line = " & ".join(columns) + "\\\\\n"
+    paper_columns = [RENAME[c] if c in RENAME else c for c in columns]
+    header_line = " & ".join(paper_columns) + "\\\\\n"
     latex_lines = [header_line, "\\hline\n"]
     last_model = None
     for line in lines:
@@ -88,13 +127,13 @@ def _generate_structure_table(df):
         "nvar",
         "ncon",
         "n-elim",
-        "n-elim-bound",
+        #"n-elim-bound",
         "nnz/con",
         "nnz-linear/con",
         "nnz-hessian",
-        "nnode-pyomo",
-        "nnode-nl-linear",
-        "nnode-nl-nonlinear",
+        #"nnode-pyomo",
+        #"nnode-nl-linear",
+        #"nnode-nl-nonlinear",
     ]
     return dataframe_to_latex(df, columns=columns)
 
@@ -131,9 +170,9 @@ def main(args):
 
     if args.which is not None:
         which = args.which
-    if "structure" in args.input_fpath:
+    if "structure" in args.input_fpath and "solvetime" not in args.input_fpath:
         which = "structure"
-    elif "solvetime" in args.input_fpath:
+    elif "solvetime" in args.input_fpath and "structure" not in args.input_fpath:
         which = "solvetime"
     else:
         raise ValueError(
