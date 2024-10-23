@@ -80,7 +80,14 @@ def main(args):
     # not necessary (or actively harmful), so we set this flag if the model needs
     # to be scaled.
     # ... This should really be handled better in pselib...
-    scale_problem = dict([("mb-steady", True), ("distill", False), ("pipeline", False)])
+    scale_problem = dict(
+        [
+            ("mb-steady", True),
+            ("distill", False),
+            ("pipeline", False),
+            ("atr", False),
+        ]
+    )
 
     # We will store the results in a dict mapping callback name and problem
     # name to the results for a specific parameter sweep. We do this instead
@@ -143,10 +150,15 @@ def main(args):
                 elim_results = elim_cb(model)
                 timer.stop("elimination")
 
+                print(elim_results)
+
                 timer.start("solve")
                 results = solver.solve(model, tee=True)
                 solved = pyo.check_optimal_termination(results)
                 timer.stop("solve")
+
+                print(results)
+                print(f"solved = {solved}")
 
                 timer.start("validate")
                 # TODO: Should we exit if the solver didn't converge optimal?
@@ -157,6 +169,8 @@ def main(args):
                     tolerance=1e-5,
                 )
                 timer.stop("validate")
+
+                print(f"valid = {valid}")
 
                 obj = next(iter(model.component_data_objects(pyo.Objective, active=True)))
 

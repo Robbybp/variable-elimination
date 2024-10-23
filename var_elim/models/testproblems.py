@@ -117,12 +117,12 @@ class AutothermalReformerTestProblem(PseTestProblemBase):
 
     def create_instance(self):
         conv = 0.95
-        pressure = 1.6e6
+        pressure = 1.7e6
         return make_optimization_model(conv, pressure)
 
 
 if __name__ == "__main__":
     m = AutothermalReformerTestProblem().create_instance()
     import pyomo.environ as pyo
-    solver = pyo.SolverFactory("ipopt")
+    solver = pyo.SolverFactory("cyipopt")
     solver.solve(m, tee=True)
