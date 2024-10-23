@@ -97,3 +97,32 @@ class PipelineTestProblem(PseTestProblemBase):
                 ntfe = self._ntfe,
                 horizon = self._horizon
         )
+
+from svi.auto_thermal_reformer.fullspace_flowsheet import make_optimization_model
+class AutothermalReformerTestProblem(PseTestProblemBase):
+    uid = "ATR"
+
+    def __init__(self):
+        self._parameters = ["fs.reformer.conversion", "fs.feed.outlet.pressure"]
+        _parameter_ranges = [(0.90, 0.97), (1.5e6, 1.94e6)]
+        self._parameter_ranges = dict(zip(self._parameters, _parameter_ranges))
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @property
+    def parameter_ranges(self):
+        return self._parameter_ranges
+
+    def create_instance(self):
+        conv = 0.95
+        pressure = 1.6e6
+        return make_optimization_model(conv, pressure)
+
+
+if __name__ == "__main__":
+    m = AutothermalReformerTestProblem().create_instance()
+    import pyomo.environ as pyo
+    solver = pyo.SolverFactory("ipopt")
+    solver.solve(m, tee=True)
