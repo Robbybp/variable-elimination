@@ -8,7 +8,7 @@ from var_elim.scripts.config import get_plot_argparser
 
 
 plt.rcParams["text.usetex"] = True
-plt.rcParams["font.size"] = 14
+plt.rcParams["font.size"] = 20
 plt.rcParams["font.family"] = "serif"
 
 
@@ -18,6 +18,7 @@ model_to_label = {"distill": "Distillation", "mb-steady": "Moving bed", "opf": "
 
 
 def _plot_fraction_eliminated(df):
+    # Models alphabetically are the same order as in the paper table, luckily.
     models = list(sorted(set(df["model"])))
     methods = list(sorted(set(df["method"]), key=lambda m: method_ord[m]))
     nvar_by_model = {}
@@ -63,17 +64,18 @@ def _plot_fraction_eliminated(df):
     )
 
     w, h = fig.get_size_inches()
-    fig.set_size_inches(1.1*w, h)
+    fig.set_size_inches(1.2*w, h)
     ax.set_ylabel(
         "Percent of\\\\\nvariables\\\\\neliminated",
         rotation=0,
-        labelpad=40,
+        labelpad=50,
     )
     if args.title is not None:
         ax.set_title(args.title)
 
     # A little hacky. Here we're adding extra tick labels for the first instance
-    # of each method.
+    # of each method. Assumming x array is ordered by method, and that we omit exactly
+    # one method.
     method_tickpos = list(x_array[0:nmethod-1])
     method_ticklabels = [method_to_label[method] for method in methods if method not in to_omit]
     model_tickpos = [tickpos_by_model[model] for model in models]
@@ -87,7 +89,7 @@ def _plot_fraction_eliminated(df):
         method_ticklabels,
         rotation=90,
         minor=True,
-        fontsize=12,
+        fontsize=14,
         ha="center",
     )
     ax.xaxis.set_tick_params(which="minor", length=0)
