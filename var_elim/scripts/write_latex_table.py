@@ -12,6 +12,8 @@ FORMAT = {
     "ncon":               lambda item: str(int(item)).rjust(6),
     "n-elim":             lambda item: str(int(item)).rjust(5),
     "n-elim-bound":       lambda item: str(int(item)).rjust(5) if not math.isnan(item) else "--".rjust(5),
+    "n-elim-ub":          lambda item: str(int(item)).rjust(5) if not math.isnan(item) else "--".rjust(5),
+    "n-elim-lb":          lambda item: str(int(item)).rjust(5) if not math.isnan(item) else "--".rjust(5),
     "nnz":                lambda item: str(int(item)).rjust(6),
     "nnz-linear":         lambda item: str(int(item)).rjust(6),
     "nnz-hessian":        lambda item: str(int(item)).rjust(6),
@@ -75,7 +77,7 @@ RENAME = {
 }
 
 
-def dataframe_to_latex(df, columns=None):
+def dataframe_to_latex(df, columns=None, methods=None):
     if columns is None:
         # If not specified, we will use all columns
         columns = list(df.columns)
@@ -87,6 +89,10 @@ def dataframe_to_latex(df, columns=None):
     lines = []
     for i, row in df.iterrows():
         line = []
+        if methods is not None and row["method"] not in methods:
+            # If methods were specified, skip any methods that were omitted.
+            # This is for generating the matching-specific results table.
+            continue
         for c in columns:
             if c not in row:
                 line.append(CALCULATE[c](row))
@@ -104,7 +110,11 @@ def dataframe_to_latex(df, columns=None):
     latex_lines = [header_line, "\\hline\n"]
     last_model = None
     for line in lines:
-        if last_model is not None and line[0] != last_model:
+        # branching on methods is None is kind of a hack here. This might
+        # not be what we want for all tables
+        if methods is None and (
+            last_model is not None and line[0] != last_model
+        ):
             # TODO: Multirow for each model?
             latex_lines.append("\\hline\n")
         last_model = line[0]
@@ -157,10 +167,17 @@ def _generate_solvetime_table(df):
     return dataframe_to_latex(df, columns=columns)
 
 
+def _generate_matching_table(df):
+    columns = ["model", "method", "n-elim-lb", "n-elim", "n-elim-ub"]
+    methods = ("matching",)
+    return dataframe_to_latex(df, columns=columns, methods=methods)
+
+
 def generate_table(df, which):
     dispatcher = {
         "structure": _generate_structure_table,
         "solvetime": _generate_solvetime_table,
+        "matching-bounds": _generate_matching_table,
     }
     return dispatcher[which](df)
 
@@ -170,7 +187,7 @@ def main(args):
 
     if args.which is not None:
         which = args.which
-    if "structure" in args.input_fpath and "solvetime" not in args.input_fpath:
+    elif "structure" in args.input_fpath and "solvetime" not in args.input_fpath:
         which = "structure"
     elif "solvetime" in args.input_fpath and "structure" not in args.input_fpath:
         which = "solvetime"
@@ -179,6 +196,8 @@ def main(args):
             "--which (table type) not provided and cannot be inferred from"
             " input file name"
         )
+
+    print(f"Generating {which} table")
     table_str = generate_table(df, which)
 
     if not args.no_save:
@@ -188,7 +207,10 @@ def main(args):
             input_basename = os.path.basename(args.input_fpath)
             # exclude the .csv or .CSV extension
             input_noext = input_basename[:-4]
-            output_fname = input_noext + ".txt"
+            if which == "matching-bounds":
+                output_fname = input_noext + "-matching.txt"
+            else:
+                output_fname = input_noext + ".txt"
 
         output_fpath = os.path.join(args.results_dir, output_fname)
         print(f"Writing output to {output_fpath}")
