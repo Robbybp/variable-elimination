@@ -39,9 +39,21 @@ def get_model_from_file(fname):
     return model
 
 
-def make_model(instance_id="goc4917"):
+def make_model(instance_id="goc4917", pf_bounds=True):
     fname = datafile_dict[instance_id]
-    return get_model_from_file(fname)
+    model = get_model_from_file(fname)
+
+    # Turn off unnecessary bounds on power flow variables
+    if not pf_bounds:
+        model.pf.setlb(None)
+        model.pf.setub(None)
+        model.pt.setlb(None)
+        model.pt.setub(None)
+        model.qf.setlb(None)
+        model.qf.setub(None)
+        model.qt.setlb(None)
+        model.qt.setub(None)
+    return model
 
 
 if __name__ == "__main__":
