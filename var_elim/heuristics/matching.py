@@ -98,10 +98,14 @@ def generate_elimination_via_matching(
             include_fixed=False,
             include_inequality=False,
             linear_only=True,
+
+            method=IncidenceMethod.ampl_repn,
+            weighted=True,
         )
     timer.stop("linear_igraph")
     timer.start("maximum_matching")
-    matching = linear_igraph.maximum_matching()
+    #matching = linear_igraph.maximum_matching()
+    matching = linear_igraph.minimum_weight_maximum_matching()
     timer.stop("maximum_matching")
 
     con_list = list(matching.keys())

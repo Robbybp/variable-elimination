@@ -115,6 +115,7 @@ def get_structural_results(model, elim_callback, htimer=None):
         include_inequality=True,
         linear_only=True,
         method=IncidenceMethod.ampl_repn,
+        weighted=True,
     )
     timer.toc("Linear subgraph")
     eq_cons = get_equality_constraints(model)

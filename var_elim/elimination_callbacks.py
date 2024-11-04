@@ -117,7 +117,11 @@ def matching_elim_callback(model, **kwds):
     timer.start("linear_igraph")
     if linear_igraph is None:
         linear_igraph = IncidenceGraphInterface(
-            model, linear_only=True, include_inequality=False
+            model,
+            linear_only=True,
+            include_inequality=False,
+            method=IncidenceMethod.ampl_repn,
+            weighted=True,
         )
     timer.stop("linear_igraph")
 
@@ -182,7 +186,11 @@ def d1_elim_callback(model, **kwds):
         )
     if linear_igraph is None:
         linear_igraph = IncidenceGraphInterface(
-            model, linear_only=True, include_inequality=False
+            model,
+            linear_only=True,
+            include_inequality=False,
+            method=IncidenceMethod.ampl_repn,
+            weighted=True,
         )
     eq_cons = get_equality_constraints(model)
 
@@ -232,7 +240,11 @@ def d2_elim_callback(model, **kwds):
         )
     if linear_igraph is None:
         linear_igraph = IncidenceGraphInterface(
-            model, linear_only=True, include_inequality=False
+            model,
+            linear_only=True,
+            include_inequality=False,
+            method=IncidenceMethod.ampl_repn,
+            weighted=True,
         )
     eq_cons = get_equality_constraints(model)
     eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
@@ -300,7 +312,11 @@ def trivial_elim_callback(model, **kwds):
         )
     if linear_igraph is None:
         linear_igraph = IncidenceGraphInterface(
-            model, linear_only=True, include_inequality=False
+            model,
+            linear_only=True,
+            include_inequality=False,
+            method=IncidenceMethod.ampl_repn,
+            weighted=True,
         )
     eq_cons = get_equality_constraints(model)
     eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
@@ -368,7 +384,11 @@ def linear_d2_elim_callback(model, **kwds):
         )
     if linear_igraph is None:
         linear_igraph = IncidenceGraphInterface(
-            model, linear_only=True, include_inequality=False
+            model,
+            linear_only=True,
+            include_inequality=False,
+            method=IncidenceMethod.ampl_repn,
+            weighted=True,
         )
     eq_cons = get_equality_constraints(model)
     eq_igraph = igraph.subgraph(igraph.variables, eq_cons)
