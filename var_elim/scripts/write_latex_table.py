@@ -26,7 +26,7 @@ FORMAT = {
 
     "success":         lambda item: str(item).ljust(5),
     "feasible":        lambda item: str(item).ljust(5),
-    "elim-time":       lambda item: "%5.2f" % item,
+    "elim-time":       lambda item: "%5.2f" % item if item >= 0.005 else "   --",
     "solve-time":      lambda item: "%5.2f" % item,
     "function-time":   lambda item: "%5.2f" % item,
     "jacobian-time":   lambda item: "%5.2f" % item,
@@ -37,6 +37,11 @@ FORMAT = {
     "jacobian-per100": lambda item: "%5.2f" % item,
     "hessian-per100":  lambda item: "%5.2f" % item,
     "other-per100":    lambda item: "%5.2f" % item,
+
+    r"Function (\%)":    lambda item: "%3i" % round(item),
+    r"Jacobian (\%)":    lambda item: "%3i" % round(item),
+    r"Hessian (\%)":     lambda item: "%3i" % round(item),
+    r"Other (\%)":       lambda item: "%3i" % round(item),
 }
 
 
@@ -44,6 +49,10 @@ FORMAT = {
 CALCULATE = {
     "nnz/con":        lambda row: row["nnz"] / row["ncon"],
     "nnz-linear/con": lambda row: row["nnz-linear"] / row["ncon"],
+    r"Function (\%)":   lambda row: 100 * row["function-per100"] / (row["function-per100"] + row["jacobian-per100"] + row["hessian-per100"] + row["other-per100"]),
+    r"Jacobian (\%)":   lambda row: 100 * row["jacobian-per100"] / (row["function-per100"] + row["jacobian-per100"] + row["hessian-per100"] + row["other-per100"]),
+    r"Hessian (\%)":    lambda row: 100 * row["hessian-per100"] / (row["function-per100"] + row["jacobian-per100"] + row["hessian-per100"] + row["other-per100"]),
+    r"Other (\%)":      lambda row: 100 * row["other-per100"] / (row["function-per100"] + row["jacobian-per100"] + row["hessian-per100"] + row["other-per100"]),
 }
 
 
@@ -61,6 +70,14 @@ RENAME = {
     "nnz-hessian": "Hess. NNZ",
     "nnode-nl-linear": "Lin. Nodes",
     "nnode-nl-nonlinear": "Nonlin. Nodes",
+
+    "elim-time": "Elim. time",
+    "solve-time": "Solve time",
+    "n-iter": "N. Iter.",
+    r"Function (\%)": r"Func. (\%)",
+    r"Jacobian (\%)": r"Jac. (\%)",
+    r"Hessian (\%)": r"Hess. (\%)",
+    r"Other (\%)": r"Other (\%)",
 
     "distill": "DIST",
     "mb-steady": "MB",
@@ -159,10 +176,14 @@ def _generate_solvetime_table(df):
         #"hessian-time",
         "n-iter",
         #"ave-ls-trials",
-        "function-per100",
-        "jacobian-per100",
-        "hessian-per100",
-        "other-per100",
+        #"function-per100",
+        #"jacobian-per100",
+        #"hessian-per100",
+        #"other-per100",
+        r"Function (\%)",
+        r"Jacobian (\%)",
+        r"Hessian (\%)",
+        r"Other (\%)",
     ]
     return dataframe_to_latex(df, columns=columns)
 
