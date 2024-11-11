@@ -18,6 +18,7 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
+import time
 import pyomo.environ as pyo
 from pyomo.common.collections import ComponentMap
 from pyomo.common.timing import TicTocTimer, HierarchicalTimer
@@ -100,8 +101,11 @@ def main(args):
     model_cb_elim_solver_prod = list(itertools.product(models, elim_callbacks, solvers))
 
     model_elim_solver_prod = []
+    model_build_time_lookup = {}
     for (mname, model_cb), (ename, elim_cb), solver in model_cb_elim_solver_prod:
+        _t = time.time()
         model = model_cb()
+        model_build_time_lookup[mname, ename] = time.time() - _t
         model_elim_solver_prod.append(((mname, model_cb, model), (ename, elim_cb), solver))
 
     data = {
@@ -111,6 +115,8 @@ def main(args):
         "feasible": [],
         "elim-time": [],
         "solve-time": [],
+        "init-time": [],
+        "build-time": [],
         # I don't see any reason to distinguish between e.g. constraint and objective
         # time here.
         "function-time": [],
@@ -199,6 +205,7 @@ def main(args):
         solve_time = htimer.timers["root"].timers[label].timers["solve"].total_time
         ls_trials = [data[-1] for data in solver.config.intermediate_callback.iterate_data]
         ave_ls_trials = sum(ls_trials)/len(ls_trials)
+        print(f"Time to build the model was {model_build_time_lookup[mname, elim_name]} s")
         print(f"Ipopt took {n_iter} iterations (including iteration 0)")
         print(f"Ipopt took {solve_time} s to solve the problem")
         print(f"Ipopt took, on average, {ave_ls_trials} line search trials per iteration")
@@ -211,13 +218,20 @@ def main(args):
         print(f"Time per 100 Hessian evaluations:  {laghess_eval_per100}")
 
         solve_timer = htimer.timers["root"].timers[label].timers["solve"]
+        # This is really "time spent in Ipopt"
         total_solve_time = solve_timer.total_time
+        # This is time in Ipopt, not measured by our callbacks. We assume this
+        # is dominated by KKT matrix factorization.
         other_solve_time = total_solve_time
         for subtimer in solve_timer.timers.values():
             other_solve_time -= subtimer.total_time
         other_solve_time_periter = other_solve_time / n_iter
         other_solve_time_per100 = 100 * other_solve_time_periter
         print(f"Other time per 100 iterations:     {other_solve_time_per100}")
+        # This is time spent in the solver.solve method, *not* spent in Ipopt.
+        # This includes .nl file write and initialization of the PyomoNLP.
+        init_time = htimer.timers["root"].timers[label].total_time - total_solve_time
+        print(f"Time spent initializing solver:    {init_time}")
         print()
 
         data["model"].append(mname)
@@ -226,6 +240,9 @@ def main(args):
         data["success"].append(success)
         data["feasible"].append(valid)
         data["solve-time"].append(solve_time)
+        data["init-time"].append(init_time)
+        # This is time to build the model, and has nothing to do with the elimination
+        data["build-time"].append(model_build_time_lookup[mname, elim_name])
         function_time = con_timer.total_time + obj_timer.total_time
         data["function-time"].append(function_time)
         jacobian_time = conjac_timer.total_time + objgrad_timer.total_time
