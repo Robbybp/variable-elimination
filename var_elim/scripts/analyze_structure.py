@@ -265,6 +265,7 @@ def main(args):
         mname, model = model_elim_prod[i][0]
         elim_name, elim_callback = model_elim_prod[i][1]
         nchar = len(mname) + len(elim_name) + 5
+        timer.start(f"{mname}-{elim_name}")
         print()
         print(f"{mname} -- {elim_name}")
         print("-"*nchar)
@@ -326,6 +327,8 @@ def main(args):
         data["nnode-pyomo"].append(results.reduced.nnode)
         data["nnode-nl-linear"].append(results.reduced.n_linear_node)
         data["nnode-nl-nonlinear"].append(reduced_nonlin_nodes)
+
+        timer.stop(f"{mname}-{elim_name}")
 
     df = pd.DataFrame(data)
     suffixes = [args.model, args.method, args.suffix]
