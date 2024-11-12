@@ -49,7 +49,7 @@ import var_elim.scripts.config as config
 
 SolveResults = namedtuple(
     "SolveResults",
-    ["objective", "feasible", "timer"],
+    ["objective", "feasible", "max_infeasibility", "timer"],
 )
 
 testset = pselib.TestSet()
@@ -154,14 +154,19 @@ def main(args):
                     model,
                     elim_results.var_expressions,
                     elim_results.constraints,
-                    tolerance=1e-5,
+                    tolerance=args.feastol,
                 )
+                viol_cons_reduced, viol_bounds, viol_elim_cons = violations
+                max_con_viol = max(viol_cons_reduced, default=(0.0,), key=lambda item: abs(item[-1]))
+                max_bound_viol = max(viol_bounds, default=(0.0,), key=lambda item: abs(item[-1]))
+                max_elim_viol = max(viol_elim_cons, default=(0.0,), key=lambda item: abs(item[-1]))
+                max_infeas = max(abs(max_con_viol[-1]), abs(max_bound_viol[-1]), abs(max_elim_viol[-1]))
                 timer.stop("validate")
 
                 obj = next(iter(model.component_data_objects(pyo.Objective, active=True)))
 
                 # Why is "solved" returned separately from the rest of the results
-                results = SolveResults(pyo.value(obj), valid, timer)
+                results = SolveResults(pyo.value(obj), valid, max_infeas, timer)
                 # Should runner check that solved is bool?
                 return solved, results
 
@@ -205,6 +210,7 @@ def main(args):
             sweep_data_df["success"] = results_df["success"]
             sweep_data_df["error"] = results_df["error"]
             sweep_data_df["feasible"] = [res.feasible if res is not None else False for res in results_df["results"]]
+            sweep_data_df["max-infeasibility"] = [res.max_infeasibility if res is not None else float("nan") for res in results_df["results"]]
             sweep_data_df["objective"] = [res.objective if res is not None else None for res in results_df["results"]]
             sweep_data_df["solve-time"] = [res.timer.timers["solve"].total_time if res is not None else None for res in results_df["results"]]
             sweep_data_df["elim-time"] = [res.timer.timers["elimination"].total_time if res is not None else None for res in results_df["results"]]

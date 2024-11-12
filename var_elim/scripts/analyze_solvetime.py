@@ -113,6 +113,7 @@ def main(args):
         "method": [],
         "success": [],
         "feasible": [],
+        "max-infeasibility": [],
         "elim-time": [],
         "solve-time": [],
         "init-time": [],
@@ -173,10 +174,15 @@ def main(args):
             print("ERROR: BAD SOLVER STATUS. CONTINUING ANYWAY.")
         valid, violations = validate_solution(
             # TODO: Use args.feastol here?
-            model, elim_res.var_expressions, elim_res.constraints, tolerance=1e-6
+            model, elim_res.var_expressions, elim_res.constraints, tolerance=args.feastol
         )
         if not valid:
             print("WARNING: Result is not valid!")
+        viol_cons_reduced, viol_bounds, viol_elim_cons = violations
+        max_con_viol = max(viol_cons_reduced, default=(0.0,), key=lambda item: abs(item[-1]))
+        max_bound_viol = max(viol_bounds, default=(0.0,), key=lambda item: abs(item[-1]))
+        max_elim_viol = max(viol_elim_cons, default=(0.0,), key=lambda item: abs(item[-1]))
+        max_infeas = max(abs(max_con_viol[-1]), abs(max_bound_viol[-1]), abs(max_elim_viol[-1]))
         timer.toc("Validate result")
 
         # Extract timing information from the hierarchical timer
@@ -247,6 +253,7 @@ def main(args):
         data["elim-time"].append(elim_time)
         data["success"].append(success)
         data["feasible"].append(valid)
+        data["max-infeasibility"].append(max_infeas)
         data["solve-time"].append(solve_time)
         data["init-time"].append(init_time)
         # This is time to build the model, and has nothing to do with the elimination
