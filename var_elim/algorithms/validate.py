@@ -30,7 +30,10 @@ def validate_solution(
     eliminated_constraints,
     tolerance=0.0,
 ):
-    violated_cons_reduced = large_residuals_set(model, tol=tolerance)
+    violated_cons_reduced = large_residuals_set(
+        model, tol=tolerance, return_residual_values=True
+    )
+    violated_cons_reduced = list(violated_cons_reduced.items())
 
     # Set variables to value defined by elimination expression
     # We assume these expressions are in terms of reduced-space variables.
