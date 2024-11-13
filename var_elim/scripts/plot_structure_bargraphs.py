@@ -111,7 +111,7 @@ def _plot_nnz_per_constraint(df):
 
     nmodel = len(models)
     nmethod = len(methods)
-    inter_model_spacing = 0.5
+    inter_model_spacing = 1.5
     width = 1.0
     tickpos_by_model = {
         model: (nmethod + inter_model_spacing) * i + nmethod / 2
@@ -160,11 +160,11 @@ def _plot_nnz_per_constraint(df):
     )
 
     w, h = fig.get_size_inches()
-    fig.set_size_inches(1.2*w, h)
+    fig.set_size_inches(1.3*w, h)
     ax.set_ylabel(
-        "Number of \\\\ nonzeros per \\\\ constraint",
+        "Number of\\\\\nnon-zeros per\\\\\nconstraint",
         rotation=0,
-        labelpad=50,
+        labelpad=60,
     )
     if args.title is not None:
         ax.set_title(args.title)
@@ -190,7 +190,7 @@ def _plot_nnz_per_constraint(df):
         ha="center",
     )
     ax.xaxis.set_tick_params(which="minor", length=0)
-    plt.legend()
+    plt.legend(loc = "upper left")
     fig.tight_layout()
     
     return fig, ax
