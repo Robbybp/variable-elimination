@@ -194,4 +194,5 @@ def get_plot_argparser():
     argparser.add_argument("--show", action="store_true")
     argparser.add_argument("--opaque", action="store_true")
     argparser.add_argument("--title", default=None)
+    argparser.add_argument("--no-legend", action="store_true")
     return argparser

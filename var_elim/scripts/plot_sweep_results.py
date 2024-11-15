@@ -42,7 +42,7 @@ PARAMETER_NAMES = [
 PARAMETER_LABELS = [
     ("Temperature (K)", "Flow rate (kg/s)"),
     ("Relative volatility", "Feed mole fraction"),
-    ("Gas temperature", "Supply pressure"),
+    ("Gas temperature (K)", "Supply pressure (bar)"),
 ]
 
 MODEL_NAMES = [
@@ -62,8 +62,9 @@ def plot_convergence(
     parameter_names,
     parameter_labels=None,
     legend=True,
+    title=None,
 ):
-    plt.rcParams["font.size"] = 16
+    plt.rcParams["font.size"] = 20
     plt.rcParams["font.family"] = "serif"
 
     # If we are going to plot parameter sweep results, we better have two parameters...
@@ -100,10 +101,18 @@ def plot_convergence(
     # TODO: If any two labels are the same (rounded to nearest int), then
     # add a decimal place.
     x_tick_labels = [str(round(parameters[1][i])) if i%2 else "" for i in x_ticks]
+    non_blank = [l for l in x_tick_labels if l != ""]
+    if len(set(non_blank)) != len(non_blank):
+        # There are duplicates!
+        x_tick_labels = ["%0.1f" % parameters[1][i] if i%2 else "" for i in x_ticks]
     ax.set_xticks(x_ticks, labels=x_tick_labels)
 
     y_ticks = [i for i in range(len(parameters[0]))]
     y_tick_labels = [str(round(parameters[0][i])) if i%2 else "" for i in y_ticks]
+    non_blank = [l for l in y_tick_labels if l != ""]
+    if len(set(non_blank)) != len(non_blank):
+        # There are duplicates!
+        y_tick_labels = ["%0.1f" % parameters[1][i] if i%2 else "" for i in y_ticks]
     ax.set_yticks(y_ticks, labels=y_tick_labels)
 
     # Turn off (major) tick marks for both axes
@@ -122,6 +131,9 @@ def plot_convergence(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
+    if title is not None:
+        ax.set_title(title)
+
     if legend:
         # Add labels
         colors = [CMAP(0), CMAP(1)]
@@ -131,7 +143,7 @@ def plot_convergence(
         ]
         ax.legend(
             handles=patches,
-            loc=(1.05, 0.8),
+            loc=(1.05, 0.7),
         )
         w, h = fig.get_size_inches()
         fig.set_size_inches(1.2*w, h)
@@ -158,12 +170,43 @@ def main(args):
     df = pd.read_csv(args.fpath)
     parameter_names = PARAMETER_LOOKUP[model_name]
     parameter_labels = PARAMETER_LABEL_LOOKUP[model_name]
-    fig, ax = plot_convergence(
-        df, parameter_names, parameter_labels=parameter_labels
-    )
 
-    if args.title is not None:
-        ax.set_title(args.title)
+    from var_elim.scripts.config import ELIM_NAMES
+    ELIM_NAME_TO_TITLE = {
+        "no-elim": "Original model",
+        "d1": "Linear degree-one",
+        "trivial": "Equal-coefficient degree-two",
+        "linear-d2": "Linear degree-two",
+        "d2": "Degree two",
+        "ampl": "Greedy",
+        "matching": "Linear matching",
+    }
+    title = None
+    if args.title is None:
+        print("--title not provided. Attempting to infer from filename")
+        for name in ELIM_NAMES:
+            if name in os.path.basename(args.fpath):
+                print(f"Method recognized as {name}. Setting title")
+                if title is not None:
+                    if "linear" in os.path.basename(args.fpath):
+                        # This is a hack so we don't recognize linear-d2 as d2
+                        print("'linear' in method name. not resetting title")
+                        continue
+                    print("WARNING: multiple matches. Resetting title to None")
+                    title = None
+                    break
+                else:
+                    title = ELIM_NAME_TO_TITLE[name]
+        if title is None:
+            print("Could not infer title from filename")
+
+    fig, ax = plot_convergence(
+        df,
+        parameter_names,
+        parameter_labels=parameter_labels,
+        legend=not args.no_legend,
+        title=title,
+    )
 
     fig.tight_layout()
 
