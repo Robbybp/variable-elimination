@@ -61,22 +61,22 @@ def _plot_solve_time_fractions(df):
         for model, method in model_methods
     ])
     
-    percent_fun_eval_time_array = np.array([
+    normalized_fun_eval_time_array = np.array([
         func_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
-    percent_jac_eval_time_array = np.array([
+    normalized_jac_eval_time_array = np.array([
         jac_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
-    percent_hess_eval_time_array = np.array([
+    normalized_hess_eval_time_array = np.array([
         hess_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
-    percent_other_eval_time_array = np.array([
+    normalized_other_eval_time_array = np.array([
         other_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
@@ -88,7 +88,7 @@ def _plot_solve_time_fractions(df):
     #colors = ["blue", "orange", "green", "purple", "brown", "red"]
     ax.bar(
         x_array,
-        percent_other_eval_time_array,
+        normalized_other_eval_time_array,
         width=width,
         align="center",
         edgecolor="black",
@@ -97,31 +97,31 @@ def _plot_solve_time_fractions(df):
     
     ax.bar(
         x_array,
-        percent_hess_eval_time_array,
+        normalized_hess_eval_time_array,
         width=width,
         align="center",
         edgecolor="black",
-        bottom = percent_other_eval_time_array,
+        bottom = normalized_other_eval_time_array,
         label = 'Hessian eval'
     )
     
     ax.bar(
         x_array,
-        percent_jac_eval_time_array,
+        normalized_jac_eval_time_array,
         width=width,
         align="center",
         edgecolor="black",
-        bottom = percent_other_eval_time_array + percent_hess_eval_time_array,
+        bottom = normalized_other_eval_time_array + normalized_hess_eval_time_array,
         label = 'Jacobian eval'
     )
     
     ax.bar(
         x_array,
-        percent_fun_eval_time_array,
+        normalized_fun_eval_time_array,
         width=width,
         align="center",
         edgecolor="black",
-        bottom = percent_other_eval_time_array + percent_hess_eval_time_array + percent_jac_eval_time_array,
+        bottom = normalized_other_eval_time_array + normalized_hess_eval_time_array + normalized_jac_eval_time_array,
         label = 'Function eval'
     )
     
