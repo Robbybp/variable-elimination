@@ -21,10 +21,13 @@ def _plot_solve_time_fractions(df):
     models = list(sorted(set(df["model"])))
     methods = list(sorted(set(df["method"]), key=lambda m: method_ord[m]))
     total_time_by_model_method = {}
+    smallest_total_time = {}
+    smallest_time_per_iteration = {}
     func_eval_time_by_model_method = {}
     jac_eval_time_by_model_method = {}
     hess_eval_time_by_model_method = {}
     other_eval_time_by_model_method = {}
+    iter_by_method = {}
 
     for i, row in df.iterrows():
         total_time_by_model_method[row["model"], row["method"]] = row["solve-time"]
@@ -34,7 +37,12 @@ def _plot_solve_time_fractions(df):
         other_eval_time_by_model_method[row["model"], row["method"]] = row["solve-time"] - (row["function-time"] 
                                                                                             + row["jacobian-time"]
                                                                                             + row["hessian-time"])
+        iter_by_method[row["model"], row["method"]] = row['n-iter']
 
+    for model in models:
+        smallest_total_time[model] = min(value for (key1, key2), value in total_time_by_model_method.items() if key1 == model)
+        smallest_time_per_iteration[model] = min(value/iter_by_method[key1, key2] for (key1, key2), value in total_time_by_model_method.items() if key1 == model)
+    
     nmodel = len(models)
     nmethod = len(methods)
     inter_model_spacing = 1
@@ -54,22 +62,22 @@ def _plot_solve_time_fractions(df):
     ])
     
     percent_fun_eval_time_array = np.array([
-        func_eval_time_by_model_method[model, method] / total_time_by_model_method[model, method]*100
+        func_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
     percent_jac_eval_time_array = np.array([
-        jac_eval_time_by_model_method[model, method] / total_time_by_model_method[model, method]*100
+        jac_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
     percent_hess_eval_time_array = np.array([
-        hess_eval_time_by_model_method[model, method] / total_time_by_model_method[model, method]*100
+        hess_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
     percent_other_eval_time_array = np.array([
-        other_eval_time_by_model_method[model, method] / total_time_by_model_method[model, method]*100
+        other_eval_time_by_model_method[model, method] / iter_by_method[model,method]/smallest_time_per_iteration[model]
         for model, method in model_methods
     ])
     
@@ -122,7 +130,7 @@ def _plot_solve_time_fractions(df):
     w, h = fig.get_size_inches()
     fig.set_size_inches(1.5*w, h)
     ax.set_ylabel(
-        "Percent of\\\\\nsolvetime \\\\\nspent in \\\\\neach category",
+        "solvetime\\\\\nper iter\\\\\n/fastest\\\\\nsolvetime\\\\\n per iter",
         rotation=0,
         labelpad=50,
     )
