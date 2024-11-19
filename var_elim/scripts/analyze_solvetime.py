@@ -113,6 +113,7 @@ def main(args):
         "method": [],
         "success": [],
         "feasible": [],
+        "max-infeasibility": [],
         "elim-time": [],
         "solve-time": [],
         "init-time": [],
@@ -134,17 +135,25 @@ def main(args):
     htimer = HierarchicalTimer()
     htimer.start("root")
     for (mname, model_cb, model), (elim_name, elim_callback), solver in model_elim_solver_prod:
-        print(mname, elim_name)
-        timer.tic()
-        elim_res = elim_callback(model)
-        elim_time = timer.toc("Apply elimination")
-
         label = "-".join((mname, elim_name))
         htimer.start(label)
+        print(mname, elim_name)
+
+        timer.tic()
+        htimer.start("elimination")
+        elim_res = elim_callback(
+            model,
+            timer=htimer,
+            skip_extra_info=True,
+        )
+        htimer.stop("elimination")
+        elim_time = timer.toc("Apply elimination")
+
         # We need to re-set the callback each time we solve a model
+        htimer.start("solver")
         solver.config.intermediate_callback = Callback()
         res = solver.solve(model, tee=False, timer=htimer)
-        htimer.stop(label)
+        htimer.stop("solver")
 
         timer.toc("Solve model")
 
@@ -165,18 +174,23 @@ def main(args):
             print("ERROR: BAD SOLVER STATUS. CONTINUING ANYWAY.")
         valid, violations = validate_solution(
             # TODO: Use args.feastol here?
-            model, elim_res.var_expressions, elim_res.constraints, tolerance=1e-6
+            model, elim_res.var_expressions, elim_res.constraints, tolerance=args.feastol
         )
         if not valid:
             print("WARNING: Result is not valid!")
+        viol_cons_reduced, viol_bounds, viol_elim_cons = violations
+        max_con_viol = max(viol_cons_reduced, default=(0.0,), key=lambda item: abs(item[-1]))
+        max_bound_viol = max(viol_bounds, default=(0.0,), key=lambda item: abs(item[-1]))
+        max_elim_viol = max(viol_elim_cons, default=(0.0,), key=lambda item: abs(item[-1]))
+        max_infeas = max(abs(max_con_viol[-1]), abs(max_bound_viol[-1]), abs(max_elim_viol[-1]))
         timer.toc("Validate result")
 
         # Extract timing information from the hierarchical timer
 
         # We combine per-call function evaluation for the objective and
         # constraints.
-        con_timer = htimer.timers["root"].timers[label].timers["solve"].timers["constraints"]
-        obj_timer = htimer.timers["root"].timers[label].timers["solve"].timers["objective"]
+        con_timer = htimer.timers["root"].timers[label].timers["solver"].timers["solve"].timers["constraints"]
+        obj_timer = htimer.timers["root"].timers[label].timers["solver"].timers["solve"].timers["objective"]
         obj_percall = obj_timer.total_time / obj_timer.n_calls
         con_percall = con_timer.total_time / con_timer.n_calls
         function_eval_percall = obj_percall + con_percall
@@ -184,14 +198,14 @@ def main(args):
 
         # We combine per-call function evaluation for the objective gradient and
         # constraint Jacobian
-        conjac_timer = htimer.timers["root"].timers[label].timers["solve"].timers["constraint-jac"]
-        objgrad_timer = htimer.timers["root"].timers[label].timers["solve"].timers["objective-grad"]
+        conjac_timer = htimer.timers["root"].timers[label].timers["solver"].timers["solve"].timers["constraint-jac"]
+        objgrad_timer = htimer.timers["root"].timers[label].timers["solver"].timers["solve"].timers["objective-grad"]
         objgrad_percall = objgrad_timer.total_time / objgrad_timer.n_calls
         conjac_percall = conjac_timer.total_time / conjac_timer.n_calls
         jacobian_eval_percall = objgrad_percall + conjac_percall
         jacobian_eval_per100 = 100 * jacobian_eval_percall
 
-        laghess_timer = htimer.timers["root"].timers[label].timers["solve"].timers["lagrangian-hess"]
+        laghess_timer = htimer.timers["root"].timers[label].timers["solver"].timers["solve"].timers["lagrangian-hess"]
         laghess_eval_percall = laghess_timer.total_time / laghess_timer.n_calls
         laghess_eval_per100 = 100 * laghess_eval_percall
 
@@ -202,7 +216,7 @@ def main(args):
         # We add 1 to account for iteration zero.
         # (Unclear if we should actually include iteration zero...)
         n_iter = solver.config.intermediate_callback.iterate_data[-1][1] + 1
-        solve_time = htimer.timers["root"].timers[label].timers["solve"].total_time
+        solve_time = htimer.timers["root"].timers[label].timers["solver"].timers["solve"].total_time
         ls_trials = [data[-1] for data in solver.config.intermediate_callback.iterate_data]
         ave_ls_trials = sum(ls_trials)/len(ls_trials)
         print(f"Time to build the model was {model_build_time_lookup[mname, elim_name]} s")
@@ -217,7 +231,7 @@ def main(args):
         print(f"Time per 100 Jacobian evaluations: {jacobian_eval_per100}")
         print(f"Time per 100 Hessian evaluations:  {laghess_eval_per100}")
 
-        solve_timer = htimer.timers["root"].timers[label].timers["solve"]
+        solve_timer = htimer.timers["root"].timers[label].timers["solver"].timers["solve"]
         # This is really "time spent in Ipopt"
         total_solve_time = solve_timer.total_time
         # This is time in Ipopt, not measured by our callbacks. We assume this
@@ -230,7 +244,7 @@ def main(args):
         print(f"Other time per 100 iterations:     {other_solve_time_per100}")
         # This is time spent in the solver.solve method, *not* spent in Ipopt.
         # This includes .nl file write and initialization of the PyomoNLP.
-        init_time = htimer.timers["root"].timers[label].total_time - total_solve_time
+        init_time = htimer.timers["root"].timers[label].timers["solver"].total_time - total_solve_time
         print(f"Time spent initializing solver:    {init_time}")
         print()
 
@@ -239,6 +253,7 @@ def main(args):
         data["elim-time"].append(elim_time)
         data["success"].append(success)
         data["feasible"].append(valid)
+        data["max-infeasibility"].append(max_infeas)
         data["solve-time"].append(solve_time)
         data["init-time"].append(init_time)
         # This is time to build the model, and has nothing to do with the elimination
@@ -255,6 +270,8 @@ def main(args):
         data["jacobian-per100"].append(jacobian_eval_per100)
         data["hessian-per100"].append(laghess_eval_per100)
         data["other-per100"].append(other_solve_time_per100)
+
+        htimer.stop(label)
 
     htimer.stop("root")
     print(htimer)

@@ -168,7 +168,11 @@ def _get_elimination_map(
         unique_component_name(m, "eliminated_variable_expressions"), elim_var_expr
     )
 
-    # Assume variables/constraints are in lower triangular order
+    # Assume variables/constraints are in lower triangular order, as we assume that
+    # any other constraints containing an eliminated variable appear after the
+    # constraint defining that variable.
+    # We could relax this assumption by doing the replacement directly in
+    # subsitution_map (if the var/con pair has already been processed).
     substitution_map = {}
     to_replace = set()
     for var, con in zip(variables, constraints):

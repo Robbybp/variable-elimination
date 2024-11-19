@@ -90,7 +90,7 @@ RENAME = {
 
     "no-elim": "--",
     "d1": "LD1",
-    "trivial": "JP",
+    "trivial": "ECD2",
     "linear-d2": "LD2",
     "d2": "D2",
     "ampl": "GR",

@@ -169,8 +169,7 @@ def get_argparser():
             " preliminary results created with different dependency versions."
         ),
     )
-    # TODO: feastol argument, include max infeasibility in parameter sweep results.
-    #argparser.add_argument("--feastol", type=float, default=1e-5, help="Tolerance for checking feasibility")
+    argparser.add_argument("--feastol", type=float, default=1e-5, help="Tolerance for checking feasibility")
     return argparser
 
 def get_sweep_argparser():
@@ -195,4 +194,5 @@ def get_plot_argparser():
     argparser.add_argument("--show", action="store_true")
     argparser.add_argument("--opaque", action="store_true")
     argparser.add_argument("--title", default=None)
+    argparser.add_argument("--no-legend", action="store_true")
     return argparser
