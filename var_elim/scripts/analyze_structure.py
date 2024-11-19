@@ -102,7 +102,7 @@ def get_nnz_in_hessian(model, nlp=None):
 
 
 def get_structural_results(model, elim_callback, htimer=None):
-    htimer = HierarchicalTimer if htimer is None else htimer
+    htimer = HierarchicalTimer() if htimer is None else htimer
     timer = TicTocTimer()
 
     timer.tic()
