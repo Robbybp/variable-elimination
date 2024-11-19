@@ -126,11 +126,11 @@ def _plot_solve_time_fractions(df):
     )
     
 
-
+    #"solvetime nper iter/fastest solvetime per iter"
     w, h = fig.get_size_inches()
     fig.set_size_inches(1.5*w, h)
     ax.set_ylabel(
-        "solvetime\\\\\nper iter\\\\\n/fastest\\\\\nsolvetime\\\\\n per iter",
+        "Normalized\\\\\nsolvetime per\\\\\niteration",
         rotation=0,
         labelpad=50,
     )
