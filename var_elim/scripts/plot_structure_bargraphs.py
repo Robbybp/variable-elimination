@@ -146,7 +146,7 @@ def _plot_nnz_per_constraint(df):
         width=width,
         align="center",
         edgecolor="black",
-        label = 'Nonlinear NNZ/con'
+        label = 'Nonlinear'
     )
     
     ax.bar(
@@ -156,7 +156,7 @@ def _plot_nnz_per_constraint(df):
         width=width,
         align="center",
         edgecolor="black",
-        label = 'Linear NNZ/con'
+        label = 'Linear'
     )
 
     w, h = fig.get_size_inches()
