@@ -39,9 +39,6 @@ from var_elim.elimination_callbacks import (
     d2_elim_callback,
     matching_elim_callback,
 )
-from var_elim.models.testproblems import (
-    DistillationTestProblem,
-)
 
 
 import os
@@ -52,20 +49,8 @@ SolveResults = namedtuple(
     ["objective", "feasible", "timer"],
 )
 
-testset = pselib.TestSet()
 
-
-def main(args):
-    if args.method is None:
-        elimination_callbacks = config.ELIM_CALLBACKS
-    else:
-        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
-
-    if args.model is None:
-        raise RuntimeError("--model argument must be provided for parameter sweep")
-    # For now, this script is only set up to run with a single test problem at a time
-
-    suff_str = "-" + args.suffix if args.suffix is not None else ""
+def summarize_single_model(args, elim_names):
     sweep_data = {
         "model": [],
         "method": [],
@@ -75,10 +60,9 @@ def main(args):
         "ave-elim-time": [],
         "ave-solve-time": [],
     }
-    for elimname, _ in elimination_callbacks:
-        #if elimname == "ampl":
-        #    # TODO: Actually run this sweep
-        #    continue
+    # NOTE: Code is repeated below. TODO: Consolidate if this changes.
+    suff_str = "-" + args.suffix if args.suffix is not None else ""
+    for elimname in elim_names:
         fname = args.model + "-" + elimname + "-sweep" + suff_str + ".csv"
         fpath = os.path.join(args.results_dir, fname)
         df = pd.read_csv(fpath)
@@ -96,13 +80,29 @@ def main(args):
         sweep_data["ave-elim-time"].append(ave_elimtime)
         sweep_data["ave-solve-time"].append(ave_solvetime)
 
+    output_df = pd.DataFrame(sweep_data)
+    return output_df
+
+
+def main(args):
+    if args.method is None:
+        elimination_callbacks = config.ELIM_CALLBACKS
+    else:
+        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
+    elim_names = [name for name, _ in elimination_callbacks]
+
+    if args.model is None:
+        raise RuntimeError("--model argument must be provided for parameter sweep")
+    # For now, this script is only set up to run with a single test problem at a time
+
+    output_df = summarize_single_model(args, elim_names)
+
     if args.method is None:
         method_str = ""
     else:
         method_str = f"-{args.method}"
+    suff_str = "-" + args.suffix if args.suffix is not None else ""
     output_fname = args.model + method_str + "-sweep-summary" + suff_str + ".csv"
-    output_df = pd.DataFrame(sweep_data)
-
     if args.method is None:
         # If this is the summary for a particular model, we put it in the top-level
         # results dir.
