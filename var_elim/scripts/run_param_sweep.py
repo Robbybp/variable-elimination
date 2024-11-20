@@ -120,7 +120,7 @@ def main(args):
 
             options = {
                 "print_user_options": "yes",
-                "max_iter": 1000,
+                "max_iter": 3000,
             }
             # Note that if we want to collect more detailed information, we could
             # use TimedCyIpoptSolver
