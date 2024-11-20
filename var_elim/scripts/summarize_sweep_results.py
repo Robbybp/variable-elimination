@@ -39,9 +39,6 @@ from var_elim.elimination_callbacks import (
     d2_elim_callback,
     matching_elim_callback,
 )
-from var_elim.models.testproblems import (
-    DistillationTestProblem,
-)
 
 
 import os
@@ -52,20 +49,8 @@ SolveResults = namedtuple(
     ["objective", "feasible", "timer"],
 )
 
-testset = pselib.TestSet()
 
-
-def main(args):
-    if args.method is None:
-        elimination_callbacks = config.ELIM_CALLBACKS
-    else:
-        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
-
-    if args.model is None:
-        raise RuntimeError("--model argument must be provided for parameter sweep")
-    # For now, this script is only set up to run with a single test problem at a time
-
-    suff_str = "-" + args.suffix if args.suffix is not None else ""
+def summarize_single_model(args, elim_names):
     sweep_data = {
         "model": [],
         "method": [],
@@ -75,10 +60,9 @@ def main(args):
         "ave-elim-time": [],
         "ave-solve-time": [],
     }
-    for elimname, _ in elimination_callbacks:
-        #if elimname == "ampl":
-        #    # TODO: Actually run this sweep
-        #    continue
+    # NOTE: Code is repeated below. TODO: Consolidate if this changes.
+    suff_str = "-" + args.suffix if args.suffix is not None else ""
+    for elimname in elim_names:
         fname = args.model + "-" + elimname + "-sweep" + suff_str + ".csv"
         fpath = os.path.join(args.results_dir, fname)
         df = pd.read_csv(fpath)
@@ -96,12 +80,73 @@ def main(args):
         sweep_data["ave-elim-time"].append(ave_elimtime)
         sweep_data["ave-solve-time"].append(ave_solvetime)
 
+    output_df = pd.DataFrame(sweep_data)
+    return output_df
+
+
+SWEEP_MODELS = ["distill", "mb-steady", "pipeline"]
+
+
+def summarize_all_models(args, elim_names):
+    data = dict(method=[])
+    for model in SWEEP_MODELS:
+        data[model] = []
+    # Insert this last so table is in correct order
+    data["total"] = []
+
+    orig_model_arg = args.model
+    model_dfs = dict()
+    for model in SWEEP_MODELS:
+        # HACK: temporarily override args.model
+        args.model = model
+        model_dfs[model] = summarize_single_model(args, elim_names)
+        args.model = orig_model_arg
+
+    model_method_rows = {}
+    for model in SWEEP_MODELS:
+        df = model_dfs[model]
+        for i, row in df.iterrows():
+            model_method_rows[model, row["method"]] = row
+
+    for method in elim_names:
+        data["method"].append(method)
+        total_instances = 0
+        total_success = 0
+        for model in SWEEP_MODELS:
+            # Should we store the percent successful, or the raw number?
+            row = model_method_rows[model, method]
+            data[model].append(row["percent-success"])
+            total_instances += row["n-total"]
+            total_success += row["n-success"]
+        total_percent = 100.0 * total_success / total_instances
+        data["total"].append(total_percent)
+
+    output_df = pd.DataFrame(data)
+    return output_df
+
+
+def main(args):
+    if args.method is None:
+        elimination_callbacks = config.ELIM_CALLBACKS
+    else:
+        elimination_callbacks = [(args.method, config.ELIM_LOOKUP[args.method])]
+    elim_names = [name for name, _ in elimination_callbacks]
+
+    if args.model is None:
+        output_df = summarize_all_models(args, elim_names)
+    else:
+        output_df = summarize_single_model(args, elim_names)
+
     if args.method is None:
         method_str = ""
     else:
         method_str = f"-{args.method}"
-    output_fname = args.model + method_str + "-sweep-summary" + suff_str + ".csv"
-    output_df = pd.DataFrame(sweep_data)
+
+    method_str = "" if args.method is None else f"{args.method}-"
+    model_str = "" if args.model is None else f"{args.model}-"
+    suff_str = "" if args.suffix is None else f"-{args.suffix}"
+
+    output_fname = model_str + method_str + "sweep-summary" + suff_str + ".csv"
 
     if args.method is None:
         # If this is the summary for a particular model, we put it in the top-level
@@ -112,6 +157,7 @@ def main(args):
     if not args.no_save:
         print(f"Writing sweep summary to {output_fpath}")
         output_df.to_csv(output_fpath)
+
     print(output_df)
 
 
