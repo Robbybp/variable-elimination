@@ -44,6 +44,14 @@ FORMAT = {
     r"Jacobian (\%)":    lambda item: "%3i" % round(item),
     r"Hessian (\%)":     lambda item: "%3i" % round(item),
     r"Other (\%)":       lambda item: "%3i" % round(item),
+
+    # At this point, we only use these keys for percent converged in the sweep summary
+    # table. But if we end up using these in other tables, we should update the column
+    # headers to something more specific.
+    "distill":   lambda item: "%3i" % round(item),
+    "mb-steady": lambda item: "%3i" % round(item),
+    "pipeline":  lambda item: "%3i" % round(item),
+    "total":     lambda item: "%3i" % round(item),
 }
 
 
@@ -95,6 +103,8 @@ RENAME = {
     "d2": "D2",
     "ampl": "GR",
     "matching": "LM",
+
+    "total": "Total",
 }
 
 
@@ -129,16 +139,37 @@ def dataframe_to_latex(df, columns=None, methods=None):
     paper_columns = [RENAME[c] if c in RENAME else c for c in columns]
     header_line = " & ".join(paper_columns) + "\\\\\n"
     latex_lines = [header_line, "\\hline\n"]
+
+    if "model" in columns:
+        model_idx = columns.index("model")
+    else:
+        model_idx = None
+    if "method" in columns:
+        method_idx = columns.index("method")
+    else:
+        method_idx = None
+
     last_model = None
+    last_method = None
     for line in lines:
         # branching on methods is None is kind of a hack here. This might
         # not be what we want for all tables
-        if methods is None and (
-            last_model is not None and line[0] != last_model
+        #if methods is None and (
+        #    last_model is not None and line[0] != last_model
+        #):
+        #
+        # Is this logic better?
+        if (
+            last_model is not None and model_idx is not None and line[model_idx] != last_model
+            and last_method is not None and method_idx is not None and line[method_idx] != last_method
         ):
             # TODO: Multirow for each model?
             latex_lines.append("\\hline\n")
-        last_model = line[0]
+
+        if model_idx is not None:
+            last_model = line[model_idx]
+        if method_idx is not None:
+            last_method = line[method_idx]
 
         formatted_line = [
             # Dispatch to a custom formatter for each column. If no formatter is
@@ -194,6 +225,11 @@ def _generate_solvetime_table(df):
     return dataframe_to_latex(df, columns=columns)
 
 
+def _generate_convergence_summary_table(df):
+    columns = ["method", "distill", "mb-steady", "pipeline", "total"]
+    return dataframe_to_latex(df, columns=columns)
+
+
 def _generate_matching_table(df):
     columns = ["model", "method", "n-elim-lb", "n-elim", "n-elim-ub"]
     methods = ("matching",)
@@ -205,6 +241,7 @@ def generate_table(df, which):
         "structure": _generate_structure_table,
         "solvetime": _generate_solvetime_table,
         "matching-bounds": _generate_matching_table,
+        "convergence-summary": _generate_convergence_summary_table,
     }
     return dispatcher[which](df)
 
@@ -218,6 +255,8 @@ def main(args):
         which = "structure"
     elif "solvetime" in args.input_fpath and "structure" not in args.input_fpath:
         which = "solvetime"
+    elif "sweep-summary" in args.input_fpath:
+        which = "convergence-summary"
     else:
         raise ValueError(
             "--which (table type) not provided and cannot be inferred from"
