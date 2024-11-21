@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 from pyomo.common.timing import HierarchicalTimer
 
 timer = HierarchicalTimer()
-
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
 #Get steady state mb model
 def mb_steady_constructor():
     model = pselib.get_problem("MBCLC-METHANE-STEADY").create_instance()
@@ -26,8 +27,9 @@ def plot_incidence_matrix():
     spy_dulmage_mendelsohn(model,
                            highlight_coarse=False,
                            highlight_fine=False,)
-    plt.title("Incidence Matrix - No elimination")
-    plt.show()
+    plt.title("Original Model", fontsize = 18)
+    plt.savefig("mb-steady-incidence-no-elim.pdf")
+    
     
     #Perform matching based elimination
     get_structural_results(model, matching_elim_callback, htimer = timer)
@@ -36,8 +38,8 @@ def plot_incidence_matrix():
     spy_dulmage_mendelsohn(model,
                            highlight_coarse=False,
                            highlight_fine=False,)
-    plt.title("Incidence Matrix - Linear Matching")
-    plt.show()
+    plt.title("Linear matching", fontsize = 18)
+    plt.savefig("mb-steady-incidence-lm.pdf")
 if __name__ == "__main__":
     plot_incidence_matrix()
     
