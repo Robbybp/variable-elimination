@@ -106,9 +106,11 @@ def main():
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
 
-    text = r"""$\begin{array}{c}\\ B_1 \\ \vdots \\ B_{n_b} \\ \end{array}\hspace{-0.2cm}\begin{array}{c} \begin{array}{ccc} A_1 & \cdots & A_{n_b} \\ \end{array} \\ \left[\begin{array}{ccc} D_1 & & \\ ** & \ddots & \\ ** & * & D_{n_b} \\ \end{array}\right] \end{array} \begin{array}{c} \\ \\ = \\ \\ \end{array}$
+    #text = r"""$\begin{array}{c}\\ B_1 \\ \vdots \\ B_{n_b} \\ \end{array}\hspace{-0.2cm}\begin{array}{c} \begin{array}{ccc} A_1 & \cdots & A_{n_b} \\ \end{array} \\ \left[\begin{array}{ccc} T_1 & & \\ ** & \ddots & \\ ** & * & T_{n_b} \\ \end{array}\right] \end{array} \begin{array}{c} \\ \\ = \\ \\ \end{array}$
+    #"""
+    text = r"""$\left[\begin{array}{ccc} T_1 & & \\ ** & \ddots & \\ ** & * & T_{n_b} \\ \end{array}\right] \begin{array}{c} \\ = \\ \\ \end{array}$
     """
-    ax1.text(-0.05, 0.1, text)
+    ax1.text(-0.1, 0.1, text)
     ax1.set_axis_off()
 
     ax2.spy(imat, markersize=5)
@@ -131,7 +133,7 @@ def main():
     ax2.add_patch(rect)
 
     w, h = fig.get_size_inches()
-    fig.set_size_inches(w, h*0.5)
+    fig.set_size_inches(0.8*w, h*0.5)
 
     fig.savefig("bkg_bt.pdf", transparent=True)
 
