@@ -28,6 +28,9 @@ def plot_incidence_matrix():
                            highlight_coarse=False,
                            highlight_fine=False,)
     plt.title("Original Model", fontsize = 18)
+    plt.xlabel("Constraints", fontsize = 18)
+    plt.ylabel("Variables", fontsize = 18)
+    plt.tight_layout()
     plt.savefig("mb-steady-incidence-no-elim.pdf")
     
     
@@ -39,8 +42,10 @@ def plot_incidence_matrix():
                            highlight_coarse=False,
                            highlight_fine=False,)
     plt.title("Linear matching", fontsize = 18)
+    plt.xlabel("Constraints", fontsize = 18)
+    plt.ylabel("Variables", fontsize = 18)
+    plt.tight_layout()
     plt.savefig("mb-steady-incidence-lm.pdf")
+
 if __name__ == "__main__":
     plot_incidence_matrix()
-    
-    
