@@ -98,6 +98,102 @@ def _plot_fraction_eliminated(df):
     
     return fig, ax
 
+def _plot_nnz_per_constraint(df):
+    # Models alphabetically are the same order as in the paper table, luckily.
+    models = list(sorted(set(df["model"])))
+    methods = list(sorted(set(df["method"]), key=lambda m: method_ord[m]))
+    nonlin_nnz_per_con = {}
+    lin_nnz_per_con = {}
+
+    for i, row in df.iterrows():
+        nonlin_nnz_per_con[row["model"], row["method"]] = (row["nnz"] -  row["nnz-linear"])/row["ncon"]
+        lin_nnz_per_con[row["model"], row["method"]] = row["nnz-linear"]/row["ncon"]
+
+    nmodel = len(models)
+    nmethod = len(methods)
+    inter_model_spacing = 1.5
+    width = 1.0
+    tickpos_by_model = {
+        model: (nmethod + inter_model_spacing) * i + nmethod / 2
+        for i, model in enumerate(models)
+    }
+    offset_by_method = {method: method_ord[method] - 3.5 for method in methods}
+
+    to_omit = ()
+    model_methods = [(mod, met) for mod in models for met in methods if met not in to_omit]
+
+    x_array = np.array([
+        tickpos_by_model[model] + offset_by_method[method]
+        for model, method in model_methods
+    ])
+    
+    fig, ax = plt.subplots()
+    # Using different colors for each method doesn't look good
+    #colors = ["blue", "orange", "green", "purple", "brown", "red"]
+    
+    nonlin_nnz_per_con_array = np.array([
+        nonlin_nnz_per_con[model, method]
+        for model, method in model_methods
+    ])
+    
+    lin_nnz_per_con_array = np.array([
+        lin_nnz_per_con[model, method]
+        for model, method in model_methods
+    ])
+    ax.bar(
+        x_array,
+        nonlin_nnz_per_con_array,
+        width=width,
+        align="center",
+        edgecolor="black",
+        label = 'Nonlinear'
+    )
+    
+    ax.bar(
+        x_array,
+        lin_nnz_per_con_array,
+        bottom = nonlin_nnz_per_con_array,
+        width=width,
+        align="center",
+        edgecolor="black",
+        label = 'Linear'
+    )
+
+    w, h = fig.get_size_inches()
+    fig.set_size_inches(1.3*w, h)
+    ax.set_ylabel(
+        "Number of\\\\\nnon-zeros per\\\\\nconstraint",
+        rotation=0,
+        labelpad=60,
+    )
+    if args.title is not None:
+        ax.set_title(args.title)
+
+    # A little hacky. Here we're adding extra tick labels for the first instance
+    # of each method. Assumming x array is ordered by method, and that we omit exactly
+    # one method.
+    method_tickpos = list(x_array[0:nmethod-len(to_omit)])
+    method_ticklabels = [method_to_label[method] for method in methods if method not in to_omit]
+    model_tickpos = [tickpos_by_model[model] for model in models]
+    model_ticklabels = [
+        "\n\n" + model_to_label[model] if i == 0 else "\n" + model_to_label[model]
+        for i, model in enumerate(models)
+    ]
+    
+    ax.set_xticks(model_tickpos, model_ticklabels, rotation=0, minor=False)
+    ax.set_xticks(
+        method_tickpos,
+        method_ticklabels,
+        rotation=90,
+        minor=True,
+        fontsize=14,
+        ha="center",
+    )
+    ax.xaxis.set_tick_params(which="minor", length=0)
+    plt.legend(loc = "upper left")
+    fig.tight_layout()
+    
+    return fig, ax
 
 if __name__ == "__main__":
     argparser = get_plot_argparser()
@@ -115,13 +211,18 @@ if __name__ == "__main__":
         raise ValueError("--method argument cannot be used")
 
     df = pd.read_csv(args.structure_results)
-    fig, ax = _plot_fraction_eliminated(df)
-
+    fig1, ax1 = _plot_fraction_eliminated(df)
+    fig2, ax2 = _plot_nnz_per_constraint(df)
     if not args.no_save:
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
         fname = f"fraction-elim{suff_str}.pdf"
         fpath = os.path.join(args.image_dir, fname)
-        fig.savefig(fpath, transparent=not args.opaque)
+        fig1.savefig(fpath, transparent=not args.opaque)
+        
+        suff_str = "" if args.suffix is None else f"-{args.suffix}"
+        fname = f"nnz-per-con{suff_str}.pdf"
+        fpath = os.path.join(args.image_dir, fname)
+        fig2.savefig(fpath, transparent=not args.opaque)
 
     if args.show:
         plt.show()
