@@ -54,7 +54,8 @@ def main(args):
     fnames = [basename + "-" + s + ".csv" for s in suffixes]
     filedir = os.path.dirname(__file__)
     fpaths = [
-        os.path.join(filedir, "results", args.result_type, fname)
+        #os.path.join(filedir, "results", args.result_type, fname)
+        os.path.join(args.results_dir, args.result_type, fname)
         for fname in fnames
     ]
     print()
@@ -71,7 +72,7 @@ def main(args):
         # output-suffix overrides suffix
         suff_str = f"-{args.output_suffix}"
     output_fname = args.result_type + suff_str + ".csv"
-    output_fpath = os.path.join(config.get_results_dir(), output_fname)
+    output_fpath = os.path.join(args.results_dir, output_fname)
 
     dfs = [pd.read_csv(fpath) for fpath in fpaths]
     output_df = pd.concat(dfs, ignore_index=True, join="inner")
@@ -101,25 +102,34 @@ if __name__ == "__main__":
         ),
         default=None,
     )
+    # We now append results_type to results_dir, so this isn't necessary.
+    #argparser.add_argument(
+    #    "--output-results-dir",
+    #    help=(
+    #        "Results dir to store collected output"
+    #        " (different from results dir where we look for results to collect)"
+    #    ),
+    #    default=config.get_results_dir(),
+    #)
 
     # HACK: We change the default of the argparser so we can handle it specially
     # if --method or --model are used.
     # It's unclear whether this hack will be worth the convenience, but let's try it.
-    argparser.set_defaults(results_dir=None)
+    #argparser.set_defaults(results_dir=None)
 
     args = argparser.parse_args()
 
-    if args.results_dir is None:
-        if args.method is None and args.model is None:
-            # If neither method nor model is used (we are collecting all results)
-            # we put results in the top-level results directory.
-            args.results_dir = config.get_results_dir()
-        else:
-            # If either method or model is used, we put the results in the
-            # results/structure subdirectory. This is because we don't want the
-            # top-level results getting polluted with a bunch of files.
-            resdir = os.path.join(config.get_results_dir(), "solvetime")
-            config.validate_dir(resdir)
-            args.results_dir = resdir
+    #if args.results_dir is None:
+    #    if args.method is None and args.model is None:
+    #        # If neither method nor model is used (we are collecting all results)
+    #        # we put results in the top-level results directory.
+    #        args.results_dir = config.get_results_dir()
+    #    else:
+    #        # If either method or model is used, we put the results in the
+    #        # results/structure subdirectory. This is because we don't want the
+    #        # top-level results getting polluted with a bunch of files.
+    #        resdir = os.path.join(config.get_results_dir(), args.results_dir)
+    #        config.validate_dir(resdir)
+    #        args.results_dir = resdir
 
     main(args)

@@ -152,6 +152,7 @@ def main(args):
         # We need to re-set the callback each time we solve a model
         htimer.start("solver")
         solver.config.intermediate_callback = Callback()
+        # TODO: Option to set tee=True?
         res = solver.solve(model, tee=False, timer=htimer)
         htimer.stop("solver")
 
