@@ -66,9 +66,11 @@ def main(args):
                 # Note that sample arg (and output filename) is base-1
                 for i in range(1, nsamples_total + 1)
             ]
-            if args.suffix is not None:
-                for cmd in sample_commands:
+            for cmd in sample_commands:
+                if args.suffix is not None:
                     cmd.append(f"--suffix={args.suffix}")
+                if args.results_dir is not None:
+                    cmd.append(f"--results-dir={args.results_dir}")
 
             sample_commands_str = [" ".join(cmd) + "\n" for cmd in sample_commands]
 
@@ -95,6 +97,8 @@ def main(args):
                 # suffix will be used to identify the right input files, while
                 # output-suffix will be used for the output file.
                 collect_cmd.append(f"--output_suffix={args.output_suffix}")
+            if args.results_dir is not None:
+                collect_cmd.append(f"--results-dir={args.results_dir}")
             collect_commands.append(collect_cmd)
 
             # TODO: Maybe send other arguments to the plotting command?
