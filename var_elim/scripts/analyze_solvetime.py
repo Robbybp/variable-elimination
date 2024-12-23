@@ -152,8 +152,10 @@ def main(args):
         # We need to re-set the callback each time we solve a model
         htimer.start("solver")
         solver.config.intermediate_callback = Callback()
-        # TODO: Option to set tee=True?
-        res = solver.solve(model, tee=False, timer=htimer)
+        solver.config.options["linear_solver"] = "ma57"
+        solver.config.options["ma57_pivot_order"] = 4
+        solver.config.options["print_user_options"] = "yes"
+        res = solver.solve(model, tee=args.tee, timer=htimer)
         htimer.stop("solver")
 
         timer.toc("Solve model")
@@ -295,6 +297,7 @@ if __name__ == "__main__":
         default=None,
         help="Basename for file to write results to",
     )
+    argparser.add_argument("--tee", action="store_true", help="Stream solver log to stdout")
     # HACK: We change the default of the argparser so we can handle it specially
     # if --method or --model are used.
     # It's unclear whether this hack will be worth the convenience, but let's try it.
