@@ -75,6 +75,10 @@ def main(args):
         if args.suffix is not None:
             for cl in cl_lists:
                 cl.append(f"--suffix={args.suffix}")
+        if args.results_dir != config.get_results_dir():
+            for cl in cl_lists:
+                cl.append(f"--results-dir={args.results_dir}")
+
     else:
         results_dir = os.path.join(os.path.dirname(__file__), "results", "sweep")
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
