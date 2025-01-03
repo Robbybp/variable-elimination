@@ -178,6 +178,8 @@ def add_bounds_to_expr(var, var_expr):
             # Bounds implied by bounds on defined variable
             lb = None if var.lb is None else (var.lb - offset) / coef
             ub = None if var.ub is None else (var.ub - offset) / coef
+            if coef < 0.0:
+                lb, ub = ub, lb
             lbkey = lambda b: -float("inf") if b is None else b
             ubkey = lambda b: float("inf") if b is None else b
             # Take the more restrictive of the two bounds
