@@ -192,6 +192,15 @@ def add_bounds_to_expr(var, var_expr):
 
             add_ub_con = False
             add_lb_con = False
+        elif len(repn.nonlinear_vars) == 0 and len(repn.linear_vars) == 0:
+            # We are eliminating a fixed variable
+            if (
+                (var.ub is not None and repn.constant > var.ub)
+                or (var.lb is not None and repn.constant < var.lb)
+            ):
+                raise ValueError("Attempting to fix a variable outside its bounds")
+            add_ub_con = False
+            add_lb_con = False
 
     ub_expr = var_expr <= var.ub if add_ub_con else None
     lb_expr = var_expr >= var.lb if add_lb_con else None
