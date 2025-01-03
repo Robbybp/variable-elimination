@@ -159,48 +159,46 @@ def add_bounds_to_expr(var, var_expr):
     # - Use standard-repn to check if defining expr is linear-degree-1
     # - Extract constant and coefficient
     # - Set bounds on x as e.g. (y^L-b)/m
-    propagate_bounds = True
     # Propagate bounds from eliminated variable to "defining variable" if the
     # two bounds are equivalent.
-    if propagate_bounds:
-        # TODO: Only compute standard repn if defined variable has bounds?
-        # ... or just cache and reuse standard repn...
-        repn = generate_standard_repn(var_expr, compute_values=True, quadratic=False)
+    # TODO: Only compute standard repn if defined variable has bounds?
+    # ... or just cache and reuse standard repn...
+    repn = generate_standard_repn(var_expr, compute_values=True, quadratic=False)
+    if (
+        len(repn.nonlinear_vars) == 0 # Expression is affine
+        and len(repn.linear_vars) == 1    # and only contains one variable.
+        # ^ Can linear_vars contain duplicates?
+    ):
+        offset = repn.constant
+        coef = repn.linear_coefs[0]
+        defining_var = repn.linear_vars[0]
+
+        # Bounds implied by bounds on defined variable
+        lb = None if var.lb is None else (var.lb - offset) / coef
+        ub = None if var.ub is None else (var.ub - offset) / coef
+        if coef < 0.0:
+            lb, ub = ub, lb
+        lbkey = lambda b: -float("inf") if b is None else b
+        ubkey = lambda b: float("inf") if b is None else b
+        # Take the more restrictive of the two bounds
+        lb = max(lb, defining_var.lb, key=lbkey)
+        ub = min(ub, defining_var.ub, key=ubkey)
+        lb = None if lb == -float("inf") else lb
+        ub = None if ub == float("inf") else ub
+        defining_var.setlb(lb)
+        defining_var.setub(ub)
+
+        add_ub_con = False
+        add_lb_con = False
+    elif len(repn.nonlinear_vars) == 0 and len(repn.linear_vars) == 0:
+        # We are eliminating a fixed variable
         if (
-            len(repn.nonlinear_vars) == 0 # Expression is affine
-            and len(repn.linear_vars) == 1    # and only contains one variable.
-            # ^ Can linear_vars contain duplicates?
+            (var.ub is not None and repn.constant > var.ub)
+            or (var.lb is not None and repn.constant < var.lb)
         ):
-            offset = repn.constant
-            coef = repn.linear_coefs[0]
-            defining_var = repn.linear_vars[0]
-
-            # Bounds implied by bounds on defined variable
-            lb = None if var.lb is None else (var.lb - offset) / coef
-            ub = None if var.ub is None else (var.ub - offset) / coef
-            if coef < 0.0:
-                lb, ub = ub, lb
-            lbkey = lambda b: -float("inf") if b is None else b
-            ubkey = lambda b: float("inf") if b is None else b
-            # Take the more restrictive of the two bounds
-            lb = max(lb, defining_var.lb, key=lbkey)
-            ub = min(ub, defining_var.ub, key=ubkey)
-            lb = None if lb == -float("inf") else lb
-            ub = None if ub == float("inf") else ub
-            defining_var.setlb(lb)
-            defining_var.setub(ub)
-
-            add_ub_con = False
-            add_lb_con = False
-        elif len(repn.nonlinear_vars) == 0 and len(repn.linear_vars) == 0:
-            # We are eliminating a fixed variable
-            if (
-                (var.ub is not None and repn.constant > var.ub)
-                or (var.lb is not None and repn.constant < var.lb)
-            ):
-                raise ValueError("Attempting to fix a variable outside its bounds")
-            add_ub_con = False
-            add_lb_con = False
+            raise ValueError("Attempting to fix a variable outside its bounds")
+        add_ub_con = False
+        add_lb_con = False
 
     ub_expr = var_expr <= var.ub if add_ub_con else None
     lb_expr = var_expr >= var.lb if add_lb_con else None
