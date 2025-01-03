@@ -135,7 +135,13 @@ def add_bounds_to_expr(var, var_expr):
     Each constraint added to the bound_cons list is indexed by var_name_ub or
     var_name_lb depending upon which bound it adds to the expression
     """
-    lb, ub = fbbt.compute_bounds_on_expr(var_expr)
+
+    # This seems to be fast and eliminate many bounds (for problems that have them),
+    # but leads to slowdowns in some instances. Basically, I don't know when the
+    # bounds were and weren't "useful for the algorithm" even when they're not
+    # necessary.
+    #lb, ub = fbbt.compute_bounds_on_expr(var_expr)
+    lb, ub = None, None
     # TODO: Use a tolerance for bound equivalence here?
     if var.lb is not None and (lb is None or lb < var.lb):
         # We add a lower bound constraint if the variable has a lower bound
@@ -150,6 +156,40 @@ def add_bounds_to_expr(var, var_expr):
 
     # TODO: If our expression is a linear (monotonic) function of a single
     # variable, we can propagate its bound back to the independent variable.
+    # - Use standard-repn to check if defining expr is linear-degree-1
+    # - Extract constant and coefficient
+    # - Set bounds on x as e.g. (y^L-b)/m
+    propagate_bounds = True
+    # Propagate bounds from eliminated variable to "defining variable" if the
+    # two bounds are equivalent.
+    if propagate_bounds:
+        # TODO: Only compute standard repn if defined variable has bounds?
+        # ... or just cache and reuse standard repn...
+        repn = generate_standard_repn(var_expr, compute_values=True, quadratic=False)
+        if (
+            len(repn.nonlinear_vars) == 0 # Expression is affine
+            and len(repn.linear_vars) == 1    # and only contains one variable.
+            # ^ Can linear_vars contain duplicates?
+        ):
+            offset = repn.constant
+            coef = repn.linear_coefs[0]
+            defining_var = repn.linear_vars[0]
+
+            # Bounds implied by bounds on defined variable
+            lb = None if var.lb is None else (var.lb - offset) / coef
+            ub = None if var.ub is None else (var.ub - offset) / coef
+            lbkey = lambda b: -float("inf") if b is None else b
+            ubkey = lambda b: float("inf") if b is None else b
+            # Take the more restrictive of the two bounds
+            lb = max(lb, defining_var.lb, key=lbkey)
+            ub = min(ub, defining_var.ub, key=ubkey)
+            lb = None if lb == -float("inf") else lb
+            ub = None if ub == float("inf") else ub
+            defining_var.setlb(lb)
+            defining_var.setub(ub)
+
+            add_ub_con = False
+            add_lb_con = False
 
     ub_expr = var_expr <= var.ub if add_ub_con else None
     lb_expr = var_expr >= var.lb if add_lb_con else None

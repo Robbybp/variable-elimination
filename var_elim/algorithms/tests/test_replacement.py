@@ -231,26 +231,26 @@ class TestReplacementWithBounds:
             pyo.value(x2_lb_con.lower),
         )
 
-    def test_dominated_bounds(self):
+    def test_propagate_bounds_linear(self):
+        # Test that we correctly propagate bounds when eliminating a linear constraint
+        # with two variables.
         m = pyo.ConcreteModel()
         m.x = pyo.Var([1, 2, 3])
+        for i in range(1, 4):
+            m.x[i].setlb(-i)
+            m.x[i].setub(i)
         m.eq = pyo.Constraint(pyo.PositiveIntegers)
-        m.eq[1] = m.x[1] == m.x[2] + m.x[3]**2
+        m.eq[1] = m.x[1] == 2 * m.x[2] + 3
+        m.eq[2] = m.x[2] * m.x[2] == m.x[3]
         m.obj = pyo.Objective(expr=m.x[1]**2 + m.x[2]**2 + m.x[3]**2)
-        e = m.x[2] + m.x[3]**2
-        m.x[2].setlb(-2)
-        m.x[2].setub(2)
-        m.x[3].setlb(-1)
-        m.x[3].setub(4)
-        # Bounds on expression are (-2, 18)
-        m.x[1].setlb(-2)
-        m.x[1].setub(20)
 
         var_elim = [m.x[1]]
         con_elim = [m.eq[1]]
         var_exprs, var_lb_map, var_ub_map = eliminate_variables(m, var_elim, con_elim)
-        assert len(m.replaced_variable_bounds_set) == 0
-        assert len(m.replaced_variable_bounds) == 0
+        assert m.x[1] not in var_lb_map
+        assert m.x[1] not in var_ub_map
+        assert math.isclose(m.x[2].lb, -2.0, abs_tol=1e-8)
+        assert math.isclose(m.x[2].ub, -1.0, abs_tol=1e-8)
 
 
 class TestReplacementInInequalities:
@@ -283,9 +283,7 @@ class TestReplacementInInequalities:
         # Make sure new model has correct number of constraints
         new_igraph = IncidenceGraphInterface(m, include_inequality=True)
 
-        # New constraints only get added for upper bounds, as lower bounds are
-        # redundant.
-        assert len(new_igraph.constraints) == 4
+        assert len(new_igraph.constraints) == 6
 
         # Make sure proper replacement happened here
         assert ComponentSet(identify_variables(m.eq4.expr)) == ComponentSet(m.y[:])
