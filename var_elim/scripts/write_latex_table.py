@@ -4,6 +4,21 @@ import os
 import math
 
 
+def _format_objective(val):
+    if val < 1e-8:
+        return "%1.2f" % val
+    elif val < 1.0:
+        return "%1.2E" % val
+    elif val < 10.0:
+        return "%1.2f" % val
+    elif val < 100.0:
+        return "%1.1f" % val
+    elif val < 1000.0:
+        return "%1.0f" % val
+    else:
+        return "%1.2E" % val
+
+
 FORMAT = {
     "model":  lambda item: item.ljust(9),
     "method": lambda item: item.ljust(9),
@@ -44,6 +59,8 @@ FORMAT = {
     r"Jacobian (\%)":    lambda item: "%3i" % round(item),
     r"Hessian (\%)":     lambda item: "%3i" % round(item),
     r"Other (\%)":       lambda item: "%3i" % round(item),
+
+    "objective-value": _format_objective,
 
     # At this point, we only use these keys for percent converged in the sweep summary
     # table. But if we end up using these in other tables, we should update the column
@@ -90,6 +107,8 @@ RENAME = {
     r"Jacobian (\%)": r"Jac.",
     r"Hessian (\%)": r"Hess.",
     r"Other (\%)": r"Other",
+
+    "objective-value": "Objective",
 
     "distill": "DIST",
     "mb-steady": "MB",
@@ -221,6 +240,7 @@ def _generate_solvetime_table(df):
         r"Jacobian (\%)",
         r"Hessian (\%)",
         r"Other (\%)",
+        "objective-value",
     ]
     return dataframe_to_latex(df, columns=columns)
 
