@@ -79,6 +79,14 @@ def solve_reduced(m, tee=True, callback=matching_elim_callback):
     return m
 
 
+def get_objective_value(m):
+    objs = list(m.component_data_objects(pyo.Objective, active=True))
+    if len(objs) > 1:
+        raise RuntimeError(f"Model has {len(objs)} objectives")
+    else:
+        return pyo.value(objs[0].expr)
+
+
 def main(args):
     if args.model is not None:
         models = [(args.model, config.CONSTRUCTOR_LOOKUP[args.model])]
@@ -114,6 +122,7 @@ def main(args):
         "success": [],
         "feasible": [],
         "max-infeasibility": [],
+        "objective-value": [],
         "elim-time": [],
         "solve-time": [],
         "init-time": [],
@@ -152,7 +161,8 @@ def main(args):
         # We need to re-set the callback each time we solve a model
         htimer.start("solver")
         solver.config.intermediate_callback = Callback()
-        res = solver.solve(model, tee=False, timer=htimer)
+        solver.config.options["print_user_options"] = "yes"
+        res = solver.solve(model, tee=args.tee, timer=htimer)
         htimer.stop("solver")
 
         timer.toc("Solve model")
@@ -248,12 +258,15 @@ def main(args):
         print(f"Time spent initializing solver:    {init_time}")
         print()
 
+        objval = get_objective_value(model)
+
         data["model"].append(mname)
         data["method"].append(elim_name)
         data["elim-time"].append(elim_time)
         data["success"].append(success)
         data["feasible"].append(valid)
         data["max-infeasibility"].append(max_infeas)
+        data["objective-value"].append(objval)
         data["solve-time"].append(solve_time)
         data["init-time"].append(init_time)
         # This is time to build the model, and has nothing to do with the elimination
@@ -294,6 +307,7 @@ if __name__ == "__main__":
         default=None,
         help="Basename for file to write results to",
     )
+    argparser.add_argument("--tee", action="store_true", help="Stream solver log to stdout")
     # HACK: We change the default of the argparser so we can handle it specially
     # if --method or --model are used.
     # It's unclear whether this hack will be worth the convenience, but let's try it.
