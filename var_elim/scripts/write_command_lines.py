@@ -75,6 +75,13 @@ def main(args):
         if args.suffix is not None:
             for cl in cl_lists:
                 cl.append(f"--suffix={args.suffix}")
+        if args.results_dir != config.get_results_dir():
+            for cl in cl_lists:
+                cl.append(f"--results-dir={args.results_dir}")
+        if args.tee:
+            for cl in cl_lists:
+                cl.append("--tee")
+
     else:
         results_dir = os.path.join(os.path.dirname(__file__), "results", "sweep")
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
@@ -113,5 +120,6 @@ if __name__ == "__main__":
         help="Parallelize by model, method, or both. Default=both",
         default="both",
     )
+    argparser.add_argument("--tee", action="store_true", help="Solver log to stdout")
     args = argparser.parse_args()
     main(args)
