@@ -55,6 +55,22 @@ SolveResults = namedtuple(
 testset = pselib.TestSet()
 
 
+class VarElimSweepRunner(SequentialSweepRunner):
+
+    def set_input_values(self, model, sample_id):
+        # This is a little tricky because I need the TestProblem to get the
+        # parameter method.
+        # Hack this by setting it as an instance attribute?
+        sample_df = self.get_input_samples()
+        parameters = {
+            col: sample_df[col][sample_id] for col in sample_df.columns
+        }
+        # NOTE: TEST_PROBLEM needs to be set as an attribute externally.
+        # This is a huge hack to get around the fact that the IDAES SweepRunner
+        # is only designed to sweep over values of specific Pyomo components.
+        self.TEST_PROBLEM.set_parameter_values(model, parameters)
+
+
 def main(args):
 
     if args.method is None:
@@ -175,7 +191,9 @@ def main(args):
                 # Should runner check that solved is bool?
                 return solved, results
 
-            runner = SequentialSweepRunner(
+            # We use a custom SweepRunner class so we can patch the set_model_inputs
+            # method.
+            runner = VarElimSweepRunner(
                 build_model=problem.create_instance,
                 run_model=run_model,
                 input_specification=sweep,
@@ -185,6 +203,10 @@ def main(args):
                 solver=solver,
                 build_outputs=build_outputs,
             )
+            # This is a hack necessary for our set_model_inputs implementation.
+            # It allows us to use non-Pyomo components as "parameters", as long
+            # as the TestProblem knows how to deal with them.
+            runner.TEST_PROBLEM = problem
 
             if args.sample is None:
                 # If a sample was not provided, run the entire sweep
