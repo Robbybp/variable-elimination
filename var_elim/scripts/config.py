@@ -62,6 +62,7 @@ MODEL_NAMES = [
     "mb-steady",
     "opf",
     "pipeline",
+    "mb-dynamic",
 ]
 
 def mb_steady_constructor():
@@ -79,6 +80,9 @@ MODEL_CONSTRUCTORS = [
     mb_steady_constructor,
     create_opf,
     PipelineTestProblem().create_instance,
+    # We use the dynamic testproblem creat_instance method directly because,
+    # annoyingly, scaling actually hurts the dynamic test problem.
+    pselib.get_problem("MBCLC-METHANE-DYNAMIC").create_instance,
 ]
 CONSTRUCTOR_LOOKUP = dict(zip(MODEL_NAMES, MODEL_CONSTRUCTORS))
 
@@ -86,13 +90,16 @@ TESTPROBLEM_LOOKUP = {
     "distill": DistillationTestProblem(),
     "mb-steady": pselib.get_problem("MBCLC-METHANE-STEADY"),
     "pipeline": PipelineTestProblem(),
+    "mb-dynamic": pselib.get_problem("MBCLC-METHANE-DYNAMIC"),
 }
 
 
 def get_optimization_solver():
     options = {
         "print_user_options": "yes",
+        "print_timing_statistics": "yes",
         "max_iter": 3000,
+        "max_wall_time": 3600.0,
     }
     # Simple callback to get the number of iterations
     #callback = Callback()

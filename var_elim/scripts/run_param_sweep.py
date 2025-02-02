@@ -80,7 +80,12 @@ def main(args):
     # not necessary (or actively harmful), so we set this flag if the model needs
     # to be scaled.
     # ... This should really be handled better in pselib...
-    scale_problem = dict([("mb-steady", True), ("distill", False), ("pipeline", False)])
+    scale_problem = {
+        "mb-steady": True,
+        "distill": False,
+        "pipeline": False,
+        "mb-dynamic": False, # Dynamic mb doesn't require scaling...
+    }
 
     # We will store the results in a dict mapping callback name and problem
     # name to the results for a specific parameter sweep. We do this instead
