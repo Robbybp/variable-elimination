@@ -11,6 +11,7 @@ def main(args):
         ranges = [testproblem.parameter_ranges[p] for p in params]
         for p, (lb, ub) in zip(params, ranges):
             print(p)
+            # NOTE: some parameters might not be model components
             model_p = model.find_component(p)
             print(f"LB = {lb}")
             print(f"UB = {ub}")
