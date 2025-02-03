@@ -139,13 +139,9 @@ def main(args):
                 # This is what we see in the runner.results["results"] column
                 return results
 
-            options = {
-                "print_user_options": "yes",
-                "max_iter": 3000,
-            }
             # Note that if we want to collect more detailed information, we could
             # use TimedCyIpoptSolver
-            solver = pyo.SolverFactory("cyipopt", options=options)
+            solver = pyo.SolverFactory("cyipopt", options=config.SOLVER_OPTIONS)
 
             def run_model(model, solver):
                 timer = HierarchicalTimer()

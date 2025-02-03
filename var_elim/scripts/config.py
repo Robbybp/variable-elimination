@@ -94,17 +94,19 @@ TESTPROBLEM_LOOKUP = {
 }
 
 
+SOLVER_OPTIONS = {
+    "print_user_options": "yes",
+    "print_timing_statistics": "yes",
+    "max_iter": 3000,
+    "max_wall_time": 3600.0,
+}
+
+
 def get_optimization_solver():
-    options = {
-        "print_user_options": "yes",
-        "print_timing_statistics": "yes",
-        "max_iter": 3000,
-        "max_wall_time": 3600.0,
-    }
     # Simple callback to get the number of iterations
     #callback = Callback()
     solver = TimedPyomoCyIpoptSolver(
-        options=options,
+        options=SOLVER_OPTIONS,
         # Note that we don't set the intermediate callback here, as we don't want
         # to accidentally use it for multiple solves.
         # The alternative is just to construct a new solver each time it needs
