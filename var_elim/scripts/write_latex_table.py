@@ -65,10 +65,11 @@ FORMAT = {
     # At this point, we only use these keys for percent converged in the sweep summary
     # table. But if we end up using these in other tables, we should update the column
     # headers to something more specific.
-    "distill":   lambda item: "%3i" % round(item),
-    "mb-steady": lambda item: "%3i" % round(item),
-    "pipeline":  lambda item: "%3i" % round(item),
-    "total":     lambda item: "%3i" % round(item),
+    "distill":    lambda item: "%3i" % round(item),
+    "mb-steady":  lambda item: "%3i" % round(item),
+    "mb-dynamic": lambda item: "%3i" % round(item),
+    "pipeline":   lambda item: "%3i" % round(item),
+    "total":      lambda item: "%3i" % round(item),
 }
 
 
@@ -112,6 +113,7 @@ RENAME = {
 
     "distill": "DIST",
     "mb-steady": "MB",
+    "mb-dynamic": "DYN-MB",
     "opf": "OPF",
     "pipeline": "PIPE",
 
