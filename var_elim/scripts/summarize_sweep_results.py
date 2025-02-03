@@ -151,7 +151,11 @@ def main(args):
     if args.method is None:
         # If this is the summary for a particular model, we put it in the top-level
         # results dir.
-        output_fpath = os.path.join(config.get_results_dir(), output_fname)
+        if os.path.basename(args.results_dir) == "sweep":
+            resdir = os.path.dirname(args.results_dir)
+        else:
+            resdir = args.results_dir
+        output_fpath = os.path.join(resdir, output_fname)
     else:
         output_fpath = os.path.join(args.results_dir, output_fname)
     if not args.no_save:
