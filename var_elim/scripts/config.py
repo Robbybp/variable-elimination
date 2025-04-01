@@ -92,6 +92,7 @@ TESTPROBLEM_LOOKUP = {
 def get_optimization_solver():
     options = {
         "print_user_options": "yes",
+        "print_timing_statistics": "yes",
         "max_iter": 3000,
     }
     # Simple callback to get the number of iterations
