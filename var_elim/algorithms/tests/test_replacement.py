@@ -187,6 +187,8 @@ class TestReplacementWithBounds:
         vars_to_elim = [m.x[1], m.x[2]]
         cons_to_elim = [m.eq1, m.eq2]
 
+        m.x[1].setlb(1)
+
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m, var_order, con_order)
 
@@ -228,6 +230,27 @@ class TestReplacementWithBounds:
             pyo.value(x2_lb_con.body),
             pyo.value(x2_lb_con.lower),
         )
+
+    def test_propagate_bounds_linear(self):
+        # Test that we correctly propagate bounds when eliminating a linear constraint
+        # with two variables.
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        for i in range(1, 4):
+            m.x[i].setlb(-i)
+            m.x[i].setub(i)
+        m.eq = pyo.Constraint(pyo.PositiveIntegers)
+        m.eq[1] = m.x[1] == 2 * m.x[2] + 3
+        m.eq[2] = m.x[2] * m.x[2] == m.x[3]
+        m.obj = pyo.Objective(expr=m.x[1]**2 + m.x[2]**2 + m.x[3]**2)
+
+        var_elim = [m.x[1]]
+        con_elim = [m.eq[1]]
+        var_exprs, var_lb_map, var_ub_map = eliminate_variables(m, var_elim, con_elim)
+        assert m.x[1] not in var_lb_map
+        assert m.x[1] not in var_ub_map
+        assert math.isclose(m.x[2].lb, -2.0, abs_tol=1e-8)
+        assert math.isclose(m.x[2].ub, -1.0, abs_tol=1e-8)
 
 
 class TestReplacementInInequalities:
