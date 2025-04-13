@@ -217,11 +217,13 @@ if __name__ == "__main__":
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
         fname = f"fraction-elim{suff_str}.pdf"
         fpath = os.path.join(args.image_dir, fname)
+        print(f"Saving figure to {fpath}")
         fig1.savefig(fpath, transparent=not args.opaque)
         
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
         fname = f"nnz-per-con{suff_str}.pdf"
         fpath = os.path.join(args.image_dir, fname)
+        print(f"Saving figure to {fpath}")
         fig2.savefig(fpath, transparent=not args.opaque)
 
     if args.show:
