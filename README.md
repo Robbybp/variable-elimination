@@ -87,6 +87,19 @@ These default to `results` and `images` respectively, but it might be useful
 to set them to custom values to avoid overwriting previous results
 (produced with, e.g., a different Pyomo version).
 
+TL;DR: Reproduce the bulk of our results with the following commands:
+```bash
+python analyze_structure.py
+python write_latex_table.py results/structure.csv
+python analyze_solvetime.py
+python write_latex_table.py results/solvetime.csv
+python run_param_sweep.py
+python summarize_sweep_results.py --model=distill
+python summarize_sweep_results.py --model=mb-steady
+python summarize_sweep_results.py --model=pipeline
+```
+See below for more details, especially on how to speed this up in an HPC environment.
+
 ### Producing results in parallel on HPC
 The results can be time-consuming to reproduce, so we typically run them in parallel
 on multiple-node/core HPC systems. This repository includes scripts to write command
@@ -202,3 +215,5 @@ Plots may be generated with:
 # Alternatively, we could run each command in this file manually
 parallel -a commands/plot-sweep-commands.txt
 ```
+
+# Using these methods on your own models
