@@ -45,6 +45,8 @@ following commands:
 pip install pyomo
 pyomo build-extensions
 ```
+This writes `libpynumero_ASL` to an OS-dependent Pyomo directory, e.g.,
+`$HOME/.pyomo/lib` on Linux.
 
 2. [Ipopt 3.14](https://github.com/coin-or/ipopt), with linear solver MA27.
 See the following instructions to compile an Ipopt-compatible HSL library
@@ -93,12 +95,12 @@ lines that can be run in parallel with utilities like Slurm and GNU Parallel.
 ## Reproducing structural results
 Structural results are produced by the `analyze_structure.py` script:
 ```bash
-python analyze_structure.py
+python analyze_structure.py --results-dir=RESULTS_DIR
 ```
 Results are written to `RESULTS_DIR/structure.csv`.
 Display these results as a Latex table, similar to that displayed in the paper, with:
 ```bash
-python write_latex_table.py `RESULTS_DIR/structure.csv`
+python write_latex_table.py RESULTS_DIR/structure.csv
 ```
 
 To write structure-analysis commands that can be run in parallel:
@@ -106,16 +108,97 @@ To write structure-analysis commands that can be run in parallel:
 python write_command_lines.py structure --results-dir=RESULTS_DIR
 ```
 
-To run these commands in parallel on multiple cores:
+To run these commands in parallel with multiple subprocesses:
 ```bash
+# This may require installing GNU Parallel for the `parallel` command
 parallel -a structure-commands.txt
 ```
 
 To collect the results into a single file:
 ```bash
+# Only necessary if we have written many small files in parallel runs!
 python collect_results.py structure --results-dir=RESULTS_DIR
+```
+The results are now combined into `RESULTS_DIR/structure.csv` and can be
+displayed as above.
+Figures may be produced with:
+```bash
+python plot_structure_bargraphs.py RESULTS_DIR/structure.csv --image-dir=IMAGE_DIR
 ```
 
 ## Reproducing numerical results
+Numerical results are produced using the `analyze_solvetime.py` script:
+```bash
+python analyze_solvetime.py --results-dir=RESULTS_DIR
+```
+Results are written to `RESULTS_DIR/solvetime.csv`, and can be displayed
+with:
+```bash
+python write_latex_table.py RESULTS_DIR/solvetime.csv
+```
+
+Independent commands for parallel runs can be written with:
+```bash
+python write_command_lines.py solvetime --results-dir=RESULTS_DIR
+```
+
+We typically prefer to run scripts that measure solvetimes on independent,
+identical compute nodes rather than using multiple processes on the same
+node. We do this with a Slurm batch script and the `sbatch` command.
+The exact contents of this batch script depends on your HPC environment.
+
+Collect results into a single file with:
+```bash
+# Only necessary if we have written many small files in parallel runs!
+python collect_results.py solvetime --results-dir=RESULTS_DIR
+```
+
+The breakdown of solve time can be plotted with:
+```bash
+python plot_timing_bargraphs.py RESULTS_DIR/solvetime.csv --image-dir=IMAGE_DIR
+```
 
 ## Reproducing convergence results
+Parameter sweeps are run with the `run_param_sweep.py` script:
+```bash
+python run_param_sweep.py --results-dir=RESULTS_DIR
+```
+This writes a CSV file of convergence results for each model-method combination,
+e.g., `mb-steady-matching-sweep.csv`, into the `RESULTS_DIR/sweep` subdirectory.
+
+A summary of sweep results may be displayed with:
+```bash
+python summarize_sweep_results.py --results-dir=RESULTS_DIR --model=MODEL
+```
+where `MODEL` is one of `mb-steady`, `distill`, or `pipeline`.
+
+Parameter sweep success/failure results may be plotted in a grid with:
+```bash
+python plot_sweep_results.py SWEEP_CSV --image-dir=IMAGE_DIR
+```
+
+We typically run the parameter sweep for each model-method combination
+on a different compute node (managed by e.g., Slurm), and use multiprocess
+parallelism to run individual parameter samples in parallel within each node
+(using GNU Parallel).
+
+Commands can be written with:
+```bash
+python write_sweep_command_lines.py --results-dir=RESULTS_DIR
+```
+The commands for each model-method combination, written to
+`commands/parallel-sweep-commands.txt`, can then be run on multiple compute
+nodes with, for example, the Slurm `sbatch` command.
+
+Parameter sweep results for each model-method combination may be combined
+into CSV files, e.g., `mb-steady-matching-sweep.csv` with:
+```bash
+# Alternatively, we could run each command in this file manually
+parallel -a commands/collect-sweep-commands.txt
+```
+
+Plots may be generated with:
+```bash
+# Alternatively, we could run each command in this file manually
+parallel -a commands/plot-sweep-commands.txt
+```
