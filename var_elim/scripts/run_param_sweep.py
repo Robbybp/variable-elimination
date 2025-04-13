@@ -142,6 +142,8 @@ def main(args):
             # Note that if we want to collect more detailed information, we could
             # use TimedCyIpoptSolver
             solver = pyo.SolverFactory("cyipopt", options=config.SOLVER_OPTIONS)
+            if problem_name == "mb-dynamic":
+                solver.config.options["nlp_scaling_method"] = "user-scaling"
 
             def run_model(model, solver):
                 timer = HierarchicalTimer()
