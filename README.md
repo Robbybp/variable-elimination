@@ -217,3 +217,29 @@ parallel -a commands/plot-sweep-commands.txt
 ```
 
 # Using these methods on your own models
+The functionality to identify sets of variables and constraints to eliminate, perform
+the elimination in-place on Pyomo models, and analyze the resulting models is located
+in the `var_elim/algorithms` and `var_elim/heuristics` subdirectories.
+Different methods, e.g., `identify_vars_for_elim_ampl` and `get_degree_two_elimination`,
+have different call signatures. For ease of comparison among the different methods,
+the `var_elim.elimination_callbacks` module has functions with consistent call signatures
+for performing each elimination method in-place on a Pyomo model.
+
+For example, to perform the "linear-matching" elimination method on our distillation
+column test model, run the following:
+```python
+from var_elim.distill import create_instance
+from var_elim.elimination_callbacks import matching_elim_callback
+model = create_instance()
+matching_elim_callback(model)
+```
+
+`pyomo.contrib.incidence_analysis` provides some useful tools to inspect the
+structure of resulting models:
+```python
+from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
+igraph = IncidenceGraphInterface(model, linear_only=False)
+nvar = length(igraph.variables)
+ncon = length(igraph.constraints)
+nnz = igraph.n_edges
+```
