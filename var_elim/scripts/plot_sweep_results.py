@@ -71,19 +71,22 @@ def plot_convergence(
     parameters = [list(sorted(set(df[name]))) for name in parameter_names]
     param_index_maps = [{p: i for i, p in enumerate(params)} for params in parameters]
     success_lookup = {}
+    solve_time = {}
     for i in range(len(df)):
         key = tuple(df[name][i] for name in parameter_names)
         success_lookup[key] = int(df["success"][i])
+        solve_time[key] = round(df["solve-time"][i], 2)
     n_success = list(success_lookup.values()).count(1)
     n_total = len(df)
     print(f"Converged {n_success} / {n_total} instances")
     convergence_array = np.zeros(tuple(len(params) for params in parameters))
+    solve_time_array = np.zeros(tuple(len(params) for params in parameters))
     for params in itertools.product(*parameters):
         indices = tuple(idx_map[p] for idx_map, p in zip(param_index_maps, params))
         convergence_array[indices] = success_lookup[params]
-
+        solve_time_array[indices] = solve_time[params]
     fig, ax = plt.subplots()
-
+    
     ax.imshow(
         convergence_array,
         aspect="equal",
@@ -92,6 +95,7 @@ def plot_convergence(
         vmin=0,
         vmax=1,
     )
+   
     # Since we are plotting on a 2D grid, it is unclear if the more general code
     # above to parse an arbitrary number of parameters has any value.
     assert len(parameters) == 2
@@ -147,6 +151,15 @@ def plot_convergence(
         )
         w, h = fig.get_size_inches()
         fig.set_size_inches(1.2*w, h)
+        
+    print(solve_time_array)
+    fig, ax = plt.subplots()
+    ax.imshow(
+        solve_time_array,
+        aspect="equal",
+        origin="lower"
+    )
+
 
     return fig, ax
 
