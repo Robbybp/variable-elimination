@@ -69,7 +69,10 @@ def summarize_single_model(args, elim_names):
 
         n_success = list(df["success"]).count(True)
         n_total = len(df["success"])
-        ave_solvetime = sum(df["solve-time"])/len(df["solve-time"])
+        
+        # Avg solve time is calculated only over the successful instances
+        # This calculation matches the one in the paper. 
+        ave_solvetime = sum(df[df["success"] == True]["solve-time"])/n_success
         ave_elimtime = sum(df["elim-time"])/len(df["elim-time"])
 
         sweep_data["model"].append(args.model)
