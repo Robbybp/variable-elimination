@@ -93,7 +93,9 @@ python analyze_structure.py
 python write_latex_table.py results/structure.csv
 python analyze_solvetime.py
 python write_latex_table.py results/solvetime.csv
-python run_param_sweep.py
+python run_param_sweep.py --model=distill
+python run_param_sweep.py --model=mb-steady
+python run_param_sweep.py --model=pipeline
 python summarize_sweep_results.py --model=distill
 python summarize_sweep_results.py --model=mb-steady
 python summarize_sweep_results.py --model=pipeline
