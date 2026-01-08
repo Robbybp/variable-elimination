@@ -117,10 +117,10 @@ RENAME = {
 
     "no-elim": "--",
     "d1": "LD1",
-    "trivial": "ECD2",
+    "ecd2": "ECD2",
     "linear-d2": "LD2",
     "d2": "D2",
-    "ampl": "GR",
+    "greedy": "GR",
     "matching": "LM",
 
     "total": "Total",

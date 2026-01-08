@@ -46,10 +46,10 @@ ELIM_CALLBACKS = [
     # filename of parameter sweep results.
     ("no-elim", no_elim_callback),
     ("d1", linear_degree1_elim_callback),
-    ("trivial", equalcoef_degree1_elim_callback),
+    ("ecd2", equalcoef_degree1_elim_callback),
     ("linear-d2", linear_degree2_elim_callback),
     ("d2", degree2_elim_callback),
-    ("ampl", greedy_elim_callback),
+    ("greedy", greedy_elim_callback),
     ("matching", matching_elim_callback),
 ]
 ELIM_LOOKUP = dict(ELIM_CALLBACKS)

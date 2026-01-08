@@ -12,8 +12,8 @@ plt.rcParams["font.size"] = 20
 plt.rcParams["font.family"] = "serif"
 
 
-method_ord = {"no-elim": 0, "d1": 1, "trivial": 2, "linear-d2": 3, "d2": 4, "ampl": 5, "matching": 6}
-method_to_label = {"no-elim": "--", "d1": "LD1", "trivial": "ECD2", "linear-d2": "LD2", "d2": "D2", "ampl": "GR", "matching": "LM"}
+method_ord = {"no-elim": 0, "d1": 1, "ecd2": 2, "linear-d2": 3, "d2": 4, "greedy": 5, "matching": 6}
+method_to_label = {"no-elim": "--", "d1": "LD1", "ecd2": "ECD2", "linear-d2": "LD2", "d2": "D2", "greedy": "GR", "matching": "LM"}
 model_to_label = {"distill": "Distillation", "mb-steady": "Moving bed", "opf": "OPF", "pipeline": "Pipeline"}
 
 
