@@ -338,7 +338,7 @@ def degree2_elim_callback(model, **kwds):
 
     return ElimResults(None, None, total_con_elim, total_var_exprs, None)
 
-def equalcoef_degree1_elim_callback(model, **kwds):
+def equalcoef_degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
