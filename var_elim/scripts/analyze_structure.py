@@ -56,10 +56,10 @@ from var_elim.algorithms.expr import (
 from var_elim.elimination_callbacks import (
     get_equality_constraints,
     matching_elim_callback,
-    trivial_elim_callback,
-    d1_elim_callback,
-    d2_elim_callback,
-    linear_d2_elim_callback,
+    equalcoef_degree1_elim_callback,
+    linear_degree1_elim_callback,
+    degree2_elim_callback,
+    linear_degree2_elim_callback,
 )
 
 import os

@@ -22,12 +22,12 @@ import os
 import argparse
 from var_elim.elimination_callbacks import (
     no_elim_callback,
-    d1_elim_callback,
-    trivial_elim_callback,
-    linear_d2_elim_callback,
-    d2_elim_callback,
+    linear_degree1_elim_callback,
+    equalcoef_degree1_elim_callback,
+    linear_degree2_elim_callback,
+    degree2_elim_callback,
     matching_elim_callback,
-    ampl_elim_callback,
+    greedy_elim_callback,
 )
 from var_elim.models.testproblems import (
     DistillationTestProblem,
@@ -45,11 +45,11 @@ ELIM_CALLBACKS = [
     # These names are used in the "method" column in dataframes, or in the
     # filename of parameter sweep results.
     ("no-elim", no_elim_callback),
-    ("d1", d1_elim_callback),
-    ("trivial", trivial_elim_callback),
-    ("linear-d2", linear_d2_elim_callback),
-    ("d2", d2_elim_callback),
-    ("ampl", ampl_elim_callback),
+    ("d1", linear_degree1_elim_callback),
+    ("trivial", equalcoef_degree1_elim_callback),
+    ("linear-d2", linear_degree2_elim_callback),
+    ("d2", degree2_elim_callback),
+    ("ampl", greedy_elim_callback),
     ("matching", matching_elim_callback),
 ]
 ELIM_LOOKUP = dict(ELIM_CALLBACKS)
