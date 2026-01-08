@@ -32,7 +32,7 @@ from var_elim.heuristics.matching import (
 from var_elim.algorithms.replace import eliminate_variables 
 from var_elim.algorithms.expr import (
     count_model_nodes,
-    count_model_amplrepn_nodes,
+    count_model_greedyrepn_nodes,
 )
 from var_elim.elimination_callbacks import (
     get_equality_constraints,
@@ -81,14 +81,14 @@ def get_structural_results(model, elim_callback, htimer=None):
 
     timer.tic()
     orig_igraph = IncidenceGraphInterface(
-        model, include_inequality=True, method=IncidenceMethod.ampl_repn
+        model, include_inequality=True, method=IncidenceMethod.greedy_repn
     )
     timer.toc("Original incidence graph")
     orig_linear_igraph = IncidenceGraphInterface(
         model,
         include_inequality=True,
         linear_only=True,
-        method=IncidenceMethod.ampl_repn,
+        method=IncidenceMethod.greedy_repn,
     )
     timer.toc("Linear subgraph")
     eq_cons = get_equality_constraints(model)
@@ -100,10 +100,10 @@ def get_structural_results(model, elim_callback, htimer=None):
     orig_nnode = count_model_nodes(model)
     timer.toc("Count Pyomo nodes")
 
-    orig_nodecount = count_model_amplrepn_nodes(model)
-    #orig_nlnode = count_model_nodes(model, amplrepn=True)
+    orig_nodecount = count_model_greedyrepn_nodes(model)
+    #orig_nlnode = count_model_nodes(model, greedyrepn=True)
     timer.toc("Count nl nodes")
-    #orig_linear_nlnode = count_model_nodes(model, amplrepn=True, linear_only=True)
+    #orig_linear_nlnode = count_model_nodes(model, greedyrepn=True, linear_only=True)
     #timer.toc("Count linear nl nodes")
 
     orig_nvar = len(orig_igraph.variables)
@@ -121,21 +121,21 @@ def get_structural_results(model, elim_callback, htimer=None):
     reduced_nnode = count_model_nodes(model)
     timer.toc("Count reduced Pyomo nodes")
 
-    reduced_nodecount = count_model_amplrepn_nodes(model)
-    #reduced_nlnode = count_model_nodes(model, amplrepn=True)
+    reduced_nodecount = count_model_greedyrepn_nodes(model)
+    #reduced_nlnode = count_model_nodes(model, greedyrepn=True)
     timer.toc("Count reduced nl nodes")
-    #reduced_linear_nlnode = count_model_nodes(model, amplrepn=True, linear_only=True)
+    #reduced_linear_nlnode = count_model_nodes(model, greedyrepn=True, linear_only=True)
     #timer.toc("Count reduced linear nl nodes")
 
     reduced_igraph = IncidenceGraphInterface(
-        model, include_inequality=True, method=IncidenceMethod.ampl_repn
+        model, include_inequality=True, method=IncidenceMethod.greedy_repn
     )
     timer.toc("Reduced incidence graph")
     reduced_linear_igraph = IncidenceGraphInterface(
         model,
         include_inequality=True,
         linear_only=True,
-        method=IncidenceMethod.ampl_repn,
+        method=IncidenceMethod.greedy_repn,
     )
     timer.toc("Reduced linear subgraph")
 
