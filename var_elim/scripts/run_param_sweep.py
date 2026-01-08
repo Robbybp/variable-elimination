@@ -24,7 +24,7 @@ import pselib
 from idaes.core.util.parameter_sweep import (
     ParameterSweepSpecification,
     SequentialSweepRunner,
-    UniformSgreedying,
+    UniformSampling,
 )
 import pandas as pd
 from collections import namedtuple
@@ -58,8 +58,8 @@ def main(args):
     print("Running parameter sweep with following arguments")
     print(f"  model={args.method}")
     print(f"  method={args.method}")
-    print(f"  nsgreedyes={args.nsgreedyes}")
-    print(f"  sgreedye={args.sgreedye}")
+    print(f"  nsamples={args.nsamples}")
+    print(f"  sample={args.sample}")
 
     # Annoyingly, the MB problem requires scaling. Because the input parameters
     # will be scaled, we need to do this scaling *after* setting these input
@@ -80,24 +80,24 @@ def main(args):
             print(f"Performing parameter sweep for problem: {problem.uid}")
 
             sweep = ParameterSweepSpecification()
-            sweep.set_sgreedying_method(UniformSgreedying)
-            sgreedye_sizes = []
+            sweep.set_sampling_method(UniformSampling)
+            sample_sizes = []
             for param in problem.parameters:
-                sgreedye_sizes.append(args.nsgreedyes)
+                sample_sizes.append(args.nsamples)
                 lb, ub = problem.parameter_ranges[param]
-                sweep.add_sgreedyed_input(
+                sweep.add_sampled_input(
                     str(param),
                     pyo.value(lb),
                     pyo.value(ub),
                 )
-            sweep.set_sgreedye_size(sgreedye_sizes)
-            sweep.generate_sgreedyes()
+            sweep.set_sample_size(sample_sizes)
+            sweep.generate_samples()
 
-            print("Sgreedyes: (indices are base-0)")
-            if args.sgreedye is None:
-                print(sweep.sgreedyes)
+            print("Samples: (indices are base-0)")
+            if args.sample is None:
+                print(sweep.samples)
             else:
-                print(pd.DataFrame(sweep.sgreedyes.loc[args.sgreedye-1]).transpose())
+                print(pd.DataFrame(sweep.samples.loc[args.sample-1]).transpose())
 
             # Why is this necessary? It seems like a reasonable default could
             # just return results
@@ -168,32 +168,32 @@ def main(args):
                 build_outputs=build_outputs,
             )
 
-            if args.sgreedye is None:
-                # If a sgreedye was not provided, run the entire sweep
+            if args.sample is None:
+                # If a sample was not provided, run the entire sweep
                 runner.execute_parameter_sweep()
-                sgreedyes = sweep.sgreedyes
+                samples = sweep.samples
                 results = runner.results
             else:
-                # If a sgreedye was provided, only run the sgreedye.
-                s = args.sgreedye - 1
-                sresults, success, error = runner.execute_single_sgreedye(s)
-                # Mock up our own sgreedyes/results data structures
-                sgreedyes = pd.DataFrame(sweep.sgreedyes.loc[s]).transpose()
+                # If a sample was provided, only run the sample.
+                s = args.sample - 1
+                sresults, success, error = runner.execute_single_sample(s)
+                # Mock up our own samples/results data structures
+                samples = pd.DataFrame(sweep.samples.loc[s]).transpose()
                 results = {s: dict(results=sresults, success=success, error=error)}
 
-            sweep_results_lookup[problem_name, elim_name] = (sgreedyes, results)
+            sweep_results_lookup[problem_name, elim_name] = (samples, results)
 
     n_converged_lookup = {}
     for problem_name, problem in problems:
         for elim_name, _ in elimination_callbacks:
-            sgreedyes, results = sweep_results_lookup[problem_name, elim_name]
+            samples, results = sweep_results_lookup[problem_name, elim_name]
             results_df = pd.DataFrame(results).transpose()
 
             n_converged_lookup[problem_name, elim_name] = list(results_df["success"]).count(True)
 
             sweep_data_df = {}
             for param in problem.parameters:
-                sweep_data_df[str(param)] = sgreedyes[str(param)]
+                sweep_data_df[str(param)] = samples[str(param)]
             sweep_data_df["success"] = results_df["success"]
             sweep_data_df["error"] = results_df["error"]
             sweep_data_df["feasible"] = [res.feasible if res is not None else False for res in results_df["results"]]
@@ -210,11 +210,11 @@ def main(args):
             print(sweep_data_df)
 
             suffix = ""
-            if args.sgreedye is not None:
-                n_instances_total = args.nsgreedyes ** len(problem.parameters)
+            if args.sample is not None:
+                n_instances_total = args.nsamples ** len(problem.parameters)
                 # Note that, to collect these files, I will need to know how many
-                # sgreedyes I expect.
-                suffix += f"-{args.sgreedye}of{n_instances_total}"
+                # samples I expect.
+                suffix += f"-{args.sample}of{n_instances_total}"
             if args.suffix is not None:
                 suffix += f"-{args.suffix}"
             # TODO: Update this naming convention for consistency with structure
@@ -226,11 +226,11 @@ def main(args):
                 sweep_data_df.to_csv(fpath)
 
     # TODO: Write a sweep summary dataframe.
-    # Should we only do this if args.sgreedye is None?
+    # Should we only do this if args.sample is None?
     for problem_name, problem in problems:
         for elim_name, _ in elimination_callbacks:
-            sgreedyes, results = sweep_results_lookup[problem_name, elim_name]
-            n_instances = len(sgreedyes)
+            samples, results = sweep_results_lookup[problem_name, elim_name]
+            n_instances = len(samples)
             n_converged = n_converged_lookup[problem_name, elim_name]
             print(f"{problem_name}-{elim_name} converged {n_converged} / {n_instances} instances")
 

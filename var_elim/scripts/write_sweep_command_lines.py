@@ -46,7 +46,7 @@ def main(args):
 
     # NOTE: Assumming two parameters!
     NPARAM = 2
-    nsgreedyes_total = args.nsgreedyes ** NPARAM
+    nsamples_total = args.nsamples ** NPARAM
 
     parallel_sweep_commands = []
     collect_commands = []
@@ -55,32 +55,32 @@ def main(args):
     for mname in mnames:
         for ename in enames:
             # TODO: Write sweep commands to sweep-commands-mname-ename-suffix.txt
-            sgreedye_commands = [
+            sample_commands = [
                 [
                     "python",
                     "run_param_sweep.py",
                     f"--model={mname}",
                     f"--method={ename}",
-                    f"--sgreedye={i}",
+                    f"--sample={i}",
                 ]
-                # Note that sgreedye arg (and output filename) is base-1
-                for i in range(1, nsgreedyes_total + 1)
+                # Note that sample arg (and output filename) is base-1
+                for i in range(1, nsamples_total + 1)
             ]
-            for cmd in sgreedye_commands:
+            for cmd in sample_commands:
                 if args.suffix is not None:
                     cmd.append(f"--suffix={args.suffix}")
                 if args.results_dir is not None:
                     cmd.append(f"--results-dir={args.results_dir}")
 
-            sgreedye_commands_str = [" ".join(cmd) + "\n" for cmd in sgreedye_commands]
+            sample_commands_str = [" ".join(cmd) + "\n" for cmd in sample_commands]
 
             sweep_command_fname = f"sweep-commands-{mname}-{ename}{suff_str}.txt"
             sweep_command_fpath = os.path.join(args.commands_dir, sweep_command_fname)
 
             if not args.no_save:
-                print(f"Writing sgreedye commands for {mname}-{ename} to {sweep_command_fpath}")
+                print(f"Writing sample commands for {mname}-{ename} to {sweep_command_fpath}")
                 with open(sweep_command_fpath, "w") as f:
-                    for cmd in sgreedye_commands_str:
+                    for cmd in sample_commands_str:
                         f.write(cmd)
 
             parallel_sweep_commands.append(["parallel", "-a", sweep_command_fpath])

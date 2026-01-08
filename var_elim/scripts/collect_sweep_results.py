@@ -30,7 +30,7 @@ def main(args):
 
     # NOTE: We assume that we are sweeping over two parameters
     nparameters = 2
-    ninstances = args.nsgreedyes ** nparameters
+    ninstances = args.nsamples ** nparameters
 
     fnames = [
         f"{args.model}-{args.method}-sweep-{i}of{ninstances}"
