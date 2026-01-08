@@ -20,36 +20,10 @@
 
 import time
 import pyomo.environ as pyo
-from pyomo.common.collections import ComponentMap
 from pyomo.common.timing import TicTocTimer, HierarchicalTimer
-from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
-from pyomo.contrib.incidence_analysis.config import IncidenceMethod
-from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
 
-from collections import namedtuple
 import itertools
 
-import scipy.sparse as sps
-import matplotlib.pyplot as plt
-
-from var_elim.models.distillation.distill import create_instance as create_distill
-from var_elim.models.opf.opf_model import make_model as create_opf
-from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
-from var_elim.heuristics.matching import (
-    generate_elimination_via_matching,
-    define_elimination_order,
-)
-from var_elim.heuristics.trivial_elimination import (
-    get_degree_one_elimination,
-    get_degree_two_elimination,
-    get_linear_degree_two_elimination,
-    get_trivial_constraint_elimination,
-    filter_constraints,
-)
-from var_elim.algorithms.replace import eliminate_variables 
-from var_elim.algorithms.expr import (
-    count_nodes, count_model_nodes, count_amplrepn_nodes
-)
 from var_elim.algorithms.validate import validate_solution
 
 import var_elim.scripts.config as config
