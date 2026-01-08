@@ -34,7 +34,7 @@ from var_elim.heuristics.trivial_elimination import (
     get_degree_one_elimination,
     get_degree_two_elimination,
     get_linear_degree_two_elimination,
-    get_trivial_constraint_elimination,
+    get_equalcoef_degree_two_elimination,
     filter_constraints,
 )
 from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
@@ -396,7 +396,7 @@ def equalcoef_degree1_elim_callback(model, **kwds):
             continue
 
         timer.start("get-d2")
-        var_elim, con_elim = get_trivial_constraint_elimination(
+        var_elim, con_elim = get_equalcoef_degree_two_elimination(
             model,
             allow_affine=True,
             #linear_igraph=linear_igraph,

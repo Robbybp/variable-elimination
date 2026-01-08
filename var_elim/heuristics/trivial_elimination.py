@@ -102,7 +102,7 @@ def filter_constraints(
     )
 
 
-def get_trivial_constraint_elimination(
+def get_equalcoef_degree_two_elimination(
     model, allow_affine=False, linear_igraph=None, eq_igraph=None
 ):
     if allow_affine:
@@ -134,7 +134,7 @@ def get_trivial_constraint_elimination(
 
 
 # TODO: Does this *really* need to be its own function? It just omits the
-# equal_coefficients flag from get_trivial_constraint_elimination.
+# equal_coefficients flag from get_equalcoef_degree_two_elimination.
 def get_linear_degree_two_elimination(
     model, allow_affine=False, linear_igraph=None, eq_igraph=None
 ):
@@ -222,5 +222,5 @@ if __name__ == "__main__":
     from var_elim.algorithms.replace import define_elimination_order
 
     m = create_instance()
-    var_order, con_order = get_trivial_constraint_elimination(m)
+    var_order, con_order = get_equalcoef_degree_two_elimination(m)
     var_order, con_order = define_elimination_order(var_order, con_order)

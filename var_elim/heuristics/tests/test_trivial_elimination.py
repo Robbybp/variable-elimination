@@ -26,7 +26,7 @@ from pyomo.util.calc_var_value import calculate_variable_from_constraint
 from var_elim.heuristics.trivial_elimination import (
     expr_filter,
     filter_constraints,
-    get_trivial_constraint_elimination,
+    get_equalcoef_degree_two_elimination,
 )
 from var_elim.algorithms.replace import (
     define_elimination_order,
@@ -168,7 +168,7 @@ class TestTrivialElimination:
 
     def test_replacement_vars_simple(self):
         m = self._make_simple_model()
-        vars_to_elim, cons_to_elim = get_trivial_constraint_elimination(m)
+        vars_to_elim, cons_to_elim = get_equalcoef_degree_two_elimination(m)
         # Make sure correct variables are eliminated
         assert len(vars_to_elim) == 1
         # Note that y[1] could also be eliminated. This test relies on the
@@ -185,7 +185,7 @@ class TestTrivialElimination:
 
         m2 = self._make_simple_model()
 
-        vars_to_elim, cons_to_elim = get_trivial_constraint_elimination(m2)
+        vars_to_elim, cons_to_elim = get_equalcoef_degree_two_elimination(m2)
 
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
@@ -198,7 +198,7 @@ class TestTrivialElimination:
 
     def test_nested_replacement(self):
         m = self._make_model_for_nested_replacement()
-        vars_to_elim, cons_to_elim = get_trivial_constraint_elimination(m)
+        vars_to_elim, cons_to_elim = get_equalcoef_degree_two_elimination(m)
 
         # This is just the elimination we happen to arrive at given (a) the
         # maximum matching and (b) the tearing method. This could change if
@@ -219,7 +219,7 @@ class TestTrivialElimination:
         #pyo.assert_optimal_termination(res)
 
         m2 = self._make_model_for_nested_replacement()
-        vars_to_elim, cons_to_elim = get_trivial_constraint_elimination(m2)
+        vars_to_elim, cons_to_elim = get_equalcoef_degree_two_elimination(m2)
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m2, var_order, con_order)
         solver = pyo.SolverFactory("ipopt")
