@@ -184,6 +184,7 @@ if __name__ == "__main__":
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
         fname = f"fraction-solvetime{suff_str}.pdf"
         fpath = os.path.join(args.image_dir, fname)
+        print(f"Writing figure to {fpath}")
         fig.savefig(fpath, transparent=not args.opaque)
         
 
