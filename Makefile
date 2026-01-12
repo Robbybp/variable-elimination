@@ -1,3 +1,5 @@
+# TODO: Variable for results dir and/or suffix
+
 all:
 	echo "WARNING: Reproducing all results in serial via `make all` is time-consuming."
 	echo "We recommend reproducing these results in an HPC environment with a resource"
@@ -52,3 +54,11 @@ all:
 	python plot_sweep_results.py var_elim/scripts/results/sweep/pipeline-d2-sweep.csv
 	python plot_sweep_results.py var_elim/scripts/results/sweep/pipeline-ampl-sweep.csv
 	python plot_sweep_results.py var_elim/scripts/results/sweep/pipeline-matching-sweep.csv
+
+structure-parallel:
+	python var_elim/scripts/write_command_lines.py structure
+	parallel -a structure-commands.txt
+	python var_elim/scripts/collect_results.py structure
+	python var_elim/scripts/write_latex_table.py results/structure.csv
+	python var_elim/scripts/write_latex_table.py results/structure.csv --which=matching-bounds
+	python var_elim/scripts/plot_structure_bargraphs results/structure.csv
