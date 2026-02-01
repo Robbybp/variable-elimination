@@ -60,8 +60,8 @@ all:
 	python $(DIR)/plot_sweep_results.py $(DIR)/results/sweep/pipeline-matching-sweep.csv
 
 structure-parallel:
-	mkdir $(RESDIR) # Letting this get created by the parallel scripts below leads to a race condition
-	python $(DIR)/write_command_lines.py structure --results-dir=$(RESDIR) --commands-dir=$(COMDIR)/structure
+	mkdir -p $(RESDIR)/structure # Letting this get created by the parallel scripts below leads to a race condition
+	python $(DIR)/write_command_lines.py structure --results-dir=$(RESDIR) --commands-dir=$(COMDIR)
 	parallel -a $(COMDIR)/structure-commands.txt
 	python $(DIR)/collect_results.py structure --results-dir=$(RESDIR)
 	python $(DIR)/write_latex_table.py $(RESDIR)/structure.csv --results-dir=$(RESDIR)
@@ -69,10 +69,10 @@ structure-parallel:
 	python $(DIR)/plot_structure_bargraphs.py $(RESDIR)/structure.csv --image-dir=$(IMDIR)
 
 solvetime-batch:
-	#mkdir -p $(RESDIR)/solvetime # $(COMDIR) $(IMDIR)
-	python $(DIR)/write_command_lines.py solvetime --results-dir=$(RESDIR)/solvetime --commands-dir=$(COMDIR)/solvetime
+	mkdir -p $(RESDIR)/solvetime
+	python $(DIR)/write_command_lines.py solvetime --results-dir=$(RESDIR)/solvetime --commands-dir=$(COMDIR)
 	# This is a custom command I use to submit batch jobs on multiple HPC nodes
-	submit-batch $(COMDIR)/solvetime-commands.txt
+	submit-batch.sh $(COMDIR)/solvetime-commands.txt
 
 solvetime-collect:
 	python $(DIR)/collect_results.py solvetime --results-dir=$(RESDIR)
