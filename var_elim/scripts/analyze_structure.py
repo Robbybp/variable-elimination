@@ -342,5 +342,7 @@ if __name__ == "__main__":
             resdir = os.path.join(config.get_results_dir(), "structure")
             config.validate_dir(resdir)
             args.results_dir = resdir
+    else:
+        config.validate_dir(args.results_dir)
 
     main(args)
