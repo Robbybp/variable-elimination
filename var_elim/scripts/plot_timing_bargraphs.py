@@ -170,7 +170,7 @@ if __name__ == "__main__":
     )
     args = argparser.parse_args()
 
-    if not (args.timing_results.endswith(".csv") or args.structure_results.endswith(".CSV")):
+    if not (args.timing_results.endswith(".csv") or args.timing_results.endswith(".CSV")):
         raise ValueError("timing results file must end with '.csv' or '.CSV'")
     if args.model is not None:
         raise ValueError("--model argument cannot be used")
