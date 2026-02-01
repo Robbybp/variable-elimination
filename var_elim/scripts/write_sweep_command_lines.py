@@ -109,7 +109,12 @@ def main(args):
             # NOTE: Hard-coding that these results are in sweep subdirectory. This
             # should be handled more systematically.
             result_fpath = os.path.join(args.results_dir, "sweep", result_fname)
-            plot_cmd = ["python", "plot_sweep_results.py", result_fpath]
+            plot_cmd = [
+                "python",
+                "plot_sweep_results.py",
+                result_fpath,
+                f"--image-dir={args.image_dir}",
+            ]
             plot_commands.append(plot_cmd)
 
     parallel_sweep_commands_str = [" ".join(cmd) + "\n" for cmd in parallel_sweep_commands]
@@ -159,6 +164,7 @@ def main(args):
 if __name__ == "__main__":
     argparser = config.get_sweep_argparser()
     argparser.add_argument("--commands-dir", default=None)
+    argparser.add_argument("--image-dir", default=None)
     argparser.add_argument(
         "--output-suffix",
         help=(
@@ -170,4 +176,6 @@ if __name__ == "__main__":
     args = argparser.parse_args()
     if args.commands_dir is None:
         args.commands_dir = config.get_commands_dir()
+    if args.image_dir is None:
+        args.image_dir = config.get_image_dir()
     main(args)
