@@ -60,7 +60,7 @@ all:
 	python $(DIR)/plot_sweep_results.py $(DIR)/results/sweep/pipeline-matching-sweep.csv
 
 structure-parallel:
-	mkdir -p $(COMDIR)/structure
+	mkdir $(RESDIR) # Letting this get created by the parallel scripts below leads to a race condition
 	python $(DIR)/write_command_lines.py structure --results-dir=$(RESDIR) --commands-dir=$(COMDIR)/structure
 	parallel -a $(COMDIR)/structure-commands.txt
 	python $(DIR)/collect_results.py structure --results-dir=$(RESDIR)
