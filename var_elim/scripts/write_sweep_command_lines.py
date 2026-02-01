@@ -32,6 +32,14 @@ script_lookup = dict(
 script_lookup["plot-sweep"] = "plot_sweep_results.py"
 
 
+def validate_scriptname(scriptname):
+    if scriptname not in os.listdir(os.getcwd()):
+        # Prepend FILEDIR relative to CWD
+        relative_dirname = os.path.relpath(FILEDIR, os.getcwd())
+        scriptname = os.path.join(relative_dirname, scriptname)
+    return scriptname
+
+
 def main(args):
     if args.model is None:
         mnames = list(config.TESTPROBLEM_LOOKUP.keys())
@@ -54,11 +62,12 @@ def main(args):
     suff_str = "" if args.suffix is None else f"-{args.suffix}"
     for mname in mnames:
         for ename in enames:
-            # TODO: Write sweep commands to sweep-commands-mname-ename-suffix.txt
+            # Here we validate that the script we are running is in the working directory
+            scriptname = validate_scriptname("run_param_sweep.py")
             sample_commands = [
                 [
                     "python",
-                    "run_param_sweep.py",
+                    scriptname,
                     f"--model={mname}",
                     f"--method={ename}",
                     f"--sample={i}",
@@ -84,9 +93,10 @@ def main(args):
                         f.write(cmd)
 
             parallel_sweep_commands.append(["parallel", "-a", sweep_command_fpath])
+            scriptname = validate_scriptname("collect_sweep_results.py")
             collect_cmd = [
                 "python",
-                "collect_sweep_results.py",
+                scriptname,
                 f"--model={mname}",
                 f"--method={ename}",
             ]
@@ -109,9 +119,10 @@ def main(args):
             # NOTE: Hard-coding that these results are in sweep subdirectory. This
             # should be handled more systematically.
             result_fpath = os.path.join(args.results_dir, "sweep", result_fname)
+            scriptname = validate_scriptname("plot_sweep_results.py")
             plot_cmd = [
                 "python",
-                "plot_sweep_results.py",
+                scriptname,
                 result_fpath,
                 f"--image-dir={args.image_dir}",
             ]

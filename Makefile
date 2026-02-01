@@ -80,13 +80,13 @@ solvetime-collect:
 	python $(DIR)/plot_timing_bargraphs.py $(RESDIR)/solvetime.csv --image-dir=$(IMDIR)
 
 sweep-batch:
-	mkdir -p $(RESDIR)/sweep $(COMDIR)/sweep $(IMDIR)
-	python $(DIR)/write_sweep_command_lines.py --results-dir=$(RESDIR) --commands-dir=$(COMDIR)/sweep --image-dir=$(IMDIR)
+	mkdir -p $(RESDIR)/sweep
+	python $(DIR)/write_sweep_command_lines.py --results-dir=$(RESDIR)/sweep --commands-dir=$(COMDIR) --image-dir=$(IMDIR)
 	# This is a custom command I use to submit batch jobs on multiple HPC nodes
-	submit-batch.sh $(COMDIR)/sweep/parallel-sweep-commands.txt
+	submit-batch.sh $(COMDIR)/parallel-sweep-commands.txt
 
 sweep-collect:
-	parallel -a $(COMDIR)/sweep/collect-sweep-commands.txt
-	parallel -a $(COMDIR)/sweep/plot-sweep-commands.txt
+	parallel -a $(COMDIR)/collect-sweep-commands.txt
+	parallel -a $(COMDIR)/plot-sweep-commands.txt
 	python $(DIR)/summarize_sweep_results.py --results-dir=$(RESDIR)/sweep
 	python $(DIR)/write_latex_table.py $(RESDIR)/sweep-summary.csv --results-dir=$(RESDIR)
