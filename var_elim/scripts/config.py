@@ -122,7 +122,8 @@ def validate_dir(name):
     if os.path.isfile(name):
         raise OSError(f"Default directory {name} is already a file")
     elif not os.path.isdir(name):
-        os.mkdir(name)
+        os.makedirs(name)
+    return name
 
 
 def get_results_dir():
