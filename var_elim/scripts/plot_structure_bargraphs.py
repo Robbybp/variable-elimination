@@ -4,6 +4,7 @@ import pandas as pd
 import argparse
 import numpy as np
 
+import var_elim.scripts.config as config
 from var_elim.scripts.config import get_plot_argparser
 
 
@@ -216,7 +217,7 @@ if __name__ == "__main__":
     if not args.no_save:
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
         fname = f"fraction-elim{suff_str}.pdf"
-        fpath = os.path.join(args.image_dir, fname)
+        fpath = os.path.join(config.validate_dir(args.image_dir), fname)
         print(f"Saving figure to {fpath}")
         fig1.savefig(fpath, transparent=not args.opaque)
         
