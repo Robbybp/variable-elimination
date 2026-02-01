@@ -116,9 +116,10 @@ def main(args):
             # from collect_sweep_results
             output_suffix_str = suff_str if args.output_suffix is None else f"-{args.output_suffix}"
             result_fname = f"{mname}-{ename}-sweep{output_suffix_str}.csv"
-            # NOTE: Hard-coding that these results are in sweep subdirectory. This
-            # should be handled more systematically.
-            result_fpath = os.path.join(args.results_dir, "sweep", result_fname)
+            # Why did I used to hardcode this sweep directory? the collect script, above, used
+            # a different results_dir then hard-coded the sweep subdirectory?
+            sweepresultsdir = args.results_dir if args.results_dir.endswith("sweep") else os.path.join(args.results_dir, "sweep")
+            result_fpath = os.path.join(sweepresultsdir, result_fname)
             scriptname = validate_scriptname("plot_sweep_results.py")
             plot_cmd = [
                 "python",
