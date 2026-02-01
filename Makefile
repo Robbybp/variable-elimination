@@ -67,3 +67,14 @@ structure-parallel:
 	python $(DIR)/write_latex_table.py $(RESDIR)/structure.csv --results-dir=$(RESDIR)
 	python $(DIR)/write_latex_table.py $(RESDIR)/structure.csv --results-dir=$(RESDIR) --which=matching-bounds
 	python $(DIR)/plot_structure_bargraphs.py $(RESDIR)/structure.csv --image-dir=$(IMDIR)
+
+solvetime-batch:
+	#mkdir -p $(RESDIR)/solvetime # $(COMDIR) $(IMDIR)
+	python $(DIR)/write_command_lines.py solvetime --results-dir=$(RESDIR)/solvetime --commands-dir=$(COMDIR)/solvetime
+	# This is a custom command I use to submit batch jobs on multiple HPC nodes
+	submit-batch $(COMDIR)/solvetime-commands.txt
+
+solvetime-collect:
+	python $(DIR)/collect_results.py solvetime --results-dir=$(RESDIR)
+	python $(DIR)/write_latex_table.py $(RESDIR)/solvetime.csv --results-dir=$(RESDIR)
+	python $(DIR)/plot_timing_bargraphs.py $(RESDIR)/solvetime.csv --image-dir=$(IMDIR)
