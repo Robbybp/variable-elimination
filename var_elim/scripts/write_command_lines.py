@@ -47,6 +47,11 @@ def main(args):
         elim_names = []
 
     scriptname = script_lookup[args.result_type]
+    # Script name is WRT file directory
+    if scriptname not in os.listdir(os.getcwd()):
+        # Prepend FILEDIR relative to CWD
+        relative_dirname = os.path.relpath(FILEDIR, os.getcwd())
+        scriptname = os.path.join(relative_dirname, scriptname)
 
     # Does it make sense to override model/method names here?
     if args.model is not None:
@@ -98,7 +103,7 @@ def main(args):
     command_lines = [" ".join(cl) for cl in cl_lists]
 
     fname = args.result_type + "-commands.txt"
-    fpath = os.path.join(FILEDIR, fname)
+    fpath = os.path.join(config.validate_dir(args.commands_dir), fname)
 
     print(f"Writing the following commands to {fpath}")
     print()
@@ -115,6 +120,11 @@ def main(args):
 if __name__ == "__main__":
     argparser = config.get_argparser()
     argparser.add_argument("result_type", help="'structure', 'solvetime', or 'sweep'")
+    argparser.add_argument(
+        "--commands-dir",
+        help="Directory to store files full of command lines",
+        default=config.get_commands_dir(),
+    )
     argparser.add_argument(
         "--by",
         help="Parallelize by model, method, or both. Default=both",
