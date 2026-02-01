@@ -92,7 +92,11 @@ def main(args):
                     for cmd in sample_commands_str:
                         f.write(cmd)
 
-            parallel_sweep_commands.append(["parallel", "-a", sweep_command_fpath])
+            parallel_cmd = ["parallel"]
+            if args.parallel_jobs is not None:
+                parallel_cmd.extend(["-j", str(args.parallel_jobs)])
+            parallel_cmd.extend(["-a", sweep_command_fpath])
+            parallel_sweep_commands.append(parallel_cmd)
             scriptname = validate_scriptname("collect_sweep_results.py")
             collect_cmd = [
                 "python",
@@ -177,6 +181,12 @@ if __name__ == "__main__":
     argparser = config.get_sweep_argparser()
     argparser.add_argument("--commands-dir", default=None)
     argparser.add_argument("--image-dir", default=None)
+    argparser.add_argument(
+        "--parallel-jobs",
+        type=int,
+        default=None,
+        help="Number of jobs to pass to GNU parallel via -j (optional)",
+    )
     argparser.add_argument(
         "--output-suffix",
         help=(
