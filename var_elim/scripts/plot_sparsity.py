@@ -1,8 +1,21 @@
 #  ___________________________________________________________________________
 #
 #  Variable Elimination: Research code for variable elimination in NLPs
-# 
-#  Plot sparsity of a model before and after elimination.
+#
+#  Copyright (c) 2023. Triad National Security, LLC. All rights reserved.
+#
+#  This program was produced under U.S. Government contract 89233218CNA000001
+#  for Los Alamos National Laboratory (LANL), which is operated by Triad
+#  National Security, LLC for the U.S. Department of Energy/National Nuclear
+#  Security Administration. All rights in the program are reserved by Triad
+#  National Security, LLC, and the U.S. Department of Energy/National Nuclear
+#  Security Administration. The Government is granted for itself and others
+#  acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+#  in this material to reproduce, prepare derivative works, distribute copies
+#  to the public, perform publicly and display publicly, and to permit others
+#  to do so.
+#
+#  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
 import os
@@ -47,9 +60,6 @@ def plot_sparsity(m_before, m_after, title=None):
 
 
 def main(args):
-    if args.model is not None and args.model != "mb-steady":
-        raise ValueError("Only mb-steady is supported for this plot")
-
     model = config.CONSTRUCTOR_LOOKUP["mb-steady"]()
     # Copy model for before/after without rebuilding
     before_model = model.clone()
@@ -72,6 +82,7 @@ def main(args):
 
 if __name__ == "__main__":
     argparser = config.get_plot_argparser()
-    # Only mb-steady supported, but allow override for symmetry
     args = argparser.parse_args()
+    if args.model is None:
+        args.model = "mb-steady"
     main(args)
