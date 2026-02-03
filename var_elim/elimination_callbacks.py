@@ -34,7 +34,7 @@ from var_elim.heuristics.trivial_elimination import (
     get_degree_one_elimination,
     get_degree_two_elimination,
     get_linear_degree_two_elimination,
-    get_trivial_constraint_elimination,
+    get_equalcoef_degree_two_elimination,
     filter_constraints,
 )
 from var_elim.heuristics.ampl_heuristic import identify_vars_for_elim_ampl
@@ -177,7 +177,7 @@ def matching_elim_callback(model, **kwds):
     results = ElimResults(ub, lb, con_elim, var_exprs, max_block_size)
     return results
 
-def d1_elim_callback(model, **kwds):
+def linear_degree1_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
@@ -245,7 +245,7 @@ def d1_elim_callback(model, **kwds):
         break
     return ElimResults(None, None, total_con_elim, total_var_exprs, None)
 
-def d2_elim_callback(model, **kwds):
+def degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
@@ -338,7 +338,7 @@ def d2_elim_callback(model, **kwds):
 
     return ElimResults(None, None, total_con_elim, total_var_exprs, None)
 
-def trivial_elim_callback(model, **kwds):
+def equalcoef_degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
@@ -396,7 +396,7 @@ def trivial_elim_callback(model, **kwds):
             continue
 
         timer.start("get-d2")
-        var_elim, con_elim = get_trivial_constraint_elimination(
+        var_elim, con_elim = get_equalcoef_degree_two_elimination(
             model,
             allow_affine=True,
             #linear_igraph=linear_igraph,
@@ -430,7 +430,7 @@ def trivial_elim_callback(model, **kwds):
 
     return ElimResults(None, None, total_con_elim, total_var_exprs, None)
 
-def linear_d2_elim_callback(model, **kwds):
+def linear_degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
@@ -525,7 +525,7 @@ def linear_d2_elim_callback(model, **kwds):
 def no_elim_callback(model, **kwds):
     return ElimResults(None, None, [], [], None)
 
-def ampl_elim_callback(model, **kwds):
+def greedy_elim_callback(model, **kwds):
     igraph = kwds.pop('igraph', None)
     timer = kwds.pop("timer", HierarchicalTimer())
     if igraph is None:

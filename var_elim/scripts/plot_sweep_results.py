@@ -175,10 +175,10 @@ def main(args):
     ELIM_NAME_TO_TITLE = {
         "no-elim": "Original model",
         "d1": "Linear degree-one",
-        "trivial": "Equal-coefficient degree-two",
+        "ecd2": "Equal-coefficient degree-two",
         "linear-d2": "Linear degree-two",
         "d2": "Degree two",
-        "ampl": "Greedy",
+        "greedy": "Greedy",
         "matching": "Linear matching",
     }
     title = None

@@ -19,55 +19,29 @@
 #  ___________________________________________________________________________
 
 import pyomo.environ as pyo
-from pyomo.core.expr import EqualityExpression
-from pyomo.common.collections import ComponentMap
 from pyomo.common.timing import TicTocTimer, HierarchicalTimer
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.config import IncidenceMethod
-from pyomo.contrib.incidence_analysis.interface import get_structural_incidence_matrix
 
 import itertools
 from collections import namedtuple
 
-import scipy.sparse as sps
-import matplotlib.pyplot as plt
-
-from var_elim.models.distillation.distill import create_instance as create_distill
-#from var_elim.models.opf.opf_model import make_model as create_opf
-from var_elim.models.gas_pipelines.gas_network_model import make_dynamic_model as create_pipeline
 from var_elim.heuristics.matching import (
     generate_elimination_via_matching,
-    define_elimination_order,
-)
-from var_elim.heuristics.trivial_elimination import (
-    get_degree_one_elimination,
-    get_degree_two_elimination,
-    get_linear_degree_two_elimination,
-    get_trivial_constraint_elimination,
-    filter_constraints,
 )
 from var_elim.algorithms.replace import eliminate_variables 
 from var_elim.algorithms.expr import (
-    count_nodes,
     count_model_nodes,
-    count_amplrepn_nodes,
     count_model_amplrepn_nodes,
 )
 from var_elim.elimination_callbacks import (
     get_equality_constraints,
-    matching_elim_callback,
-    trivial_elim_callback,
-    d1_elim_callback,
-    d2_elim_callback,
-    linear_d2_elim_callback,
 )
 
 import os
 import var_elim.scripts.config as config
 import pandas as pd
 from pyomo.contrib.pynumero.interfaces.pyomo_nlp import PyomoNLP
-
-import pselib
 
 
 IncStructure = namedtuple(
@@ -368,5 +342,7 @@ if __name__ == "__main__":
             resdir = os.path.join(config.get_results_dir(), "structure")
             config.validate_dir(resdir)
             args.results_dir = resdir
+    else:
+        config.validate_dir(args.results_dir)
 
     main(args)

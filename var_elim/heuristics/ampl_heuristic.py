@@ -22,7 +22,7 @@ from pyomo.core.expr.visitor import identify_variables
 from pyomo.repn import generate_standard_repn
 from pyomo.core.base.set import Integers, Binary
 from pyomo.common.collections import ComponentSet
-from pyomo.core.expr.current import EqualityExpression
+from pyomo.core.expr import EqualityExpression
 import random
 
 

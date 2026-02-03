@@ -4,6 +4,7 @@ import pandas as pd
 import argparse
 import numpy as np
 
+import var_elim.scripts.config as config
 from var_elim.scripts.config import get_plot_argparser
 
 
@@ -12,8 +13,8 @@ plt.rcParams["font.size"] = 20
 plt.rcParams["font.family"] = "serif"
 
 
-method_ord = {"no-elim": 0, "d1": 1, "trivial": 2, "linear-d2": 3, "d2": 4, "ampl": 5, "matching": 6}
-method_to_label = {"no-elim": "--", "d1": "LD1", "trivial": "ECD2", "linear-d2": "LD2", "d2": "D2", "ampl": "GR", "matching": "LM"}
+method_ord = {"no-elim": 0, "d1": 1, "ecd2": 2, "linear-d2": 3, "d2": 4, "greedy": 5, "matching": 6}
+method_to_label = {"no-elim": "--", "d1": "LD1", "ecd2": "ECD2", "linear-d2": "LD2", "d2": "D2", "greedy": "GR", "matching": "LM"}
 model_to_label = {"distill": "Distillation", "mb-steady": "Moving bed", "opf": "OPF", "pipeline": "Pipeline"}
 
 
@@ -216,7 +217,7 @@ if __name__ == "__main__":
     if not args.no_save:
         suff_str = "" if args.suffix is None else f"-{args.suffix}"
         fname = f"fraction-elim{suff_str}.pdf"
-        fpath = os.path.join(args.image_dir, fname)
+        fpath = os.path.join(config.validate_dir(args.image_dir), fname)
         print(f"Saving figure to {fpath}")
         fig1.savefig(fpath, transparent=not args.opaque)
         

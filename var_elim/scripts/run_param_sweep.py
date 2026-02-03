@@ -27,21 +27,8 @@ from idaes.core.util.parameter_sweep import (
     UniformSampling,
 )
 import pandas as pd
-
-import json
 from collections import namedtuple
-
 from var_elim.algorithms.validate import validate_solution
-from var_elim.elimination_callbacks import (
-    no_elim_callback,
-    trivial_elim_callback,
-    linear_d2_elim_callback,
-    d2_elim_callback,
-    matching_elim_callback,
-)
-from var_elim.models.testproblems import (
-    DistillationTestProblem,
-)
 
 
 import os

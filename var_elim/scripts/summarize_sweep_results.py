@@ -18,29 +18,8 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
-import pyomo.environ as pyo
-from pyomo.common.timing import HierarchicalTimer
-import pselib
-from idaes.core.util.parameter_sweep import (
-    ParameterSweepSpecification,
-    SequentialSweepRunner,
-    UniformSampling,
-)
 import pandas as pd
-
-import json
 from collections import namedtuple
-
-from var_elim.algorithms.validate import validate_solution
-from var_elim.elimination_callbacks import (
-    no_elim_callback,
-    trivial_elim_callback,
-    linear_d2_elim_callback,
-    d2_elim_callback,
-    matching_elim_callback,
-)
-
-
 import os
 import var_elim.scripts.config as config
 

@@ -32,6 +32,14 @@ script_lookup = dict(
 script_lookup["plot-sweep"] = "plot_sweep_results.py"
 
 
+def validate_scriptname(scriptname):
+    if scriptname not in os.listdir(os.getcwd()):
+        # Prepend FILEDIR relative to CWD
+        relative_dirname = os.path.relpath(FILEDIR, os.getcwd())
+        scriptname = os.path.join(relative_dirname, scriptname)
+    return scriptname
+
+
 def main(args):
     if args.model is None:
         mnames = list(config.TESTPROBLEM_LOOKUP.keys())
@@ -54,11 +62,12 @@ def main(args):
     suff_str = "" if args.suffix is None else f"-{args.suffix}"
     for mname in mnames:
         for ename in enames:
-            # TODO: Write sweep commands to sweep-commands-mname-ename-suffix.txt
+            # Here we validate that the script we are running is in the working directory
+            scriptname = validate_scriptname("run_param_sweep.py")
             sample_commands = [
                 [
                     "python",
-                    "run_param_sweep.py",
+                    scriptname,
                     f"--model={mname}",
                     f"--method={ename}",
                     f"--sample={i}",
@@ -83,10 +92,15 @@ def main(args):
                     for cmd in sample_commands_str:
                         f.write(cmd)
 
-            parallel_sweep_commands.append(["parallel", "-a", sweep_command_fpath])
+            parallel_cmd = ["parallel"]
+            if args.parallel_jobs is not None:
+                parallel_cmd.extend(["-j", str(args.parallel_jobs)])
+            parallel_cmd.extend(["-a", sweep_command_fpath])
+            parallel_sweep_commands.append(parallel_cmd)
+            scriptname = validate_scriptname("collect_sweep_results.py")
             collect_cmd = [
                 "python",
-                "collect_sweep_results.py",
+                scriptname,
                 f"--model={mname}",
                 f"--method={ename}",
             ]
@@ -106,10 +120,17 @@ def main(args):
             # from collect_sweep_results
             output_suffix_str = suff_str if args.output_suffix is None else f"-{args.output_suffix}"
             result_fname = f"{mname}-{ename}-sweep{output_suffix_str}.csv"
-            # NOTE: Hard-coding that these results are in sweep subdirectory. This
-            # should be handled more systematically.
-            result_fpath = os.path.join(args.results_dir, "sweep", result_fname)
-            plot_cmd = ["python", "plot_sweep_results.py", result_fpath]
+            # Why did I used to hardcode this sweep directory? the collect script, above, used
+            # a different results_dir then hard-coded the sweep subdirectory?
+            sweepresultsdir = args.results_dir if args.results_dir.endswith("sweep") else os.path.join(args.results_dir, "sweep")
+            result_fpath = os.path.join(sweepresultsdir, result_fname)
+            scriptname = validate_scriptname("plot_sweep_results.py")
+            plot_cmd = [
+                "python",
+                scriptname,
+                result_fpath,
+                f"--image-dir={args.image_dir}",
+            ]
             plot_commands.append(plot_cmd)
 
     parallel_sweep_commands_str = [" ".join(cmd) + "\n" for cmd in parallel_sweep_commands]
@@ -159,6 +180,13 @@ def main(args):
 if __name__ == "__main__":
     argparser = config.get_sweep_argparser()
     argparser.add_argument("--commands-dir", default=None)
+    argparser.add_argument("--image-dir", default=None)
+    argparser.add_argument(
+        "--parallel-jobs",
+        type=int,
+        default=None,
+        help="Number of jobs to pass to GNU parallel via -j (optional)",
+    )
     argparser.add_argument(
         "--output-suffix",
         help=(
@@ -170,4 +198,6 @@ if __name__ == "__main__":
     args = argparser.parse_args()
     if args.commands_dir is None:
         args.commands_dir = config.get_commands_dir()
+    if args.image_dir is None:
+        args.image_dir = config.get_image_dir()
     main(args)
