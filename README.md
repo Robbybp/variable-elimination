@@ -230,7 +230,7 @@ for performing each elimination method in-place on a Pyomo model.
 For example, to perform the "linear-matching" elimination method on our distillation
 column test model, run the following:
 ```python
-from var_elim.distill import create_instance
+from var_elim.models.distillation.distill import create_instance
 from var_elim.elimination_callbacks import matching_elim_callback
 model = create_instance()
 matching_elim_callback(model)
