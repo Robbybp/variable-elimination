@@ -18,18 +18,15 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
-import os
 import itertools
-import var_elim.scripts.config as config
-import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-from matplotlib.patches import Patch
+import matplotlib.colors as mcolors
 import numpy as np
+import var_elim.scripts.config as config
+import os 
+import pandas as pd
 
-# These parameters depend on the problem we are trying to solve.
-# TODO: How to determine which problem we are solving? Do we have to pass some
-# metadata to this script as well?
+# This script takes in a data frame containing 
 PARAMETER_NAMES = [
     (
         "fs.moving_bed.solid_phase.properties[0,1].temperature",
@@ -54,19 +51,14 @@ MODEL_NAMES = [
 PARAMETER_LOOKUP = dict(zip(MODEL_NAMES, PARAMETER_NAMES))
 PARAMETER_LABEL_LOOKUP = dict(zip(MODEL_NAMES, PARAMETER_LABELS))
 
-CMAP = ListedColormap([(0.95, 0.55, 0.55), (0.05, 0.05, 0.35)])
-
-
-def plot_convergence(
-    df,
-    parameter_names,
-    parameter_labels=None,
-    legend=True,
-    title=None,
-):
+def analyze_sweep(df, 
+                  parameter_names,
+                  parameter_labels=None,
+                  title=None):
+    
     plt.rcParams["font.size"] = 20
     plt.rcParams["font.family"] = "serif"
-
+    
     # If we are going to plot parameter sweep results, we better have two parameters...
     parameters = [list(sorted(set(df[name]))) for name in parameter_names]
     param_index_maps = [{p: i for i, p in enumerate(params)} for params in parameters]
@@ -75,31 +67,58 @@ def plot_convergence(
     for i in range(len(df)):
         key = tuple(df[name][i] for name in parameter_names)
         success_lookup[key] = int(df["success"][i])
-        solve_time[key] = round(df["solve-time"][i], 2)
+        solve_time[key] = round(df["solve-time"][i])
     n_success = list(success_lookup.values()).count(1)
     n_total = len(df)
     print(f"Converged {n_success} / {n_total} instances")
     convergence_array = np.zeros(tuple(len(params) for params in parameters))
+    
     solve_time_array = np.zeros(tuple(len(params) for params in parameters))
     for params in itertools.product(*parameters):
         indices = tuple(idx_map[p] for idx_map, p in zip(param_index_maps, params))
         convergence_array[indices] = success_lookup[params]
         solve_time_array[indices] = solve_time[params]
-    fig, ax = plt.subplots()
     
+    fig, ax = plt.subplots()
     ax.imshow(
-        convergence_array,
+        solve_time_array,
         aspect="equal",
-        origin="lower",
-        cmap=CMAP,
-        vmin=0,
-        vmax=1,
+        origin="lower"
     )
-   
-    # Since we are plotting on a 2D grid, it is unclear if the more general code
-    # above to parse an arbitrary number of parameters has any value.
-    assert len(parameters) == 2
+    
+    for i in range(convergence_array.shape[0]):
+        for j in range(convergence_array.shape[1]):
+            if convergence_array[i, j] == 1:
+                t = solve_time_array[i, j]
+                txt = f"{t:.0f}"
+    
+            else:
+                txt = "×"
+    
+            ax.text(
+                j, i,
+                txt,
+                ha="center",
+                va="center",
+                fontsize=14,
+                color="white",
+            )
+    
+    set_figure_axes(parameters, 
+                        parameter_labels, 
+                        parameter_names, 
+                        title, 
+                        ax)
+    
 
+    return fig, ax
+
+def set_figure_axes(parameters, 
+                    parameter_labels, 
+                    parameter_names, 
+                    title, 
+                    ax):
+    
     # Label every grid cell; turn off (major) tick marks
     x_ticks = [i for i in range(len(parameters[1]))]
     # TODO: If any two labels are the same (rounded to nearest int), then
@@ -138,31 +157,6 @@ def plot_convergence(
     if title is not None:
         ax.set_title(title)
 
-    if legend:
-        # Add labels
-        colors = [CMAP(0), CMAP(1)]
-        labels = ["Unsuccessful", "Successful"]
-        patches = [
-            Patch(color=color, label=label) for color, label in zip(colors, labels)
-        ]
-        ax.legend(
-            handles=patches,
-            loc=(1.05, 0.7),
-        )
-        w, h = fig.get_size_inches()
-        fig.set_size_inches(1.2*w, h)
-        
-    print(solve_time_array)
-    fig, ax = plt.subplots()
-    ax.imshow(
-        solve_time_array,
-        aspect="equal",
-        origin="lower"
-    )
-
-
-    return fig, ax
-
 
 def main(args):
     model_name = None
@@ -188,10 +182,10 @@ def main(args):
     ELIM_NAME_TO_TITLE = {
         "no-elim": "Original model",
         "d1": "Linear degree-one",
-        "ecd2": "Equal-coefficient degree-two",
+        "trivial": "Equal-coefficient degree-two",
         "linear-d2": "Linear degree-two",
         "d2": "Degree two",
-        "greedy": "Greedy",
+        "ampl": "Greedy",
         "matching": "Linear matching",
     }
     title = None
@@ -213,11 +207,10 @@ def main(args):
         if title is None:
             print("Could not infer title from filename")
 
-    fig, ax = plot_convergence(
+    fig, ax = analyze_sweep(
         df,
         parameter_names,
         parameter_labels=parameter_labels,
-        legend=not args.no_legend,
         title=title,
     )
 
@@ -240,8 +233,6 @@ def main(args):
 
     if args.show:
         plt.show()
-
-
 if __name__ == "__main__":
     argparser = config.get_plot_argparser()
     argparser.add_argument("fpath", help="CSV file with parameter sweep results to plot")
@@ -249,3 +240,4 @@ if __name__ == "__main__":
     if not args.fpath.endswith(".csv") and not args.fpath.endswith(".CSV"):
         raise ValueError("fpath must end with .csv or .CSV")
     main(args)
+
