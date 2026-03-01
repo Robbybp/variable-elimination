@@ -187,6 +187,8 @@ class TestReplacementWithBounds:
         vars_to_elim = [m.x[1], m.x[2]]
         cons_to_elim = [m.eq1, m.eq2]
 
+        m.x[1].setlb(1)
+
         var_order, con_order = define_elimination_order(vars_to_elim, cons_to_elim)
         eliminate_variables(m, var_order, con_order)
 
@@ -229,6 +231,27 @@ class TestReplacementWithBounds:
             pyo.value(x2_lb_con.lower),
         )
 
+    def test_dominated_bounds(self):
+        m = pyo.ConcreteModel()
+        m.x = pyo.Var([1, 2, 3])
+        m.eq = pyo.Constraint(pyo.PositiveIntegers)
+        m.eq[1] = m.x[1] == m.x[2] + m.x[3]**2
+        m.obj = pyo.Objective(expr=m.x[1]**2 + m.x[2]**2 + m.x[3]**2)
+        e = m.x[2] + m.x[3]**2
+        m.x[2].setlb(-2)
+        m.x[2].setub(2)
+        m.x[3].setlb(-1)
+        m.x[3].setub(4)
+        # Bounds on expression are (-2, 18)
+        m.x[1].setlb(-2)
+        m.x[1].setub(20)
+
+        var_elim = [m.x[1]]
+        con_elim = [m.eq[1]]
+        var_exprs, var_lb_map, var_ub_map = eliminate_variables(m, var_elim, con_elim)
+        assert len(m.replaced_variable_bounds_set) == 0
+        assert len(m.replaced_variable_bounds) == 0
+
 
 class TestReplacementInInequalities:
     def _make_simple_model(self):
@@ -260,7 +283,9 @@ class TestReplacementInInequalities:
         # Make sure new model has correct number of constraints
         new_igraph = IncidenceGraphInterface(m, include_inequality=True)
 
-        assert len(new_igraph.constraints) == 6
+        # New constraints only get added for upper bounds, as lower bounds are
+        # redundant.
+        assert len(new_igraph.constraints) == 4
 
         # Make sure proper replacement happened here
         assert ComponentSet(identify_variables(m.eq4.expr)) == ComponentSet(m.y[:])
