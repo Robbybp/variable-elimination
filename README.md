@@ -40,8 +40,9 @@ pip install git+https://github.com/Robbybp/pselib.git
 > [!NOTE]
 > Users who only wish to reproduce our results should not need to install these
 > dependencies manually as they are already included in the `requirements.txt`
-> file. These are listed only for uses who wish to use our code or examples
-> in their own projects with different versions of our dependencies.
+> file. (I.e., they are installed by the `pip install -r requirements.txt` step
+> above. These are listed only for users who wish to use our code in their own
+> projects with different versions of our dependencies.
 
 When the main branch of this repository requires a specific branch of some dependency
 (e.g. the Pyomo main branch, rather than the latest release), an issue should be opened.
