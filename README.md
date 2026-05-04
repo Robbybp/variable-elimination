@@ -16,7 +16,7 @@ pip install -e .
 ```
 Then functionality can be imported in Python:
 ```python
-from var_elim.distill import create_instance
+from var_elim.models.distillation.distill import create_instance
 model = create_instance()
 ```
 
