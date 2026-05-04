@@ -31,9 +31,17 @@ Non-PyPI dependencies are:
 - [`nmpc_examples`](https://github.com/robbybp/nmpc_examples)
 - [`pselib`](https://github.com/robbybp/pselib)
 
+These can be installed with
+```bash
+pip install git+https://github.com/Robbybp/nmpc_examples.git
+pip install git+https://github.com/Robbybp/pselib.git
+```
+
 > [!NOTE]
-> It should not be necessary for uses to manually install these dependencies
-> as they are already included in the `requirements.txt` file.
+> Users who only wish to reproduce our results should not need to install these
+> dependencies manually as they are already included in the `requirements.txt`
+> file. These are listed only for uses who wish to use our code or examples
+> in their own projects with different versions of our dependencies.
 
 When the main branch of this repository requires a specific branch of some dependency
 (e.g. the Pyomo main branch, rather than the latest release), an issue should be opened.
