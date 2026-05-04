@@ -12,7 +12,7 @@ organization and testing. It can be installed with:
 git clone https://github.com/Robbybp/variable-elimination.git
 cd variable-elimination
 pip install -r requirements.txt
-python setup.py develop
+pip install -e .
 ```
 Then functionality can be imported in Python:
 ```python
