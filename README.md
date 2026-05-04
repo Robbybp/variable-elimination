@@ -31,7 +31,7 @@ Non-PyPI dependencies are:
 - [`nmpc_examples`](https://github.com/robbybp/nmpc_examples)
 - [`pselib`](https://github.com/robbybp/pselib)
 
-[!Note]
+[!NOTE]
 It should not be necessary for uses to manually install these dependencies
 as they are already included in the `requirements.txt` file.
 
