@@ -26,7 +26,7 @@ model = create_instance()
 
 This repository was developed and tested using Python 3.11.5.
 See `requirements.txt` for a list of Python dependencies. For stability, we pin to
-specific version of our dependencies, e.g. Pyomo and IDAES.
+specific versions of our dependencies, e.g. Pyomo and IDAES.
 Non-PyPI dependencies are:
 - [`nmpc_examples`](https://github.com/robbybp/nmpc_examples)
 - [`pselib`](https://github.com/robbybp/pselib)
