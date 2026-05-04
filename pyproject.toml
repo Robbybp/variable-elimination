@@ -18,3 +18,4 @@ include = ["var_elim", "var_elim.*"]
 
 [tool.setuptools.package-data]
 "var_elim.models.distillation" = ["*.dat"]
+"var_elim.models.opf" = ["*.m"]
