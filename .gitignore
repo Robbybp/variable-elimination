@@ -2,3 +2,5 @@
 *.zip
 *.swp
 *__pycache__
+*.DS_Store
+*.pdf
