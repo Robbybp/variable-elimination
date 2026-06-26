@@ -58,8 +58,22 @@ following commands:
 pip install pyomo
 pyomo build-extensions
 ```
-This writes `libpynumero_ASL` to an OS-dependent Pyomo directory, e.g.,
+This compiles `libpynumero_ASL` and saves it to an OS-dependent Pyomo directory, e.g.,
 `$HOME/.pyomo/lib` on Linux.
+The end of the output of `pyomo build-extensions` should look like this:
+```
+INFO: Finished building Pyomo extensions.
+INFO: The following extensions were built:
+    [ OK ]  ampl_function_demo
+    [FAIL]  appsi
+    [ OK ]  cspline_external
+    [ OK ]  aslfunctions
+    [ OK ]  mcpp
+    [ OK ]  pynumero
+    [SKIP]  ginac
+```
+As long as `pynumero` has status `OK`, this step was successful for the purpose
+of this repository.
 
 2. [Ipopt 3.14](https://github.com/coin-or/ipopt), with linear solver MA27.
 See the following instructions to compile an Ipopt-compatible HSL library
