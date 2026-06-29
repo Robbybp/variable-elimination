@@ -15,15 +15,15 @@ all:
 	# Table 4
 	python $(DIR)/write_latex_table.py results/structure.csv --which=matching-bounds
 	# Figures 5 and 7
-	python $(DIR)/plot_structure_bargraphs.py results/structure.csv
-	# TODO: Figure 6
-	#
+	python $(DIR)/plot_structure_bargraphs.py results/structure.csv --image-dir=$(IMDIR)
+	# Figure 6
+	python $(DIR)/plot_sparsity.py --model=mb-steady --image-dir=$(IMDIR)
 	# Generate results for Figure 8 and Table 5
 	python $(DIR)/analyze_solvetime.py
 	# Table 5
 	python $(DIR)/write_latex_table.py results/solvetime.csv
 	# Figure 8
-	python $(DIR)/plot_timing_bargraphs.py results/solvetime.csv
+	python $(DIR)/plot_timing_bargraphs.py results/solvetime.csv --image-dir=$(IMDIR)
 	# Generate results for Table 6 and Figures 9, 10, 11, and 12
 	python $(DIR)/run_param_sweep.py --model=distill
 	python $(DIR)/run_param_sweep.py --model=mb-steady
@@ -67,6 +67,7 @@ structure-parallel:
 	python $(DIR)/write_latex_table.py $(RESDIR)/structure.csv --results-dir=$(RESDIR)
 	python $(DIR)/write_latex_table.py $(RESDIR)/structure.csv --results-dir=$(RESDIR) --which=matching-bounds
 	python $(DIR)/plot_structure_bargraphs.py $(RESDIR)/structure.csv --image-dir=$(IMDIR)
+	python $(DIR)/plot_sparsity.py --model=mb-steady --image-dir=$(IMDIR)
 
 solvetime-batch:
 	mkdir -p $(RESDIR)/solvetime

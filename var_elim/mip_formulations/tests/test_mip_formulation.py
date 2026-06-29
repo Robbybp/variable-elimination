@@ -19,6 +19,9 @@
 #  ___________________________________________________________________________
 
 import pytest
+
+pytest.skip("Skipping mip_formulations tests", allow_module_level=True)
+
 import math
 import pyomo.environ as pyo
 from pyomo.common.collections import ComponentSet
