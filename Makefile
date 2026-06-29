@@ -88,5 +88,7 @@ sweep-batch:
 sweep-collect:
 	parallel -a $(COMDIR)/collect-sweep-commands.txt
 	parallel -a $(COMDIR)/plot-sweep-commands.txt
-	python $(DIR)/summarize_sweep_results.py --results-dir=$(RESDIR)/sweep
+	python $(DIR)/summarize_sweep_results.py --results-dir=$(RESDIR)/sweep --model=distill
+	python $(DIR)/summarize_sweep_results.py --results-dir=$(RESDIR)/sweep --model=mb-steady
+	python $(DIR)/summarize_sweep_results.py --results-dir=$(RESDIR)/sweep --model=pipeline
 	python $(DIR)/write_latex_table.py $(RESDIR)/sweep-summary.csv --results-dir=$(RESDIR)
