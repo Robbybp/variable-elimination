@@ -29,6 +29,28 @@ SolveResults = namedtuple(
 )
 
 
+def warn_successful_infeasible(df, model, method):
+    infeasibility_columns = ["max-infeasibility", "max_infeasibility"]
+    infeasibility_column = next(
+        (col for col in infeasibility_columns if col in df.columns),
+        None,
+    )
+    index_column = "Unnamed: 0" if "Unnamed: 0" in df.columns else None
+
+    successful_infeasible = df[(df["success"] == True) & (df["feasible"] == False)]
+    for idx, row in successful_infeasible.iterrows():
+        case_index = row[index_column] if index_column is not None else idx
+        infeasibility = (
+            row[infeasibility_column]
+            if infeasibility_column is not None
+            else "not available"
+        )
+        print(
+            f"WARNING: {model}, {method}: success=True but feasible=False at "
+            f"index {case_index}; infeasibility={infeasibility}"
+        )
+
+
 def summarize_single_model(args, elim_names):
     sweep_data = {
         "model": [],
@@ -45,6 +67,7 @@ def summarize_single_model(args, elim_names):
         fname = args.model + "-" + elimname + "-sweep" + suff_str + ".csv"
         fpath = os.path.join(args.results_dir, fname)
         df = pd.read_csv(fpath)
+        warn_successful_infeasible(df, args.model, elimname)
 
         n_success = list(df["success"]).count(True)
         n_total = len(df["success"])
