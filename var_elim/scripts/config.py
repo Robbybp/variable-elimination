@@ -171,7 +171,7 @@ def get_argparser():
             " preliminary results created with different dependency versions."
         ),
     )
-    argparser.add_argument("--feastol", type=float, default=1e-5, help="Tolerance for checking feasibility")
+    argparser.add_argument("--feastol", type=float, default=1e-4, help="Tolerance for checking feasibility")
     return argparser
 
 def get_sweep_argparser():
