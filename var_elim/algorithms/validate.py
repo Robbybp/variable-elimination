@@ -46,12 +46,16 @@ def validate_solution(
             continue
         if var.ub is not None:
             ub_diff = pyo_value(var.value - var.ub)
-            if ub_diff > tolerance:
-                vars_violating_bounds.append((var, var.ub, ub_diff))
+            # We allow a large(r) bound violation if the relative tolerance is small.
+            # This occurs for pipeline models for bounds with magnitude 1e3-1e4
+            relative_ub_diff = ub_diff / abs(var.ub) if var.ub != 0 else ub_diff
+            if ub_diff > tolerance and relative_ub_diff > tolerance:
+                vars_violating_bounds.append((var, var.ub, max(ub_diff, relative_ub_diff)))
         if var.lb is not None:
             lb_diff = pyo_value(var.value - var.lb)
-            if lb_diff < - tolerance:
-                vars_violating_bounds.append((var, var.lb, lb_diff))
+            relative_lb_diff = lb_diff / abs(var.lb) if var.lb != 0 else lb_diff
+            if lb_diff < - tolerance and relative_lb_diff < - tolerance:
+                vars_violating_bounds.append((var, var.lb, min(lb_diff, relative_lb_diff)))
 
     violated_eliminated_cons = []
     for con in eliminated_constraints:
