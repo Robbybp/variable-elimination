@@ -50,12 +50,12 @@ def validate_solution(
             # This occurs for pipeline models for bounds with magnitude 1e3-1e4
             relative_ub_diff = ub_diff / abs(var.ub) if var.ub != 0 else ub_diff
             if ub_diff > tolerance and relative_ub_diff > tolerance:
-                vars_violating_bounds.append((var, var.ub, max(ub_diff, relative_ub_diff)))
+                vars_violating_bounds.append((var, var.ub, min(ub_diff, relative_ub_diff)))
         if var.lb is not None:
             lb_diff = pyo_value(var.value - var.lb)
             relative_lb_diff = lb_diff / abs(var.lb) if var.lb != 0 else lb_diff
             if lb_diff < - tolerance and relative_lb_diff < - tolerance:
-                vars_violating_bounds.append((var, var.lb, min(lb_diff, relative_lb_diff)))
+                vars_violating_bounds.append((var, var.lb, max(lb_diff, relative_lb_diff)))
 
     violated_eliminated_cons = []
     for con in eliminated_constraints:
