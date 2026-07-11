@@ -26,9 +26,10 @@ jobs:
           pyomo download-extensions
           pyomo build-extensions
           idaes get-extensions --to $GITHUB_WORKSPACE/.idaes
+          pushd $GITHUB_WORKSPACE/.idaes
+          tar -xf idaes-lib-ubuntu*-x86_64.tar.gz
+          popd
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
-          echo "GH workspace = $GITHUB_WORKSPACE"
-          echo "CWD          = $(pwd)"
           ls $GITHUB_WORKSPACE/.idaes
           ls $GITHUB_WORKSPACE/.idaes/lib/pkgconfig
           pkg-config --libs --cflags ipopt
