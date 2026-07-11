@@ -25,8 +25,12 @@ jobs:
           python -m pip install pybind11 setuptools pyomo idaes-pse
           pyomo download-extensions
           pyomo build-extensions
-          idaes get-extensions --to .idaes
+          idaes get-extensions --to $GITHUB_WORKSPACE/.idaes
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
+          echo "GH workspace = $GITHUB_WORKSPACE"
+          echo "CWD          = $(pwd)"
+          ls $GITHUB_WORKSPACE/.idaes
+          ls $GITHUB_WORKSPACE/.idaes/lib/pkgconfig
           pkg-config --libs --cflags ipopt
           python -m pip install .
 
