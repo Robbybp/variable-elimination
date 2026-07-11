@@ -33,6 +33,7 @@ jobs:
 
       - name: Run tests
         run: |
+          export PATH="$GITHUB_WORKSPACE/.idaes"
           which ipopt
           ipopt --version
           python -m pytest \
