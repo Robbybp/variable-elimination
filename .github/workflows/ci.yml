@@ -19,6 +19,7 @@ jobs:
 
       - name: Install test dependencies
         run: |
+          apt-get -y install libgfortran5 libgomp1 liblapack3 libblas3 libc6
           python -m pip install --upgrade pip
           python -m pip install pybind11 setuptools pyomo idaes-pse
           pyomo download-extensions
