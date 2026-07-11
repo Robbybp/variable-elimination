@@ -27,12 +27,9 @@ jobs:
           pyomo build-extensions
           idaes get-extensions --to $GITHUB_WORKSPACE/.idaes
           pushd $GITHUB_WORKSPACE/.idaes
-          tar -xvf idaes-local-ubuntu*-x86_64.tar.gz
+          tar -xf idaes-local-ubuntu*-x86_64.tar.gz
           popd
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
-          ls $GITHUB_WORKSPACE/.idaes
-          ls $GITHUB_WORKSPACE/.idaes/lib/pkgconfig
-          pkg-config --libs --cflags ipopt
           python -m pip install ".[test]"
 
       - name: Run tests
