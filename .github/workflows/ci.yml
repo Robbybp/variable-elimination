@@ -26,7 +26,7 @@ jobs:
           pyomo build-extensions
           idaes get-extensions --to $GITHUB_WORKSPACE/.idaes
           pushd $GITHUB_WORKSPACE/.idaes
-          tar -xf idaes-lib-ubuntu*-x86_64.tar.gz
+          tar -xvf idaes-lib-ubuntu*-x86_64.tar.gz
           popd
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           ls $GITHUB_WORKSPACE/.idaes
