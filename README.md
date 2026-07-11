@@ -31,9 +31,18 @@ Non-PyPI dependencies are:
 - [`nmpc_examples`](https://github.com/robbybp/nmpc_examples)
 - [`pselib`](https://github.com/robbybp/pselib)
 
-[!Note]
-It should not be necessary for uses to manually install these dependencies
-as they are already included in the `requirements.txt` file.
+These can be installed with
+```bash
+pip install git+https://github.com/Robbybp/nmpc_examples.git
+pip install git+https://github.com/Robbybp/pselib.git
+```
+
+> [!NOTE]
+> Users who only wish to reproduce our results should not need to install these
+> dependencies manually as they are already included in the `requirements.txt`
+> file. (I.e., they are installed by the `pip install -r requirements.txt` step
+> above.) These are listed only for users who wish to use our code in their own
+> projects with different versions of our dependencies.
 
 When the main branch of this repository requires a specific branch of some dependency
 (e.g. the Pyomo main branch, rather than the latest release), an issue should be opened.
@@ -49,8 +58,22 @@ following commands:
 pip install pyomo
 pyomo build-extensions
 ```
-This writes `libpynumero_ASL` to an OS-dependent Pyomo directory, e.g.,
+This compiles `libpynumero_ASL` and saves it to an OS-dependent Pyomo directory, e.g.,
 `$HOME/.pyomo/lib` on Linux.
+The end of the output of `pyomo build-extensions` should look like this:
+```
+INFO: Finished building Pyomo extensions.
+INFO: The following extensions were built:
+    [ OK ]  ampl_function_demo
+    [FAIL]  appsi
+    [ OK ]  cspline_external
+    [ OK ]  aslfunctions
+    [ OK ]  mcpp
+    [ OK ]  pynumero
+    [SKIP]  ginac
+```
+As long as `pynumero` has status `OK`, this step was successful for the purpose
+of this repository.
 
 2. [Ipopt 3.14](https://github.com/coin-or/ipopt), with linear solver MA27.
 See the following instructions to compile an Ipopt-compatible HSL library
