@@ -27,13 +27,14 @@ jobs:
           pushd $GITHUB_WORKSPACE/.idaes
           tar -xf idaes-local-ubuntu*-x86_64.tar.gz
           popd
-          tree $GITHUB_WORKSPACE/.idaes
           echo "$GITHUB_WORKSPACE/.idaes/bin" >> "$GITHUB_PATH"
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           python -m pip install ".[test]"
 
       - name: Run tests
         run: |
+          which ipopt
+          ipopt --version
           python -m pytest \
             var_elim/algorithms/tests \
             var_elim/heuristics/tests \
