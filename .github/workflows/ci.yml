@@ -29,9 +29,11 @@ jobs:
           popd
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           python -m pip install ".[test]"
+          python -m pip list
 
       - name: Run tests
         run: |
+          python -m pip list
           python -m pytest \
             var_elim/algorithms/tests \
             var_elim/heuristics/tests \
