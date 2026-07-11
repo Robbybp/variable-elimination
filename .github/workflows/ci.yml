@@ -33,7 +33,7 @@ jobs:
           ls $GITHUB_WORKSPACE/.idaes
           ls $GITHUB_WORKSPACE/.idaes/lib/pkgconfig
           pkg-config --libs --cflags ipopt
-          python -m pip install .
+          python -m pip install ".[test]"
 
       - name: Run tests
         run: |
