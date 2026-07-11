@@ -27,6 +27,7 @@ jobs:
           pushd $GITHUB_WORKSPACE/.idaes
           tar -xf idaes-local-ubuntu*-x86_64.tar.gz
           popd
+          echo "$GITHUB_WORKSPACE/.idaes/bin" >> "$GITHUB_PATH"
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           python -m pip install ".[test]"
 
