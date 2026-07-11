@@ -17,9 +17,13 @@ jobs:
         with:
           python-version: "3.11.5"
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblapack3 libblas3 gfortran
+
       - name: Install test dependencies
         run: |
-          apt-get -y install libgfortran5 libgomp1 liblapack3 libblas3 libc6
           python -m pip install --upgrade pip
           python -m pip install pybind11 setuptools pyomo idaes-pse
           pyomo download-extensions
@@ -36,8 +40,6 @@ jobs:
       - name: Run tests
         run: |
           export PATH="$GITHUB_WORKSPACE/.idaes"
-          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/.idaes"
-          export DYLD_LIBRARY_PATH="$GITHUB_WORKSPACE/.idaes"
           ipopt --version
           python -m pytest \
             var_elim/algorithms/tests \
