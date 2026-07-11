@@ -12,6 +12,24 @@ authors = [
     {name = "Robert Parker and Sakshi Naik"},
 ]
 requires-python = ">=3.11"
+dependencies = [
+    "cyipopt>=1.5.0",
+    "gridx-egret>=0.5.5",
+    "idaes-pse>=2.5.0",
+    "matplotlib>=3.9.2",
+    "networkx>=3.3",
+    "nmpc_examples @ git+https://github.com/robbybp/nmpc_examples.git",
+    "numpy>=1.26.4",
+    "pandas>=2.2.2",
+    "pselib @ git+https://github.com/Robbybp/pselib.git",
+    "Pyomo>=6.8.0",
+    "scipy>=1.14.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.3",
+]
 
 [tool.setuptools.packages.find]
 include = ["var_elim", "var_elim.*"]
