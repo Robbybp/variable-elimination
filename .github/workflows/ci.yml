@@ -25,6 +25,7 @@ jobs:
           pyomo build-extensions
           idaes get-extensions --to .idaes
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
+          ls $PKG_CONFIG_PATH
           pkg-config --libs --cflags ipopt
           python -m pip install .
 
