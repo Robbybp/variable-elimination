@@ -39,7 +39,7 @@ jobs:
 
       - name: Run tests
         run: |
-          export PATH="$GITHUB_WORKSPACE/.idaes"
+          export PATH="$PATH:$GITHUB_WORKSPACE/.idaes"
           ipopt --version
           python -m pytest \
             var_elim/algorithms/tests \
