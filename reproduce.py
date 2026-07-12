@@ -101,6 +101,30 @@ def add_structure_args(parser):
     )
 
 
+def add_solvetime_args(parser):
+    add_common_args(parser)
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Run only the distillation matching workflow for a quicker check.",
+    )
+    parser.add_argument(
+        "--skip-tables",
+        action="store_true",
+        help="Skip LaTeX table generation.",
+    )
+    parser.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Skip plot generation.",
+    )
+    parser.add_argument(
+        "--tee",
+        action="store_true",
+        help="Stream solver logs from the solve-time analysis.",
+    )
+
+
 def resolve_output_dirs(args):
     run_dir = args.run_dir if args.run_dir is not None else default_run_dir()
     results_dir = (
@@ -171,6 +195,49 @@ def run_structure(args):
             run_command(sparsity_cmd, dry_run=args.dry_run)
 
 
+def run_solvetime(args):
+    _, results_dir, image_dir = resolve_output_dirs(args)
+
+    make_dir(results_dir, dry_run=args.dry_run)
+    make_dir(image_dir, dry_run=args.dry_run)
+
+    analyze_cmd = [
+        "python",
+        script_path("analyze_solvetime.py"),
+        "--results-dir",
+        results_dir,
+    ]
+    if args.smoke:
+        analyze_cmd.extend(["--model", "distill", "--method", "matching"])
+    if args.tee:
+        analyze_cmd.append("--tee")
+
+    run_command(analyze_cmd, dry_run=args.dry_run)
+
+    csv_name = "solvetime-distill-matching.csv" if args.smoke else "solvetime.csv"
+    solvetime_csv = os.path.join(results_dir, csv_name)
+
+    if not args.skip_tables:
+        table_cmd = [
+            "python",
+            script_path("write_latex_table.py"),
+            solvetime_csv,
+            "--results-dir",
+            results_dir,
+        ]
+        run_command(table_cmd, dry_run=args.dry_run)
+
+    if not args.skip_plots:
+        plot_cmd = [
+            "python",
+            script_path("plot_timing_bargraphs.py"),
+            solvetime_csv,
+            "--image-dir",
+            image_dir,
+        ]
+        run_command(plot_cmd, dry_run=args.dry_run)
+
+
 def main():
     require_repo_root()
 
@@ -185,6 +252,13 @@ def main():
     )
     add_structure_args(structure_parser)
     structure_parser.set_defaults(func=run_structure)
+
+    solvetime_parser = subparsers.add_parser(
+        "solvetime",
+        help="Run solve-time analysis, table, and plot.",
+    )
+    add_solvetime_args(solvetime_parser)
+    solvetime_parser.set_defaults(func=run_solvetime)
 
     args = parser.parse_args()
     args.func(args)
