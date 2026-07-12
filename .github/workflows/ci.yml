@@ -22,6 +22,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y liblapack3 libblas3 gfortran
 
+      - name: Install latex
+        run: |
+          sudo apt-get install -y \
+          texlive-latex-base \
+          texlive-latex-recommended \
+          texlive-fonts-recommended \
+          dvipng \
+          cm-super
+
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
