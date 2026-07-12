@@ -65,7 +65,9 @@ jobs:
         run: |
           python -m pip list
           export PATH="$PATH:$GITHUB_WORKSPACE/.idaes"
-          #export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/.idaes/lib"
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/.idaes/lib"
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           pkg-config --libs --cflags ipopt
           python reproduce.py solvetime --smoke --run-dir=.
+
+
