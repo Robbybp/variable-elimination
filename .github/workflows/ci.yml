@@ -60,6 +60,11 @@ jobs:
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/.idaes"
           python reproduce.py structure --smoke --run-dir=.
+          test -s results/structure-distill.csv
+          test -s results/structure-distill.txt
+          test -s results/structure-distill-matching.txt
+          test -s images/fraction-elim.pdf
+          test -s images/nnz-per-con.pdf
 
       - name: Run solvetime analysis
         run: |
@@ -68,6 +73,9 @@ jobs:
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           pkg-config --libs --cflags ipopt
           python reproduce.py solvetime --smoke --run-dir=.
+          test -s results/solvetime-distill-matching.csv
+          test -s results/solvetime-distill-matching.txt
+          test -s images/fraction-solvetime.pdf
 
       - name: Run convergence analysis
         run: |
@@ -76,3 +84,6 @@ jobs:
           export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.idaes/lib/pkgconfig:$PKG_CONFIG_PATH"
           pkg-config --libs --cflags ipopt
           python reproduce.py convergence --smoke --run-dir=.
+          test -s results/sweep/distill-matching-sweep.csv
+          test -s results/sweep/distill-matching-sweep-summary.csv
+          test -s images/distill-matching-sweep-convergence.pdf
