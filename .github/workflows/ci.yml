@@ -45,3 +45,8 @@ jobs:
             var_elim/algorithms/tests \
             var_elim/heuristics/tests \
             var_elim/mip_formulations/tests
+
+      - name: Run structural analysis
+        run: |
+          export PATH="$PATH:$GITHUB_WORKSPACE/.idaes"
+          python reproduce.py structure --smoke --run-dir=.
