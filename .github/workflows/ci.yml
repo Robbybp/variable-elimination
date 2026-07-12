@@ -60,3 +60,8 @@ jobs:
         run: |
           export PATH="$PATH:$GITHUB_WORKSPACE/.idaes"
           python reproduce.py structure --smoke --run-dir=.
+
+      - name: Run solvetime analysis
+        run: |
+          export PATH="$PATH:$GITHUB_WORKSPACE/.idaes"
+          python reproduce.py solvetime --smoke --run-dir=.
