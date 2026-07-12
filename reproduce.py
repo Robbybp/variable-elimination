@@ -25,6 +25,10 @@ import shlex
 import subprocess
 
 
+SWEEP_MODELS = ["distill", "mb-steady", "pipeline"]
+SWEEP_METHODS = ["no-elim", "d1", "ecd2", "linear-d2", "d2", "greedy", "matching"]
+
+
 def default_run_dir():
     date = datetime.date.today().strftime("%Y%m%d")
     return os.path.join("runs", date)
@@ -122,6 +126,34 @@ def add_solvetime_args(parser):
         "--tee",
         action="store_true",
         help="Stream solver logs from the solve-time analysis.",
+    )
+
+
+def add_convergence_args(parser):
+    add_common_args(parser)
+    parser.add_argument(
+        "--nsamples",
+        type=int,
+        default=None,
+        help=(
+            "Number of samples per parameter. Defaults to 2 with --smoke, "
+            "otherwise 11."
+        ),
+    )
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Run only the distillation matching sweep for a quicker check.",
+    )
+    parser.add_argument(
+        "--skip-tables",
+        action="store_true",
+        help="Skip LaTeX table generation.",
+    )
+    parser.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Skip plot generation.",
     )
 
 
@@ -238,6 +270,92 @@ def run_solvetime(args):
         run_command(plot_cmd, dry_run=args.dry_run)
 
 
+def run_convergence(args):
+    _, results_dir, image_dir = resolve_output_dirs(args)
+    sweep_dir = os.path.join(results_dir, "sweep")
+    nsamples = (
+        args.nsamples
+        if args.nsamples is not None
+        else (2 if args.smoke else 11)
+    )
+
+    make_dir(results_dir, dry_run=args.dry_run)
+    make_dir(sweep_dir, dry_run=args.dry_run)
+    make_dir(image_dir, dry_run=args.dry_run)
+
+    sweep_jobs = (
+        [("distill", "matching")]
+        if args.smoke
+        else [(model, None) for model in SWEEP_MODELS]
+    )
+    for model, method in sweep_jobs:
+        sweep_cmd = [
+            "python",
+            script_path("run_param_sweep.py"),
+            "--results-dir",
+            sweep_dir,
+            "--model",
+            model,
+            "--nsamples",
+            str(nsamples),
+        ]
+        if method is not None:
+            sweep_cmd.extend(["--method", method])
+        run_command(sweep_cmd, dry_run=args.dry_run)
+
+    if args.smoke:
+        summary_cmd = [
+            "python",
+            script_path("summarize_sweep_results.py"),
+            "--results-dir",
+            sweep_dir,
+            "--model",
+            "distill",
+            "--method",
+            "matching",
+        ]
+    else:
+        summary_cmd = [
+            "python",
+            script_path("summarize_sweep_results.py"),
+            "--results-dir",
+            sweep_dir,
+        ]
+    run_command(summary_cmd, dry_run=args.dry_run)
+
+    if not args.skip_tables and not args.smoke:
+        summary_csv = os.path.join(results_dir, "sweep-summary.csv")
+        table_cmd = [
+            "python",
+            script_path("write_latex_table.py"),
+            summary_csv,
+            "--results-dir",
+            results_dir,
+        ]
+        run_command(table_cmd, dry_run=args.dry_run)
+
+    if not args.skip_plots:
+        plot_jobs = (
+            [("distill", "matching")]
+            if args.smoke
+            else [
+                (model, method)
+                for model in SWEEP_MODELS
+                for method in SWEEP_METHODS
+            ]
+        )
+        for model, method in plot_jobs:
+            sweep_csv = os.path.join(sweep_dir, f"{model}-{method}-sweep.csv")
+            plot_cmd = [
+                "python",
+                script_path("plot_sweep_results.py"),
+                sweep_csv,
+                "--image-dir",
+                image_dir,
+            ]
+            run_command(plot_cmd, dry_run=args.dry_run)
+
+
 def main():
     require_repo_root()
 
@@ -259,6 +377,13 @@ def main():
     )
     add_solvetime_args(solvetime_parser)
     solvetime_parser.set_defaults(func=run_solvetime)
+
+    convergence_parser = subparsers.add_parser(
+        "convergence",
+        help="Run parameter sweeps, summaries, and convergence plots.",
+    )
+    add_convergence_args(convergence_parser)
+    convergence_parser.set_defaults(func=run_convergence)
 
     args = parser.parse_args()
     args.func(args)
