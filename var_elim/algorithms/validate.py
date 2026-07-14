@@ -24,6 +24,30 @@ from pyomo.core.base.var import Var
 from idaes.core.util.model_statistics import large_residuals_set
 
 
+def _violates_relative_constraint_tolerance(con, tolerance):
+    body_value = pyo_value(con.body)
+
+    if con.upper is not None:
+        upper = pyo_value(con.upper)
+        upper_diff = body_value - upper
+        if upper_diff > tolerance:
+            relative_upper_diff = (
+                upper_diff / abs(upper) if upper != 0 else upper_diff
+            )
+            return relative_upper_diff > tolerance
+
+    if con.lower is not None:
+        lower = pyo_value(con.lower)
+        lower_diff = lower - body_value
+        if lower_diff > tolerance:
+            relative_lower_diff = (
+                lower_diff / abs(lower) if lower != 0 else lower_diff
+            )
+            return relative_lower_diff > tolerance
+
+    return False
+
+
 def validate_solution(
     model,
     eliminated_var_exprs,
@@ -33,7 +57,11 @@ def validate_solution(
     violated_cons_reduced = large_residuals_set(
         model, tol=tolerance, return_residual_values=True
     )
-    violated_cons_reduced = list(violated_cons_reduced.items())
+    violated_cons_reduced = [
+        (con, resid)
+        for con, resid in violated_cons_reduced.items()
+        if _violates_relative_constraint_tolerance(con, tolerance)
+    ]
 
     # Set variables to value defined by elimination expression
     # We assume these expressions are in terms of reduced-space variables.
