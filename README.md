@@ -52,7 +52,7 @@ As long as `pynumero` has status `OK`, this step was successful for the purpose
 of this repository.
 
 ### IPOPT
-We use the IPOPT solver (version 3.14.10 with linear solver MA27)
+We use the IPOPT solver (version 3.14.17 with linear solver MA27)
 to compare the impact of our aggregation techniques.
 IPOPT can be installed by following instructions on the github repository,
 [](https://github.com/coin-or/ipopt).
