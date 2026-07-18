@@ -65,10 +65,6 @@ StructuralResults = namedtuple(
 )
 
 
-# TODO: Command line argument
-USE_NAMED_EXPRESSIONS = True
-
-
 def get_equality_constraints(model):
     eq_cons = []
     for con in model.component_data_objects(pyo.Constraint, active=True):
@@ -81,6 +77,7 @@ def matching_elim_callback(model, **kwds):
     timer = kwds.pop("timer", HierarchicalTimer())
     # In case we don't want to modify the model in-place
     eliminate = kwds.pop("eliminate", True)
+    use_named_expressions = kwds.pop("use_named_expressions", True)
 
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
@@ -166,7 +163,7 @@ def matching_elim_callback(model, **kwds):
             var_elim,
             con_elim,
             igraph=igraph,
-            use_named_expressions=USE_NAMED_EXPRESSIONS,
+            use_named_expressions=use_named_expressions,
             timer=timer,
         )
     else:
@@ -181,6 +178,7 @@ def linear_degree1_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
+    use_named_expressions = kwds.pop("use_named_expressions", True)
 
     if igraph is None:
         timer.start("igraph")
@@ -223,7 +221,7 @@ def linear_degree1_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             # We need to perform the elimination on the linear and equality-only
@@ -249,6 +247,7 @@ def degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
+    use_named_expressions = kwds.pop("use_named_expressions", True)
 
     if igraph is None:
         timer.start("igraph")
@@ -292,7 +291,7 @@ def degree2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             timer.start("eliminate-nodes")
@@ -321,7 +320,7 @@ def degree2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             timer.start("eliminate-nodes")
@@ -342,6 +341,7 @@ def equalcoef_degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
+    use_named_expressions = kwds.pop("use_named_expressions", True)
 
     if igraph is None:
         timer.start("igraph")
@@ -383,7 +383,7 @@ def equalcoef_degree2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             timer.start("eliminate-nodes")
@@ -413,7 +413,7 @@ def equalcoef_degree2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             timer.start("eliminate-nodes")
@@ -434,6 +434,7 @@ def linear_degree2_elim_callback(model, **kwds):
     igraph = kwds.pop("igraph", None)
     linear_igraph = kwds.pop("linear_igraph", None)
     timer = kwds.pop("timer", HierarchicalTimer())
+    use_named_expressions = kwds.pop("use_named_expressions", True)
     if igraph is None:
         timer.start("igraph")
         igraph = IncidenceGraphInterface(
@@ -474,7 +475,7 @@ def linear_degree2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             timer.start("eliminate-nodes")
@@ -504,7 +505,7 @@ def linear_degree2_elim_callback(model, **kwds):
                 var_elim,
                 con_elim,
                 igraph=igraph,
-                use_named_expressions=USE_NAMED_EXPRESSIONS,
+                use_named_expressions=use_named_expressions,
             )
             timer.stop("eliminate")
             timer.start("eliminate-nodes")
@@ -528,6 +529,7 @@ def no_elim_callback(model, **kwds):
 def greedy_elim_callback(model, **kwds):
     igraph = kwds.pop('igraph', None)
     timer = kwds.pop("timer", HierarchicalTimer())
+    use_named_expressions = kwds.pop("use_named_expressions", True)
     if igraph is None:
         timer.start("igraph")
         igraph = IncidenceGraphInterface(
@@ -562,7 +564,7 @@ def greedy_elim_callback(model, **kwds):
             var_elim,
             con_elim,
             igraph = igraph,
-            use_named_expressions=USE_NAMED_EXPRESSIONS,
+            use_named_expressions=use_named_expressions,
         )
         timer.stop("eliminate")
     else:

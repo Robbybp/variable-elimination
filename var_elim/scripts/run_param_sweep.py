@@ -113,6 +113,11 @@ def main(args):
             # use TimedCyIpoptSolver
             solver = pyo.SolverFactory("cyipopt", options=options)
 
+            if problem_name == "mb-steady" and elim_name == "linear-d2":
+                use_named_expressions = False
+            else:
+                use_named_expressions = True
+
             def run_model(model, solver):
                 timer = HierarchicalTimer()
                 # Optional: re-initialize
@@ -127,7 +132,7 @@ def main(args):
 
                 # Run the elimination method
                 timer.start("elimination")
-                elim_results = elim_cb(model)
+                elim_results = elim_cb(model, use_named_expressions=use_named_expressions)
                 timer.stop("elimination")
 
                 timer.start("solve")

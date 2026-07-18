@@ -122,12 +122,19 @@ def main(args):
         htimer.start(label)
         print(mname, elim_name)
 
+        # HACK: There appears to be a .nl writer bug with MB+LD2 with named expressions.
+        if mname == "mb-steady" and elim_name == "linear-d2":
+            use_named_expressions = False
+        else:
+            use_named_expressions = True
+
         timer.tic()
         htimer.start("elimination")
         elim_res = elim_callback(
             model,
             timer=htimer,
             skip_extra_info=True,
+            use_named_expressions=use_named_expressions,
         )
         htimer.stop("elimination")
         elim_time = timer.toc("Apply elimination")

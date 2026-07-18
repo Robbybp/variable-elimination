@@ -24,6 +24,30 @@ from pyomo.core.base.var import Var
 from idaes.core.util.model_statistics import large_residuals_set
 
 
+def _violates_relative_constraint_tolerance(con, tolerance):
+    body_value = pyo_value(con.body)
+
+    if con.upper is not None:
+        upper = pyo_value(con.upper)
+        upper_diff = body_value - upper
+        if upper_diff > tolerance:
+            relative_upper_diff = (
+                upper_diff / abs(upper) if upper != 0 else upper_diff
+            )
+            return relative_upper_diff > tolerance
+
+    if con.lower is not None:
+        lower = pyo_value(con.lower)
+        lower_diff = lower - body_value
+        if lower_diff > tolerance:
+            relative_lower_diff = (
+                lower_diff / abs(lower) if lower != 0 else lower_diff
+            )
+            return relative_lower_diff > tolerance
+
+    return False
+
+
 def validate_solution(
     model,
     eliminated_var_exprs,
@@ -33,7 +57,11 @@ def validate_solution(
     violated_cons_reduced = large_residuals_set(
         model, tol=tolerance, return_residual_values=True
     )
-    violated_cons_reduced = list(violated_cons_reduced.items())
+    violated_cons_reduced = [
+        (con, resid)
+        for con, resid in violated_cons_reduced.items()
+        if _violates_relative_constraint_tolerance(con, tolerance)
+    ]
 
     # Set variables to value defined by elimination expression
     # We assume these expressions are in terms of reduced-space variables.
@@ -46,12 +74,16 @@ def validate_solution(
             continue
         if var.ub is not None:
             ub_diff = pyo_value(var.value - var.ub)
-            if ub_diff > tolerance:
-                vars_violating_bounds.append((var, var.ub, ub_diff))
+            # We allow a large(r) bound violation if the relative tolerance is small.
+            # This occurs for pipeline models for bounds with magnitude 1e3-1e4
+            relative_ub_diff = ub_diff / abs(var.ub) if var.ub != 0 else ub_diff
+            if ub_diff > tolerance and relative_ub_diff > tolerance:
+                vars_violating_bounds.append((var, var.ub, min(ub_diff, relative_ub_diff)))
         if var.lb is not None:
             lb_diff = pyo_value(var.value - var.lb)
-            if lb_diff < - tolerance:
-                vars_violating_bounds.append((var, var.lb, lb_diff))
+            relative_lb_diff = lb_diff / abs(var.lb) if var.lb != 0 else lb_diff
+            if lb_diff < - tolerance and relative_lb_diff < - tolerance:
+                vars_violating_bounds.append((var, var.lb, max(lb_diff, relative_lb_diff)))
 
     violated_eliminated_cons = []
     for con in eliminated_constraints:
