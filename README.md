@@ -55,7 +55,7 @@ of this repository.
 We use the IPOPT solver (version 3.14.17 with linear solver MA27)
 to compare the impact of our aggregation techniques.
 IPOPT can be installed by following instructions on the github repository,
-[](https://github.com/coin-or/ipopt).
+https://github.com/coin-or/ipopt.
 See the following instructions to compile an Ipopt-compatible HSL library
 (which contains MA27): https://github.com/coin-or-tools/ThirdParty-HSL.
 
