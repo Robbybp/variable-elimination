@@ -1,5 +1,5 @@
 Variable Elimination
---------------------
+====================
 This repository started as a place for collaborative exploratory work
 on variable elimination in nonlinear optimization problems. It now primarily
 serves to host the code necessary to reproduce the results in the paper
@@ -25,6 +25,7 @@ and [IPOPT](https://github.com/coin-or/ipopt))
 then install this repository as a Python package.
 
 ## Installing non-Python dependencies
+If you already have PyNumero and IPOPT installed, you may skip this section.
 
 ### PyNumero
 
@@ -56,8 +57,9 @@ We use the IPOPT solver (version 3.14.17 with linear solver MA27)
 to compare the impact of our aggregation techniques.
 IPOPT can be installed by following instructions on the github repository,
 https://github.com/coin-or/ipopt.
-See the following instructions to compile an Ipopt-compatible HSL library
-(which contains MA27): https://github.com/coin-or-tools/ThirdParty-HSL.
+See the following repository for instructions to compile an Ipopt-compatible
+HSL library (which contains MA27):
+https://github.com/coin-or-tools/ThirdParty-HSL.
 
 > [!NOTE]
 > Depending on your IPOPT install location, you may have to set some environment
