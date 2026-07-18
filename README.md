@@ -1,60 +1,36 @@
-# variable-elimination
-Repository for collaborative exploratory work on variable elimination in NLPs
-
-# Copyright
-The copyright header in `header.txt` must be added to every source (Python)
-file in this repository.
+Variable Elimination
+--------------------
+This repository started as a place for collaborative exploratory work
+on variable elimination in nonlinear optimization problems. It now primarily
+serves to host the code necessary to reproduce the results in the paper
+"Variable aggregation in nonlinear optimization problems":
+```bibtex
+@misc{naik2026aggregation,
+  title={Variable aggregation for nonlinear optimization problems},
+  author={Sakshi Naik and Lorenz Biegler and Russell Bent and Robert Parker},
+  year={2026},
+  eprint={2502.13869},
+  archivePrefix={arXiv},
+  primaryClass={math.OC},
+  url={https://arxiv.org/abs/2502.13869},
+}
+```
 
 # Installation
 This repository is structured as a small Python package to facilitate code
-organization and testing. It can be installed with:
-```bash
-git clone https://github.com/Robbybp/variable-elimination.git
-cd variable-elimination
-pip install -r requirements.txt
-pip install -e .
+organization and testing. To install, you must first install our non-Python
+dependencies
+([PyNumero](https://pyomo.readthedocs.io/en/stable/explanation/solvers/pynumero/index.html)
+and [IPOPT](https://github.com/coin-or/ipopt))
+then install this repository as a Python package.
+
+## Installing non-Python dependencies
+
+### PyNumero
+
+We use PyNumero to interface Pyomo, CyIpopt, and the AMPL Solver Library (ASL).
+PyNumero can be installed by the Pyomo Python package:
 ```
-Then functionality can be imported in Python:
-```python
-from var_elim.models.distillation.distill import create_instance
-model = create_instance()
-```
-
-# Dependencies
-
-## Python dependencies
-
-This repository was developed and tested using Python 3.11.5.
-See `requirements.txt` for a list of Python dependencies. For stability, we pin to
-specific versions of our dependencies, e.g. Pyomo and IDAES.
-Non-PyPI dependencies are:
-- [`nmpc_examples`](https://github.com/robbybp/nmpc_examples)
-- [`pselib`](https://github.com/robbybp/pselib)
-
-These can be installed with
-```bash
-pip install git+https://github.com/Robbybp/nmpc_examples.git
-pip install git+https://github.com/Robbybp/pselib.git
-```
-
-> [!NOTE]
-> Users who only wish to reproduce our results should not need to install these
-> dependencies manually as they are already included in the `requirements.txt`
-> file. (I.e., they are installed by the `pip install -r requirements.txt` step
-> above.) These are listed only for users who wish to use our code in their own
-> projects with different versions of our dependencies.
-
-When the main branch of this repository requires a specific branch of some dependency
-(e.g. the Pyomo main branch, rather than the latest release), an issue should be opened.
-
-## Non-Python dependencies
-Results are generated with Ipopt 3.14.17, using the Pyomo-CyIpopt interface. This
-interface depends on the following non-Python dependencies:
-
-1. `libpynumero_ASL`. This is a library that allows us to make calls to the AMPL
-solver library (ASL) from Python. It can be installed on most systems with the
-following commands:
-```bash
 pip install pyomo
 pyomo build-extensions
 ```
@@ -75,25 +51,54 @@ INFO: The following extensions were built:
 As long as `pynumero` has status `OK`, this step was successful for the purpose
 of this repository.
 
-2. [Ipopt 3.14](https://github.com/coin-or/ipopt), with linear solver MA27.
+### IPOPT
+We use the IPOPT solver (version 3.14.10 with linear solver MA27)
+to compare the impact of our aggregation techniques.
+IPOPT can be installed by following instructions on the github repository,
+[](https://github.com/coin-or/ipopt).
 See the following instructions to compile an Ipopt-compatible HSL library
 (which contains MA27): https://github.com/coin-or-tools/ThirdParty-HSL.
 
+> [!NOTE]
+> Depending on your IPOPT install location, you may have to set some environment
+> variables for `libipopt` to be discoverable by the CyIpopt Python package.
+> Commonly, `PKG_CONFIG_PATH=INSTALL_DIR/lib/pkgconfig`,
+> `LD_LIBRARY_PATH=INSTALL_DIR/lib`, and/or `DYLD_LIBRARY_PATH=INSTALL_DIR/lib`
+> must be set.
+
+## Installing this package
+Download this repository and navigate into it with:
+```
+git clone https://github.com/Robbybp/variable-elimination.git
+cd variable-elimination
+```
+The following command, run from the root of this repository, will install this
+package and the latest versions of all its Python dependencies:
+```
+pip install -e .[test]
+```
+(The `[test]` flag installs `pytest`, which is only necessary to run tests.)
+Verify that the installation was successful by running `pytest` from the
+repository root.
+The functionality of this package can then be imported in Python, e.g.:
+```python
+from var_elim.models.distillation.distill import create_instance
+model = create_instance()
+```
+
+> [!NOTE]
+> The above command installs the *latest* version of dependencies.
+> The exact versions of all dependencies used to produce the results
+> in our paper are provided in `requirements.txt`. Install these
+> dependencies with
+> ```
+> pip install -r requirements.txt
+> ```
+> before or after installing this package.
+
 # Reproducing our results
 
-This repository was used to generate results for the paper:
-```bibtex
-@misc{naik2025aggregation,
-      title={Variable aggregation for nonlinear optimization problems},
-      author={Sakshi Naik and Lorenz Biegler and Russell Bent and Robert Parker},
-      year={2025},
-      eprint={2502.13869},
-      archivePrefix={arXiv},
-      primaryClass={math.OC},
-      url={https://arxiv.org/abs/2502.13869},
-}
-```
-This paper presents three kinds of results:
+Our paper presents three kinds of results:
 1. Structural results describe the size and shape of models before loading any
 variable values.
 2. Numerical results, in our case, are solution objective values, solve times,
@@ -272,3 +277,8 @@ nvar = length(igraph.variables)
 ncon = length(igraph.constraints)
 nnz = igraph.n_edges
 ```
+
+# License
+This code is copyrighted by Los Alamos National Laboratory and distributed under a
+BSD 3-clause license. The license and copyright are provided in `LICENSE.md` and
+`COPYRIGHT.txt`.
