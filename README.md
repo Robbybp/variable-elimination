@@ -95,6 +95,8 @@ model = create_instance()
 > pip install -r requirements.txt
 > ```
 > before or after installing this package.
+>
+> The results for our paper were generated with Python 3.11.5.
 
 # Reproducing our results
 
@@ -106,149 +108,63 @@ and solve time breakdowns.
 3. Convergence results are the success or failure of many instances when performing
 a sweep over model parameter values.
 
-Scripts to produce these results are located in the `var_elim/scripts` subdirectory
-of this repository.
+Scripts to run analyses, summarize results, and generate plots and tables are
+located in the `var_elim/scripts` subdirectory of this repository.
 You can view the command line interface for each script with:
 ```bash
-python myscript.py --help
-```
-In particular, the `--results-dir=RESULTS_DIR` option specifies the directory
-where results are written, and the `--image-dir=IMAGE_DIR` option specifies the
-directory where images are saved (for scripts that plot figures).
-These default to `results` and `images` respectively, but it might be useful
-to set them to custom values to avoid overwriting previous results
-(produced with, e.g., a different Pyomo version).
-
-TL;DR: Reproduce the bulk of our results with the following commands:
-```bash
-python analyze_structure.py
-python write_latex_table.py results/structure.csv
-python analyze_solvetime.py
-python write_latex_table.py results/solvetime.csv
-python run_param_sweep.py --model=distill
-python run_param_sweep.py --model=mb-steady
-python run_param_sweep.py --model=pipeline
-python summarize_sweep_results.py --model=distill
-python summarize_sweep_results.py --model=mb-steady
-python summarize_sweep_results.py --model=pipeline
-```
-See below for more details, especially on how to speed this up in an HPC environment.
-
-### Producing results in parallel on HPC
-The results can be time-consuming to reproduce, so we typically run them in parallel
-on multiple-node/core HPC systems. This repository includes scripts to write command
-lines that can be run in parallel with utilities like Slurm and GNU Parallel.
-
-## Reproducing structural results
-Structural results are produced by the `analyze_structure.py` script:
-```bash
-python analyze_structure.py --results-dir=RESULTS_DIR
-```
-Results are written to `RESULTS_DIR/structure.csv`.
-Display these results as a Latex table, similar to that displayed in the paper, with:
-```bash
-python write_latex_table.py RESULTS_DIR/structure.csv
+python var_elim/scripts/myscript.py --help
 ```
 
-To write structure-analysis commands that can be run in parallel:
-```bash
-python write_command_lines.py structure --results-dir=RESULTS_DIR
-```
+## Using the `reproduce.py` script
 
-To run these commands in parallel with multiple subprocesses:
-```bash
-# This may require installing GNU Parallel for the `parallel` command
-parallel -a structure-commands.txt
-```
-
-To collect the results into a single file:
-```bash
-# Only necessary if we have written many small files in parallel runs!
-python collect_results.py structure --results-dir=RESULTS_DIR
-```
-The results are now combined into `RESULTS_DIR/structure.csv` and can be
-displayed as above.
-Figures may be produced with:
-```bash
-python plot_structure_bargraphs.py RESULTS_DIR/structure.csv --image-dir=IMAGE_DIR
-```
-
-## Reproducing numerical results
-Numerical results are produced using the `analyze_solvetime.py` script:
-```bash
-python analyze_solvetime.py --results-dir=RESULTS_DIR
-```
-Results are written to `RESULTS_DIR/solvetime.csv`, and can be displayed
+For convenience, we have provided a Python script, `reproduce.py`, that allows
+each set of results to be produced with a single command.
+This script should be run from the root of this repository.
+To make sure this script is working properly, run the "smoke tests"
 with:
-```bash
-python write_latex_table.py RESULTS_DIR/solvetime.csv
+```
+python reproduce.py structure --smoke
+python reproduce.py solvetime --smoke
+python reproduce.py convergence --smoke
+```
+By default, this script saves results in the `runs/DATE` subdirectory, where
+`DATE` is today's date in YYYYMMDD format. After running the smoke tests,
+we should have the following files:
+```
+runs
+└── DATE
+    ├── images
+    │   ├── distill-matching-sweep-convergence.pdf
+    │   ├── fraction-elim.pdf
+    │   ├── fraction-solvetime.pdf
+    │   └── nnz-per-con.pdf
+    └── results
+        ├── solvetime-distill-matching.csv
+        ├── solvetime-distill-matching.txt
+        ├── structure-distill-matching.txt
+        ├── structure-distill.csv
+        ├── structure-distill.txt
+        └── sweep
+            ├── distill-matching-sweep-summary.csv
+            └── distill-matching-sweep.csv
+```
+The full results can be produced with:
+```
+python reproduce.py structure
+python reproduce.py solvetime
+python reproduce.py convergence
+```
+The convergence results use 11 samples per parameter by default.
+To run an abridged parameter sweep, use e.g., `--nsamples=2`.
+After running these commands, we should have the following files:
+```
+TODO
 ```
 
-Independent commands for parallel runs can be written with:
-```bash
-python write_command_lines.py solvetime --results-dir=RESULTS_DIR
-```
-
-We typically prefer to run scripts that measure solvetimes on independent,
-identical compute nodes rather than using multiple processes on the same
-node. We do this with a Slurm batch script and the `sbatch` command.
-The exact contents of this batch script depends on your HPC environment.
-
-Collect results into a single file with:
-```bash
-# Only necessary if we have written many small files in parallel runs!
-python collect_results.py solvetime --results-dir=RESULTS_DIR
-```
-
-The breakdown of solve time can be plotted with:
-```bash
-python plot_timing_bargraphs.py RESULTS_DIR/solvetime.csv --image-dir=IMAGE_DIR
-```
-
-## Reproducing convergence results
-Parameter sweeps are run with the `run_param_sweep.py` script:
-```bash
-python run_param_sweep.py --results-dir=RESULTS_DIR
-```
-This writes a CSV file of convergence results for each model-method combination,
-e.g., `mb-steady-matching-sweep.csv`, into the `RESULTS_DIR/sweep` subdirectory.
-
-A summary of sweep results may be displayed with:
-```bash
-python summarize_sweep_results.py --results-dir=RESULTS_DIR --model=MODEL
-```
-where `MODEL` is one of `mb-steady`, `distill`, or `pipeline`.
-
-Parameter sweep success/failure results may be plotted in a grid with:
-```bash
-python plot_sweep_results.py SWEEP_CSV --image-dir=IMAGE_DIR
-```
-
-We typically run the parameter sweep for each model-method combination
-on a different compute node (managed by e.g., Slurm), and use multiprocess
-parallelism to run individual parameter samples in parallel within each node
-(using GNU Parallel).
-
-Commands can be written with:
-```bash
-python write_sweep_command_lines.py --results-dir=RESULTS_DIR
-```
-The commands for each model-method combination, written to
-`commands/parallel-sweep-commands.txt`, can then be run on multiple compute
-nodes with, for example, the Slurm `sbatch` command.
-
-Parameter sweep results for each model-method combination may be combined
-into CSV files, e.g., `mb-steady-matching-sweep.csv` with:
-```bash
-# Alternatively, we could run each command in this file manually
-parallel -a commands/collect-sweep-commands.txt
-```
-
-Plots may be generated with:
-```bash
-# Alternatively, we could run each command in this file manually
-parallel -a commands/plot-sweep-commands.txt
-```
+## Producing results in parallel on HPC
+The results can be time-consuming to reproduce, so we typically run them in parallel
+on multiple-node/core HPC systems. We have provided a makefile with the commands
+used to run these results in parallel.
 
 # Using these methods on your own models
 The functionality to identify sets of variables and constraints to eliminate, perform
