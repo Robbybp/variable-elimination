@@ -159,9 +159,73 @@ python reproduce.py convergence
 The convergence results use 11 samples per parameter by default.
 To run an abridged parameter sweep, use e.g., `--nsamples=2`.
 After running these commands, we should have the following files:
+
+<details>
+
+<summary> runs/DATE </summary>
+
 ```
-TODO
+runs
+└── DATE
+    ├── images
+    │   ├── distill-d1-sweep-convergence.pdf
+    │   ├── distill-d2-sweep-convergence.pdf
+    │   ├── distill-ecd2-sweep-convergence.pdf
+    │   ├── distill-greedy-sweep-convergence.pdf
+    │   ├── distill-linear-d2-sweep-convergence.pdf
+    │   ├── distill-matching-sweep-convergence.pdf
+    │   ├── distill-no-elim-sweep-convergence.pdf
+    │   ├── fraction-elim.pdf
+    │   ├── fraction-solvetime.pdf
+    │   ├── mb-steady-d1-sweep-convergence.pdf
+    │   ├── mb-steady-d2-sweep-convergence.pdf
+    │   ├── mb-steady-ecd2-sweep-convergence.pdf
+    │   ├── mb-steady-greedy-sweep-convergence.pdf
+    │   ├── mb-steady-linear-d2-sweep-convergence.pdf
+    │   ├── mb-steady-matching-sparsity.pdf
+    │   ├── mb-steady-matching-sweep-convergence.pdf
+    │   ├── mb-steady-no-elim-sweep-convergence.pdf
+    │   ├── nnz-per-con.pdf
+    │   ├── pipeline-d1-sweep-convergence.pdf
+    │   ├── pipeline-d2-sweep-convergence.pdf
+    │   ├── pipeline-ecd2-sweep-convergence.pdf
+    │   ├── pipeline-greedy-sweep-convergence.pdf
+    │   ├── pipeline-linear-d2-sweep-convergence.pdf
+    │   ├── pipeline-matching-sweep-convergence.pdf
+    │   └── pipeline-no-elim-sweep-convergence.pdf
+    └── results
+        ├── solvetime.csv
+        ├── solvetime.txt
+        ├── structure-matching.txt
+        ├── structure.csv
+        ├── structure.txt
+        ├── sweep
+        │   ├── distill-d1-sweep.csv
+        │   ├── distill-d2-sweep.csv
+        │   ├── distill-ecd2-sweep.csv
+        │   ├── distill-greedy-sweep.csv
+        │   ├── distill-linear-d2-sweep.csv
+        │   ├── distill-matching-sweep.csv
+        │   ├── distill-no-elim-sweep.csv
+        │   ├── mb-steady-d1-sweep.csv
+        │   ├── mb-steady-d2-sweep.csv
+        │   ├── mb-steady-ecd2-sweep.csv
+        │   ├── mb-steady-greedy-sweep.csv
+        │   ├── mb-steady-linear-d2-sweep.csv
+        │   ├── mb-steady-matching-sweep.csv
+        │   ├── mb-steady-no-elim-sweep.csv
+        │   ├── pipeline-d1-sweep.csv
+        │   ├── pipeline-d2-sweep.csv
+        │   ├── pipeline-ecd2-sweep.csv
+        │   ├── pipeline-greedy-sweep.csv
+        │   ├── pipeline-linear-d2-sweep.csv
+        │   ├── pipeline-matching-sweep.csv
+        │   └── pipeline-no-elim-sweep.csv
+        ├── sweep-summary.csv
+        └── sweep-summary.txt
 ```
+
+</details>
 
 ## Producing results in parallel on HPC
 The results can be time-consuming to reproduce, so we typically run them in parallel
