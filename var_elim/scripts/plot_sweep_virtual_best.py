@@ -38,10 +38,16 @@ PARAMETER_LABEL_LOOKUP = {
 }
 ELIM_NAMES = ("no-elim", "d1", "ecd2", "linear-d2", "d2", "greedy", "matching")
 METHOD_SUBSETS = [
-    ("no-elim + LD2", ("no-elim", "linear-d2")),
-    ("no-elim + LD2 + greedy", ("no-elim", "linear-d2", "greedy")),
+    ("No elimination", ("no-elim",)),
+    ("No elimination + Linear degree-2", ("no-elim", "linear-d2")),
+    ("No elimination + Linear degree-2 + Greedy", ("no-elim", "linear-d2", "greedy")),
     ("All algorithms", ELIM_NAMES),
 ]
+TITLE_LOOKUP = {
+    "mb-steady": "Moving bed reactor",
+    "distill": "Distillation",
+    "pipeline": "Pipeline",
+}
 
 
 def _success_series(df):
@@ -128,9 +134,9 @@ def main(args):
     if os.path.basename(os.path.normpath(results_dir)) != "sweep":
         results_dir = os.path.join(results_dir, "sweep")
 
-    plt.rcParams["font.size"] = 14
+    plt.rcParams["font.size"] = 22
     plt.rcParams["font.family"] = "serif"
-    fig, axes = plt.subplots(len(METHOD_SUBSETS), len(MODEL_NAMES), figsize=(18, 18))
+    fig, axes = plt.subplots(len(METHOD_SUBSETS), len(MODEL_NAMES), figsize=(18, 24))
 
     for row, (subset_name, method_names) in enumerate(METHOD_SUBSETS):
         for col, model_name in enumerate(MODEL_NAMES):
@@ -142,15 +148,15 @@ def main(args):
                 virtual_best,
                 PARAMETER_LOOKUP[model_name],
                 PARAMETER_LABEL_LOOKUP[model_name],
-                model_name,
+                TITLE_LOOKUP[model_name],
             )
         axes[row, 1].annotate(
             subset_name,
-            xy=(0.5, 1.3),
+            xy=(0.5, 1.15),
             xycoords="axes fraction",
             ha="center",
             va="bottom",
-            fontsize=18,
+            fontsize=32,
             fontweight="bold",
         )
 
@@ -165,7 +171,7 @@ def main(args):
         )
         fig.subplots_adjust(bottom=0.06)
 
-    fig.tight_layout(h_pad=4.0)
+    fig.tight_layout(h_pad=2)
     if not args.no_save:
         suffix_str = "" if args.suffix is None else f"-{args.suffix}"
         fpath = os.path.join(
