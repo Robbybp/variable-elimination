@@ -39,9 +39,9 @@ PARAMETER_LABEL_LOOKUP = {
 ELIM_NAMES = ("no-elim", "d1", "ecd2", "linear-d2", "d2", "greedy", "matching")
 METHOD_SUBSETS = [
     ("No elimination", ("no-elim",)),
-    ("No elimination + Linear degree-2", ("no-elim", "linear-d2")),
-    ("No elimination + Linear degree-2 + Greedy", ("no-elim", "linear-d2", "greedy")),
-    ("All algorithms", ELIM_NAMES),
+    ("Virtual best: No elimination + Linear degree-2", ("no-elim", "linear-d2")),
+    ("Virtual best: No elimination + Linear degree-2 + Greedy", ("no-elim", "linear-d2", "greedy")),
+    ("Virtual best: All algorithms", ELIM_NAMES),
 ]
 TITLE_LOOKUP = {
     "mb-steady": "Moving bed reactor",
@@ -166,10 +166,9 @@ def main(args):
                 Patch(color=CMAP(0), label="Unsuccessful"),
                 Patch(color=CMAP(1), label="Successful"),
             ],
-            loc="lower center",
+            loc="upper right",
             ncol=2,
         )
-        fig.subplots_adjust(bottom=0.06)
 
     y_positions = [0.24, 0.49, 0.75, 1.0]
     y_positions.reverse()
@@ -186,7 +185,7 @@ def main(args):
             fontweight="bold",
         )
 
-    fig.tight_layout(h_pad=5.0, rect=(0.0, 0.0, 1.0, 0.985))
+    fig.tight_layout(h_pad=5.0, w_pad=-5.0, rect=(0.0, 0.0, 1.0, 0.985))
     if not args.no_save:
         suffix_str = "" if args.suffix is None else f"-{args.suffix}"
         fpath = os.path.join(
