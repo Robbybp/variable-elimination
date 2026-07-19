@@ -7,7 +7,6 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
-import argparse
 import itertools
 import os
 
@@ -16,6 +15,8 @@ from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
+
+import var_elim.scripts.config as config
 
 CMAP = ListedColormap([(0.95, 0.55, 0.55), (0.05, 0.05, 0.35)])
 MODEL_NAMES = ["mb-steady", "distill", "pipeline"]
@@ -178,21 +179,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    script_dir = os.path.dirname(__file__)
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "--results-dir", default=os.path.join(script_dir, "results")
-    )
-    argparser.add_argument(
-        "--image-dir",
-        "--images-dir",
-        dest="image_dir",
-        default=os.path.join(script_dir, "images"),
-    )
-    argparser.add_argument("--suffix", default=None)
-    argparser.add_argument("--no-save", action="store_true")
-    argparser.add_argument("--show", action="store_true")
-    argparser.add_argument("--opaque", action="store_true")
-    argparser.add_argument("--no-legend", action="store_true")
+    argparser = config.get_plot_argparser()
     args = argparser.parse_args()
     main(args)
