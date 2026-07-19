@@ -171,7 +171,8 @@ def main(args):
         )
         fig.subplots_adjust(bottom=0.06)
 
-    y_positions = [0.24, 0.5, 0.76, 1.0].reverse()
+    y_positions = [0.24, 0.49, 0.75, 1.0]
+    y_positions.reverse()
     for row, (subset_name, _) in enumerate(METHOD_SUBSETS):
         row_top = axes[row, 0].get_position().y1
         fig.text(
@@ -185,7 +186,7 @@ def main(args):
             fontweight="bold",
         )
 
-    fig.tight_layout(h_pad=5.0)
+    fig.tight_layout(h_pad=5.0, rect=(0.0, 0.0, 1.0, 0.985))
     if not args.no_save:
         suffix_str = "" if args.suffix is None else f"-{args.suffix}"
         fpath = os.path.join(
