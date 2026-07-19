@@ -94,10 +94,13 @@ SWEEP_MODELS = ["distill", "mb-steady", "pipeline"]
 
 def summarize_all_models(args, elim_names):
     data = dict(method=[])
+    solve_time_data = dict(method=[])
     for model in SWEEP_MODELS:
         data[model] = []
+        solve_time_data[model] = []
     # Insert this last so table is in correct order
     data["total"] = []
+    solve_time_data["total"] = []
 
     orig_model_arg = args.model
     model_dfs = dict()
@@ -115,19 +118,25 @@ def summarize_all_models(args, elim_names):
 
     for method in elim_names:
         data["method"].append(method)
+        solve_time_data["method"].append(method)
         total_instances = 0
         total_success = 0
+        total_solve_time = 0.0
         for model in SWEEP_MODELS:
             # Should we store the percent successful, or the raw number?
             row = model_method_rows[model, method]
             data[model].append(row["percent-success"])
+            solve_time_data[model].append(row["ave-solve-time"])
             total_instances += row["n-total"]
             total_success += row["n-success"]
+            total_solve_time += row["ave-solve-time"] * row["n-success"]
         total_percent = 100.0 * total_success / total_instances
         data["total"].append(total_percent)
+        solve_time_data["total"].append(total_solve_time / total_success)
 
     output_df = pd.DataFrame(data)
-    return output_df
+    solve_time_df = pd.DataFrame(solve_time_data)
+    return output_df, solve_time_df
 
 
 def main(args):
@@ -138,9 +147,10 @@ def main(args):
     elim_names = [name for name, _ in elimination_callbacks]
 
     if args.model is None:
-        output_df = summarize_all_models(args, elim_names)
+        output_df, solve_time_df = summarize_all_models(args, elim_names)
     else:
         output_df = summarize_single_model(args, elim_names)
+        solve_time_df = output_df[["method", "ave-solve-time"]]
 
     if args.method is None:
         method_str = ""
@@ -168,6 +178,8 @@ def main(args):
         output_df.to_csv(output_fpath)
 
     print(output_df)
+    print("\nAverage solve time over successful instances:")
+    print(solve_time_df)
 
 
 if __name__ == "__main__":
