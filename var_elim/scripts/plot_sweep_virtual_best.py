@@ -150,15 +150,15 @@ def main(args):
                 PARAMETER_LABEL_LOOKUP[model_name],
                 TITLE_LOOKUP[model_name],
             )
-        axes[row, 1].annotate(
-            subset_name,
-            xy=(0.5, 1.15),
-            xycoords="axes fraction",
-            ha="center",
-            va="bottom",
-            fontsize=32,
-            fontweight="bold",
-        )
+        #axes[row, 1].annotate(
+        #    subset_name,
+        #    xy=(0.5, 1.15),
+        #    xycoords="axes fraction",
+        #    ha="center",
+        #    va="bottom",
+        #    fontsize=32,
+        #    fontweight="bold",
+        #)
 
     if not args.no_legend:
         fig.legend(
@@ -171,7 +171,21 @@ def main(args):
         )
         fig.subplots_adjust(bottom=0.06)
 
-    fig.tight_layout(h_pad=2)
+    y_positions = [0.24, 0.5, 0.76, 1.0].reverse()
+    for row, (subset_name, _) in enumerate(METHOD_SUBSETS):
+        row_top = axes[row, 0].get_position().y1
+        fig.text(
+            0.53,
+            #row_top + 0.01,
+            y_positions[row],
+            subset_name,
+            ha="center",
+            va="top",
+            fontsize=30,
+            fontweight="bold",
+        )
+
+    fig.tight_layout(h_pad=5.0)
     if not args.no_save:
         suffix_str = "" if args.suffix is None else f"-{args.suffix}"
         fpath = os.path.join(
