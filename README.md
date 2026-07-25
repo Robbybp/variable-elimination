@@ -1,60 +1,37 @@
-# variable-elimination
-Repository for collaborative exploratory work on variable elimination in NLPs
-
-# Copyright
-The copyright header in `header.txt` must be added to every source (Python)
-file in this repository.
+Variable Elimination
+====================
+This repository started as a place for collaborative exploratory work
+on variable elimination in nonlinear optimization problems. It now primarily
+serves to host the code necessary to reproduce the results in the paper
+"Variable aggregation in nonlinear optimization problems":
+```bibtex
+@misc{naik2026aggregation,
+  title={Variable aggregation for nonlinear optimization problems},
+  author={Sakshi Naik and Lorenz Biegler and Russell Bent and Robert Parker},
+  year={2026},
+  eprint={2502.13869},
+  archivePrefix={arXiv},
+  primaryClass={math.OC},
+  url={https://arxiv.org/abs/2502.13869},
+}
+```
 
 # Installation
 This repository is structured as a small Python package to facilitate code
-organization and testing. It can be installed with:
-```bash
-git clone https://github.com/Robbybp/variable-elimination.git
-cd variable-elimination
-pip install -r requirements.txt
-pip install -e .
+organization and testing. To install, you must first install our non-Python
+dependencies
+([PyNumero](https://pyomo.readthedocs.io/en/stable/explanation/solvers/pynumero/index.html)
+and [IPOPT](https://github.com/coin-or/ipopt))
+then install this repository as a Python package.
+
+## Installing non-Python dependencies
+If you already have PyNumero and IPOPT installed, you may skip this section.
+
+### PyNumero
+
+We use PyNumero to interface Pyomo, CyIpopt, and the AMPL Solver Library (ASL).
+PyNumero can be installed by the Pyomo Python package:
 ```
-Then functionality can be imported in Python:
-```python
-from var_elim.models.distillation.distill import create_instance
-model = create_instance()
-```
-
-# Dependencies
-
-## Python dependencies
-
-This repository was developed and tested using Python 3.11.5.
-See `requirements.txt` for a list of Python dependencies. For stability, we pin to
-specific versions of our dependencies, e.g. Pyomo and IDAES.
-Non-PyPI dependencies are:
-- [`nmpc_examples`](https://github.com/robbybp/nmpc_examples)
-- [`pselib`](https://github.com/robbybp/pselib)
-
-These can be installed with
-```bash
-pip install git+https://github.com/Robbybp/nmpc_examples.git
-pip install git+https://github.com/Robbybp/pselib.git
-```
-
-> [!NOTE]
-> Users who only wish to reproduce our results should not need to install these
-> dependencies manually as they are already included in the `requirements.txt`
-> file. (I.e., they are installed by the `pip install -r requirements.txt` step
-> above.) These are listed only for users who wish to use our code in their own
-> projects with different versions of our dependencies.
-
-When the main branch of this repository requires a specific branch of some dependency
-(e.g. the Pyomo main branch, rather than the latest release), an issue should be opened.
-
-## Non-Python dependencies
-Results are generated with Ipopt 3.14.17, using the Pyomo-CyIpopt interface. This
-interface depends on the following non-Python dependencies:
-
-1. `libpynumero_ASL`. This is a library that allows us to make calls to the AMPL
-solver library (ASL) from Python. It can be installed on most systems with the
-following commands:
-```bash
 pip install pyomo
 pyomo build-extensions
 ```
@@ -75,25 +52,57 @@ INFO: The following extensions were built:
 As long as `pynumero` has status `OK`, this step was successful for the purpose
 of this repository.
 
-2. [Ipopt 3.14](https://github.com/coin-or/ipopt), with linear solver MA27.
-See the following instructions to compile an Ipopt-compatible HSL library
-(which contains MA27): https://github.com/coin-or-tools/ThirdParty-HSL.
+### IPOPT
+We use the IPOPT solver (version 3.14.17 with linear solver MA27)
+to compare the impact of our aggregation techniques.
+IPOPT can be installed by following instructions on the github repository,
+https://github.com/coin-or/ipopt.
+See the following repository for instructions to compile an Ipopt-compatible
+HSL library (which contains MA27):
+https://github.com/coin-or-tools/ThirdParty-HSL.
+
+> [!NOTE]
+> Depending on your IPOPT install location, you may have to set some environment
+> variables for `libipopt` to be discoverable by the CyIpopt Python package.
+> Commonly, `PKG_CONFIG_PATH=INSTALL_DIR/lib/pkgconfig`,
+> `LD_LIBRARY_PATH=INSTALL_DIR/lib`, and/or `DYLD_LIBRARY_PATH=INSTALL_DIR/lib`
+> must be set.
+
+## Installing this package
+Download this repository and navigate into it with:
+```
+git clone https://github.com/Robbybp/variable-elimination.git
+cd variable-elimination
+```
+The following command, run from the root of this repository, will install this
+package and the latest versions of all its Python dependencies:
+```
+pip install -e .[test]
+```
+(The `[test]` flag installs `pytest`, which is only necessary to run tests.)
+Verify that the installation was successful by running `pytest` from the
+repository root.
+The functionality of this package can then be imported in Python, e.g.:
+```python
+from var_elim.models.distillation.distill import create_instance
+model = create_instance()
+```
+
+> [!NOTE]
+> The above command installs the *latest* version of dependencies.
+> The exact versions of all dependencies used to produce the results
+> in our paper are provided in `requirements.txt`. Install these
+> dependencies with
+> ```
+> pip install -r requirements.txt
+> ```
+> before or after installing this package.
+>
+> The results for our paper were generated with Python 3.11.5.
 
 # Reproducing our results
 
-This repository was used to generate results for the paper:
-```bibtex
-@misc{naik2025aggregation,
-      title={Variable aggregation for nonlinear optimization problems},
-      author={Sakshi Naik and Lorenz Biegler and Russell Bent and Robert Parker},
-      year={2025},
-      eprint={2502.13869},
-      archivePrefix={arXiv},
-      primaryClass={math.OC},
-      url={https://arxiv.org/abs/2502.13869},
-}
-```
-This paper presents three kinds of results:
+Our paper presents three kinds of results:
 1. Structural results describe the size and shape of models before loading any
 variable values.
 2. Numerical results, in our case, are solution objective values, solve times,
@@ -101,149 +110,127 @@ and solve time breakdowns.
 3. Convergence results are the success or failure of many instances when performing
 a sweep over model parameter values.
 
-Scripts to produce these results are located in the `var_elim/scripts` subdirectory
-of this repository.
+Scripts to run analyses, summarize results, and generate plots and tables are
+located in the `var_elim/scripts` subdirectory of this repository.
 You can view the command line interface for each script with:
 ```bash
-python myscript.py --help
-```
-In particular, the `--results-dir=RESULTS_DIR` option specifies the directory
-where results are written, and the `--image-dir=IMAGE_DIR` option specifies the
-directory where images are saved (for scripts that plot figures).
-These default to `results` and `images` respectively, but it might be useful
-to set them to custom values to avoid overwriting previous results
-(produced with, e.g., a different Pyomo version).
-
-TL;DR: Reproduce the bulk of our results with the following commands:
-```bash
-python analyze_structure.py
-python write_latex_table.py results/structure.csv
-python analyze_solvetime.py
-python write_latex_table.py results/solvetime.csv
-python run_param_sweep.py --model=distill
-python run_param_sweep.py --model=mb-steady
-python run_param_sweep.py --model=pipeline
-python summarize_sweep_results.py --model=distill
-python summarize_sweep_results.py --model=mb-steady
-python summarize_sweep_results.py --model=pipeline
-```
-See below for more details, especially on how to speed this up in an HPC environment.
-
-### Producing results in parallel on HPC
-The results can be time-consuming to reproduce, so we typically run them in parallel
-on multiple-node/core HPC systems. This repository includes scripts to write command
-lines that can be run in parallel with utilities like Slurm and GNU Parallel.
-
-## Reproducing structural results
-Structural results are produced by the `analyze_structure.py` script:
-```bash
-python analyze_structure.py --results-dir=RESULTS_DIR
-```
-Results are written to `RESULTS_DIR/structure.csv`.
-Display these results as a Latex table, similar to that displayed in the paper, with:
-```bash
-python write_latex_table.py RESULTS_DIR/structure.csv
+python var_elim/scripts/myscript.py --help
 ```
 
-To write structure-analysis commands that can be run in parallel:
-```bash
-python write_command_lines.py structure --results-dir=RESULTS_DIR
-```
+## Using the `reproduce.py` script
 
-To run these commands in parallel with multiple subprocesses:
-```bash
-# This may require installing GNU Parallel for the `parallel` command
-parallel -a structure-commands.txt
-```
-
-To collect the results into a single file:
-```bash
-# Only necessary if we have written many small files in parallel runs!
-python collect_results.py structure --results-dir=RESULTS_DIR
-```
-The results are now combined into `RESULTS_DIR/structure.csv` and can be
-displayed as above.
-Figures may be produced with:
-```bash
-python plot_structure_bargraphs.py RESULTS_DIR/structure.csv --image-dir=IMAGE_DIR
-```
-
-## Reproducing numerical results
-Numerical results are produced using the `analyze_solvetime.py` script:
-```bash
-python analyze_solvetime.py --results-dir=RESULTS_DIR
-```
-Results are written to `RESULTS_DIR/solvetime.csv`, and can be displayed
+For convenience, we have provided a Python script, `reproduce.py`, that allows
+each set of results to be produced with a single command.
+This script should be run from the root of this repository.
+To make sure this script is working properly, run the "smoke tests"
 with:
-```bash
-python write_latex_table.py RESULTS_DIR/solvetime.csv
+```
+python reproduce.py structure --smoke
+python reproduce.py solvetime --smoke
+python reproduce.py convergence --smoke
+```
+By default, this script saves results in the `runs/DATE` subdirectory, where
+`DATE` is today's date in YYYYMMDD format. After running the smoke tests,
+we should have the following files:
+```
+runs
+└── DATE
+    ├── images
+    │   ├── distill-matching-sweep-convergence.pdf
+    │   ├── fraction-elim.pdf
+    │   ├── fraction-solvetime.pdf
+    │   └── nnz-per-con.pdf
+    └── results
+        ├── solvetime-distill-matching.csv
+        ├── solvetime-distill-matching.txt
+        ├── structure-distill-matching.txt
+        ├── structure-distill.csv
+        ├── structure-distill.txt
+        └── sweep
+            ├── distill-matching-sweep-summary.csv
+            └── distill-matching-sweep.csv
+```
+The full results can be produced with:
+```
+python reproduce.py structure
+python reproduce.py solvetime
+python reproduce.py convergence
+```
+The convergence results use 11 samples per parameter by default.
+To run an abridged parameter sweep, use e.g., `--nsamples=2`.
+After running these commands, we should have the following files:
+
+<details>
+
+<summary> runs/DATE </summary>
+
+```
+runs
+└── DATE
+    ├── images
+    │   ├── distill-d1-sweep-convergence.pdf
+    │   ├── distill-d2-sweep-convergence.pdf
+    │   ├── distill-ecd2-sweep-convergence.pdf
+    │   ├── distill-greedy-sweep-convergence.pdf
+    │   ├── distill-linear-d2-sweep-convergence.pdf
+    │   ├── distill-matching-sweep-convergence.pdf
+    │   ├── distill-no-elim-sweep-convergence.pdf
+    │   ├── fraction-elim.pdf
+    │   ├── fraction-solvetime.pdf
+    │   ├── mb-steady-d1-sweep-convergence.pdf
+    │   ├── mb-steady-d2-sweep-convergence.pdf
+    │   ├── mb-steady-ecd2-sweep-convergence.pdf
+    │   ├── mb-steady-greedy-sweep-convergence.pdf
+    │   ├── mb-steady-linear-d2-sweep-convergence.pdf
+    │   ├── mb-steady-matching-sparsity.pdf
+    │   ├── mb-steady-matching-sweep-convergence.pdf
+    │   ├── mb-steady-no-elim-sweep-convergence.pdf
+    │   ├── nnz-per-con.pdf
+    │   ├── pipeline-d1-sweep-convergence.pdf
+    │   ├── pipeline-d2-sweep-convergence.pdf
+    │   ├── pipeline-ecd2-sweep-convergence.pdf
+    │   ├── pipeline-greedy-sweep-convergence.pdf
+    │   ├── pipeline-linear-d2-sweep-convergence.pdf
+    │   ├── pipeline-matching-sweep-convergence.pdf
+    │   └── pipeline-no-elim-sweep-convergence.pdf
+    └── results
+        ├── solvetime.csv
+        ├── solvetime.txt
+        ├── structure-matching.txt
+        ├── structure.csv
+        ├── structure.txt
+        ├── sweep
+        │   ├── distill-d1-sweep.csv
+        │   ├── distill-d2-sweep.csv
+        │   ├── distill-ecd2-sweep.csv
+        │   ├── distill-greedy-sweep.csv
+        │   ├── distill-linear-d2-sweep.csv
+        │   ├── distill-matching-sweep.csv
+        │   ├── distill-no-elim-sweep.csv
+        │   ├── mb-steady-d1-sweep.csv
+        │   ├── mb-steady-d2-sweep.csv
+        │   ├── mb-steady-ecd2-sweep.csv
+        │   ├── mb-steady-greedy-sweep.csv
+        │   ├── mb-steady-linear-d2-sweep.csv
+        │   ├── mb-steady-matching-sweep.csv
+        │   ├── mb-steady-no-elim-sweep.csv
+        │   ├── pipeline-d1-sweep.csv
+        │   ├── pipeline-d2-sweep.csv
+        │   ├── pipeline-ecd2-sweep.csv
+        │   ├── pipeline-greedy-sweep.csv
+        │   ├── pipeline-linear-d2-sweep.csv
+        │   ├── pipeline-matching-sweep.csv
+        │   └── pipeline-no-elim-sweep.csv
+        ├── sweep-summary.csv
+        └── sweep-summary.txt
 ```
 
-Independent commands for parallel runs can be written with:
-```bash
-python write_command_lines.py solvetime --results-dir=RESULTS_DIR
-```
+</details>
 
-We typically prefer to run scripts that measure solvetimes on independent,
-identical compute nodes rather than using multiple processes on the same
-node. We do this with a Slurm batch script and the `sbatch` command.
-The exact contents of this batch script depends on your HPC environment.
-
-Collect results into a single file with:
-```bash
-# Only necessary if we have written many small files in parallel runs!
-python collect_results.py solvetime --results-dir=RESULTS_DIR
-```
-
-The breakdown of solve time can be plotted with:
-```bash
-python plot_timing_bargraphs.py RESULTS_DIR/solvetime.csv --image-dir=IMAGE_DIR
-```
-
-## Reproducing convergence results
-Parameter sweeps are run with the `run_param_sweep.py` script:
-```bash
-python run_param_sweep.py --results-dir=RESULTS_DIR
-```
-This writes a CSV file of convergence results for each model-method combination,
-e.g., `mb-steady-matching-sweep.csv`, into the `RESULTS_DIR/sweep` subdirectory.
-
-A summary of sweep results may be displayed with:
-```bash
-python summarize_sweep_results.py --results-dir=RESULTS_DIR --model=MODEL
-```
-where `MODEL` is one of `mb-steady`, `distill`, or `pipeline`.
-
-Parameter sweep success/failure results may be plotted in a grid with:
-```bash
-python plot_sweep_results.py SWEEP_CSV --image-dir=IMAGE_DIR
-```
-
-We typically run the parameter sweep for each model-method combination
-on a different compute node (managed by e.g., Slurm), and use multiprocess
-parallelism to run individual parameter samples in parallel within each node
-(using GNU Parallel).
-
-Commands can be written with:
-```bash
-python write_sweep_command_lines.py --results-dir=RESULTS_DIR
-```
-The commands for each model-method combination, written to
-`commands/parallel-sweep-commands.txt`, can then be run on multiple compute
-nodes with, for example, the Slurm `sbatch` command.
-
-Parameter sweep results for each model-method combination may be combined
-into CSV files, e.g., `mb-steady-matching-sweep.csv` with:
-```bash
-# Alternatively, we could run each command in this file manually
-parallel -a commands/collect-sweep-commands.txt
-```
-
-Plots may be generated with:
-```bash
-# Alternatively, we could run each command in this file manually
-parallel -a commands/plot-sweep-commands.txt
-```
+## Producing results in parallel on HPC
+The results can be time-consuming to reproduce, so we typically run them in parallel
+on multiple-node/core HPC systems. We have provided a makefile with the commands
+used to run these results in parallel.
 
 # Using these methods on your own models
 The functionality to identify sets of variables and constraints to eliminate, perform
@@ -272,3 +259,8 @@ nvar = length(igraph.variables)
 ncon = length(igraph.constraints)
 nnz = igraph.n_edges
 ```
+
+# License
+This code is copyrighted by Los Alamos National Laboratory and distributed under a
+BSD 3-clause license. The license and copyright are provided in `LICENSE.md` and
+`COPYRIGHT.txt`.
