@@ -38,9 +38,9 @@ PARAMETER_LABEL_LOOKUP = {
 }
 ELIM_NAMES = ("no-elim", "d1", "ecd2", "linear-d2", "d2", "greedy", "matching")
 METHOD_SUBSETS = [
-    ("No elimination", ("no-elim",)),
-    ("Virtual best: No elimination + Linear degree-2", ("no-elim", "linear-d2")),
-    ("Virtual best: No elimination + Linear degree-2 + Greedy", ("no-elim", "linear-d2", "greedy")),
+    ("No aggregation", ("no-elim",)),
+    ("Virtual best: No aggregation + Linear degree-2", ("no-elim", "linear-d2")),
+    ("Virtual best: No aggregation + Linear degree-2 + Greedy", ("no-elim", "linear-d2", "greedy")),
     ("Virtual best: All algorithms", ELIM_NAMES),
 ]
 TITLE_LOOKUP = {
@@ -155,7 +155,7 @@ def main(args):
                 PARAMETER_LABEL_LOOKUP[model_name],
                 TITLE_LOOKUP[model_name],
             )
-        if subset_name == "No elimination":
+        if method_names == ("no-elim",):
             space = "        "
         else:
             space = ""

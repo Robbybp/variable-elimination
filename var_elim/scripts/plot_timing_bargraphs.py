@@ -71,26 +71,33 @@ def _plot_solve_time_fractions(df):
     print("Normalized solve time per iteration:")
     print(normalized_solve_time_df)
 
-    no_elim_time_by_model = normalized_solve_time_df[
-        normalized_solve_time_df["method"] == "no-elim"
-    ].set_index("model")["normalized-solve-time-per-iteration"]
-    normalized_solve_time_df["speedup-factor-vs-no-elim"] = [
-        no_elim_time_by_model[model] / normalized_time
-        for model, normalized_time in zip(
-            normalized_solve_time_df["model"],
-            normalized_solve_time_df["normalized-solve-time-per-iteration"],
+    missing_methods = [method for method in method_ord if method not in methods]
+    if missing_methods:
+        print(
+            "\nSkipping average speedup table: missing strategy results for "
+            + ", ".join(missing_methods)
         )
-    ]
-    average_speedup_df = (
-        normalized_solve_time_df.groupby("method", sort=False)[
-            "speedup-factor-vs-no-elim"
+    else:
+        no_elim_time_by_model = normalized_solve_time_df[
+            normalized_solve_time_df["method"] == "no-elim"
+        ].set_index("model")["normalized-solve-time-per-iteration"]
+        normalized_solve_time_df["speedup-factor-vs-no-elim"] = [
+            no_elim_time_by_model[model] / normalized_time
+            for model, normalized_time in zip(
+                normalized_solve_time_df["model"],
+                normalized_solve_time_df["normalized-solve-time-per-iteration"],
+            )
         ]
-        .mean()
-        .reindex(methods)
-        .reset_index(name="average-speedup-factor-vs-no-elim")
-    )
-    print("\nAverage speedup factor versus no-elim:")
-    print(average_speedup_df)
+        average_speedup_df = (
+            normalized_solve_time_df.groupby("method", sort=False)[
+                "speedup-factor-vs-no-elim"
+            ]
+            .mean()
+            .reindex(methods)
+            .reset_index(name="average-speedup-factor-vs-no-elim")
+        )
+        print("\nAverage speedup factor versus no-elim:")
+        print(average_speedup_df)
 
     x_array = np.array([
         tickpos_by_model[model] + offset_by_method[method]
