@@ -355,6 +355,17 @@ def run_convergence(args):
             ]
             run_command(plot_cmd, dry_run=args.dry_run)
 
+        if not args.smoke:
+            virtual_best_cmd = [
+                "python",
+                script_path("plot_sweep_virtual_best.py"),
+                "--results-dir",
+                results_dir,
+                "--image-dir",
+                image_dir,
+            ]
+            run_command(virtual_best_cmd, dry_run=args.dry_run)
+
 
 def main():
     require_repo_root()
