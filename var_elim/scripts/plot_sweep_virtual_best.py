@@ -138,11 +138,16 @@ def main(args):
     plt.rcParams["font.family"] = "serif"
     fig, axes = plt.subplots(len(METHOD_SUBSETS), len(MODEL_NAMES), figsize=(18, 24))
 
+    subset_titles = []
     for row, (subset_name, method_names) in enumerate(METHOD_SUBSETS):
+        n_success = 0
+        n_total = 0
         for col, model_name in enumerate(MODEL_NAMES):
             virtual_best = load_virtual_best(
                 results_dir, model_name, method_names, args.suffix
             )
+            n_success += virtual_best["success"].sum()
+            n_total += len(virtual_best)
             plot_convergence(
                 axes[row, col],
                 virtual_best,
@@ -150,6 +155,11 @@ def main(args):
                 PARAMETER_LABEL_LOOKUP[model_name],
                 TITLE_LOOKUP[model_name],
             )
+        if subset_name == "No elimination":
+            space = "        "
+        else:
+            space = ""
+        subset_titles.append(f"{subset_name} ({100 * n_success / n_total:.0f}%){space}")
         #axes[row, 1].annotate(
         #    subset_name,
         #    xy=(0.5, 1.15),
@@ -172,13 +182,13 @@ def main(args):
 
     y_positions = [0.24, 0.49, 0.75, 1.0]
     y_positions.reverse()
-    for row, (subset_name, _) in enumerate(METHOD_SUBSETS):
+    for row, subset_title in enumerate(subset_titles):
         row_top = axes[row, 0].get_position().y1
         fig.text(
             0.53,
             #row_top + 0.01,
             y_positions[row],
-            subset_name,
+            subset_title,
             ha="center",
             va="top",
             fontsize=30,
