@@ -56,6 +56,49 @@ def _plot_solve_time_fractions(df):
     to_omit = ()
     model_methods = [(mod, met) for mod in models for met in methods if met not in to_omit]
 
+    normalized_solve_time_df = pd.DataFrame(
+        {
+            "model": [model for model, _ in model_methods],
+            "method": [method for _, method in model_methods],
+            "normalized-solve-time-per-iteration": [
+                total_time_by_model_method[model, method]
+                / iter_by_method[model, method]
+                / smallest_time_per_iteration[model]
+                for model, method in model_methods
+            ],
+        }
+    )
+    print("Normalized solve time per iteration:")
+    print(normalized_solve_time_df)
+
+    missing_methods = [method for method in method_ord if method not in methods]
+    if missing_methods:
+        print(
+            "\nSkipping average speedup table: missing strategy results for "
+            + ", ".join(missing_methods)
+        )
+    else:
+        no_elim_time_by_model = normalized_solve_time_df[
+            normalized_solve_time_df["method"] == "no-elim"
+        ].set_index("model")["normalized-solve-time-per-iteration"]
+        normalized_solve_time_df["speedup-factor-vs-no-elim"] = [
+            no_elim_time_by_model[model] / normalized_time
+            for model, normalized_time in zip(
+                normalized_solve_time_df["model"],
+                normalized_solve_time_df["normalized-solve-time-per-iteration"],
+            )
+        ]
+        average_speedup_df = (
+            normalized_solve_time_df.groupby("method", sort=False)[
+                "speedup-factor-vs-no-elim"
+            ]
+            .mean()
+            .reindex(methods)
+            .reset_index(name="average-speedup-factor-vs-no-elim")
+        )
+        print("\nAverage speedup factor versus no-elim:")
+        print(average_speedup_df)
+
     x_array = np.array([
         tickpos_by_model[model] + offset_by_method[method]
         for model, method in model_methods

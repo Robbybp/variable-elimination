@@ -176,6 +176,7 @@ def main(args):
         "no-elim": "Original model",
         "d1": "Linear degree-one",
         "ecd2": "Equal-coefficient degree-two",
+        "trivial": "Equal-coefficient degree-two",
         "linear-d2": "Linear degree-two",
         "d2": "Degree two",
         "greedy": "Greedy",
@@ -191,6 +192,8 @@ def main(args):
                     if "linear" in os.path.basename(args.fpath):
                         # This is a hack so we don't recognize linear-d2 as d2
                         print("'linear' in method name. not resetting title")
+                        continue
+                    if "ecd2" in os.path.basename(args.fpath):
                         continue
                     print("WARNING: multiple matches. Resetting title to None")
                     title = None
