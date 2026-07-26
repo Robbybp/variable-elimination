@@ -77,7 +77,7 @@ cd variable-elimination
 The following command, run from the root of this repository, will install this
 package and the latest versions of all its Python dependencies:
 ```
-pip install -e .[test]
+pip install -e ".[test]"
 ```
 (The `[test]` flag installs `pytest`, which is only necessary to run tests.)
 Verify that the installation was successful by running `pytest` from the
