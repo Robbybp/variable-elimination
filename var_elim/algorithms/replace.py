@@ -32,6 +32,7 @@ from pyomo.core.expr.visitor import (
 )
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.contrib.incidence_analysis.config import IncidenceMethod
+import pyomo.contrib.fbbt.fbbt as fbbt
 from pyomo.common.modeling import unique_component_name
 from pyomo.common.timing import HierarchicalTimer
 
@@ -132,21 +133,27 @@ def add_bounds_to_expr(var, var_expr):
     constraints on the expression if the variables replaced were bounded
 
     Each constraint added to the bound_cons list is indexed by var_name_ub or
-    var_name_lb depending upon whihc bound it adds to the expression
+    var_name_lb depending upon which bound it adds to the expression
     """
-    if var.ub is None and var.lb is None:
-        lb_expr = None
-        ub_expr = None
-    elif var.lb is not None and var.ub is None:
-        lb_expr = var_expr >= var.lb
-        ub_expr = None
-    elif var.ub is not None and var.lb is None:
-        lb_expr = None
-        ub_expr = var_expr <= var.ub
+    lb, ub = fbbt.compute_bounds_on_expr(var_expr)
+    # TODO: Use a tolerance for bound equivalence here?
+    if var.lb is not None and (lb is None or lb < var.lb):
+        # We add a lower bound constraint if the variable has a lower bound
+        # and it is not dominated by the bounds on its defining expression.
+        add_lb_con = True
     else:
-        lb_expr = var_expr >= var.lb
-        ub_expr = var_expr <= var.ub
-    
+        add_lb_con = False
+    if var.ub is not None and (ub is None or ub > var.ub):
+        add_ub_con = True
+    else:
+        add_ub_con = False
+
+    # TODO: If our expression is a linear (monotonic) function of a single
+    # variable, we can propagate its bound back to the independent variable.
+
+    ub_expr = var_expr <= var.ub if add_ub_con else None
+    lb_expr = var_expr >= var.lb if add_lb_con else None
+
     return lb_expr, ub_expr
 
 
@@ -355,10 +362,19 @@ def eliminate_variables(
     # Update data structures for eliminated variables
     for var in var_order:
         var_expr = substitution_map[id(var)]
+        # Here, we should return None if adding inequalities was not necessary.
+        # In these cases, we either (a) do nothing (the bounds are dominated by
+        # existing bounds on dependent variables) or (b) translate the bounds
+        # to the (single, linear) defining variable.
+        # If we're updating bounds on defining variables in-place, I need to make
+        # sure these bounds are accounted for in later steps.
         lb_expr, ub_expr = add_bounds_to_expr(var, var_expr)
         lb_name = var.name + "_lb"
         ub_name = var.name + "_ub"
         if lb_expr is not None and type(lb_expr) is not bool:
+            # Checking for trivial constraints here seems unnecessary. But in this
+            # way we're masking an infeasibility. I guess we've determined that these
+            # don't happen in the problems we care about?
             if lb_expr is False:
                 raise RuntimeError("Lower bound resolved to trivial infeasible constraint")
             bound_con_set.add(lb_name)
@@ -382,6 +398,9 @@ def eliminate_variables(
     # iterate over variables-to-eliminate, and perform the substitution for each
     # (new) constraint that they're adjacent to. This way we don't check every
     # constraint if we're only eliminating a small number of variables.
+    #
+    # This loop replaces variables in equality and inequality constraints, but
+    # doesn't convert bounds on eliminated variables to inequalities.
     for con in igraph.constraints:
         if (
             id(con) not in elim_con_set
