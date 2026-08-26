@@ -55,6 +55,21 @@ ELIM_CALLBACKS = [
 ELIM_LOOKUP = dict(ELIM_CALLBACKS)
 ELIM_NAMES = [name for name, _ in ELIM_CALLBACKS]
 
+# Each preset maps a name to the Pyomo solver interface and the options it is
+# constructed with. These names are used in the "solver" column in dataframes.
+# Note that OptimalityTarget=1 is necessary for the Gurobi presets: without it,
+# Gurobi attempts to solve these nonconvex problems to global optimality.
+SOLVER_PRESETS = [
+    ("ipopt",            ("cyipopt",             {"print_user_options": "yes", "max_iter": 3000})),
+    ("ipopt-tol6",       ("ipopt",               {"print_user_options": "yes", "max_iter": 3000, "tol": 1e-6})),
+    ("gurobi",           ("gurobi_direct_minlp", {"OptimalityTarget": 1, "NLBarIterLimit": 3000})),
+    ("gurobi-Presolve0", ("gurobi_direct_minlp", {"OptimalityTarget": 1, "NLBarIterLimit": 3000, "Presolve": 0})),
+    ("gurobi-Presolve1", ("gurobi_direct_minlp", {"OptimalityTarget": 1, "NLBarIterLimit": 3000, "Presolve": 1})),
+    ("gurobi-Presolve2", ("gurobi_direct_minlp", {"OptimalityTarget": 1, "NLBarIterLimit": 3000, "Presolve": 2})),
+]
+SOLVER_LOOKUP = dict(SOLVER_PRESETS)
+SOLVER_NAMES = [name for name, _ in SOLVER_PRESETS]
+
 MODEL_NAMES = [
     # These names are used in the "model" column in dataframes, or in the
     # filename of parameter sweep results.
@@ -106,6 +121,49 @@ def get_optimization_solver():
         #intermediate_callback=callback,
     )
     return solver
+
+
+def parse_solver_options(options_str):
+    """Parse a comma-separated string of option=value pairs into a dict
+
+    Values are left as strings. Both the Gurobi and Ipopt interfaces accept
+    string-valued options, so we don't need to know each option's type.
+
+    """
+    if options_str is None:
+        return {}
+    options = {}
+    for pair in options_str.split(","):
+        key, sep, value = pair.partition("=")
+        if not sep:
+            raise ValueError(
+                f"Could not parse solver option '{pair}'. Options must be"
+                " comma-separated key=value pairs, e.g. Presolve=0,ScaleFlag=2"
+            )
+        options[key.strip()] = value.strip()
+    return options
+
+
+def get_solver(solvername, options_str=None):
+    """Construct a solver from a preset, overriding options from a string
+
+    Arguments
+    ---------
+    solvername: Key of SOLVER_LOOKUP
+    options_str: Optional comma-separated string of option=value pairs. These
+        override the options of the preset.
+
+    """
+    if solvername not in SOLVER_LOOKUP:
+        raise ValueError(
+            f"Unrecognized solver '{solvername}'. Options are:"
+            f" {', '.join(SOLVER_NAMES)}"
+        )
+    interface, options = SOLVER_LOOKUP[solvername]
+    # Don't modify the preset's dict
+    options = dict(options)
+    options.update(parse_solver_options(options_str))
+    return pyo.SolverFactory(interface, options=options)
 
 
 def get_basename(basename, *suffixes):
@@ -160,6 +218,20 @@ def get_argparser():
         help=(
             f"Method to apply. Options are: {elim_list_str}. Default (None) loops"
             " over all methods."
+        ),
+    )
+    solver_list_str = ", ".join(SOLVER_NAMES)
+    argparser.add_argument(
+        "--solver",
+        default="ipopt",
+        help=f"Solver preset to use. Options are: {solver_list_str}",
+    )
+    argparser.add_argument(
+        "--solver-options",
+        default=None,
+        help=(
+            "Comma-separated solver options, e.g. Presolve=0,ScaleFlag=2. These"
+            " override the options of the --solver preset."
         ),
     )
     argparser.add_argument("--no-save", action="store_true", help="Don't save results")
