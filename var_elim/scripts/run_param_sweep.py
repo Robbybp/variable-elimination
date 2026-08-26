@@ -199,9 +199,9 @@ def main(args):
                 sweep_data_df[str(param)] = samples[str(param)]
             # Record the solver in the results, since results for different solvers
             # are distinguished only by their directory.
-            sweep_data_df["solver"] = args.solver
-            sweep_data_df["solver-version"] = solver.version()
-            sweep_data_df["solver-options"] = args.solver_options
+            sweep_data_df["solver"] = [args.solver] * len(results_df)
+            sweep_data_df["solver-version"] = [solver.version()] * len(results_df)
+            sweep_data_df["solver-options"] = [args.solver_options] * len(results_df)
             sweep_data_df["success"] = results_df["success"]
             sweep_data_df["error"] = results_df["error"]
             sweep_data_df["feasible"] = [res.feasible if res is not None else False for res in results_df["results"]]
