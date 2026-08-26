@@ -141,6 +141,35 @@ def add_convergence_args(parser):
         ),
     )
     parser.add_argument(
+        "--models",
+        default=None,
+        help=(
+            "Comma-separated models to sweep. Defaults to "
+            f"{','.join(SWEEP_MODELS)}."
+        ),
+    )
+    parser.add_argument(
+        "--methods",
+        default=None,
+        help=(
+            "Comma-separated elimination methods to sweep. Defaults to "
+            f"{','.join(SWEEP_METHODS)}."
+        ),
+    )
+    parser.add_argument(
+        "--solver",
+        default="ipopt",
+        help=(
+            "Solver preset, from SOLVER_NAMES in var_elim/scripts/config.py."
+            " Results are written to a per-solver subdirectory."
+        ),
+    )
+    parser.add_argument(
+        "--solver-options",
+        default=None,
+        help="Comma-separated solver options, e.g. Presolve=0,ScaleFlag=2.",
+    )
+    parser.add_argument(
         "--smoke",
         action="store_true",
         help="Run only the distillation matching sweep for a quicker check.",
@@ -272,6 +301,10 @@ def run_solvetime(args):
 
 def run_convergence(args):
     _, results_dir, image_dir = resolve_output_dirs(args)
+    # Results for different solvers are distinguished by their directory, so that
+    # we don't have to encode the solver in every output file name.
+    results_dir = os.path.join(results_dir, args.solver)
+    image_dir = os.path.join(image_dir, args.solver)
     sweep_dir = os.path.join(results_dir, "sweep")
     nsamples = (
         args.nsamples
@@ -279,48 +312,47 @@ def run_convergence(args):
         else (2 if args.smoke else 11)
     )
 
+    if args.smoke:
+        models = ["distill"]
+        methods = ["matching"]
+    else:
+        models = args.models.split(",") if args.models else SWEEP_MODELS
+        methods = args.methods.split(",") if args.methods else SWEEP_METHODS
+
     make_dir(results_dir, dry_run=args.dry_run)
     make_dir(sweep_dir, dry_run=args.dry_run)
     make_dir(image_dir, dry_run=args.dry_run)
 
-    sweep_jobs = (
-        [("distill", "matching")]
-        if args.smoke
-        else [(model, None) for model in SWEEP_MODELS]
-    )
-    for model, method in sweep_jobs:
-        sweep_cmd = [
-            "python",
-            script_path("run_param_sweep.py"),
-            "--results-dir",
-            sweep_dir,
-            "--model",
-            model,
-            "--nsamples",
-            str(nsamples),
-        ]
-        if method is not None:
-            sweep_cmd.extend(["--method", method])
-        run_command(sweep_cmd, dry_run=args.dry_run)
+    for model in models:
+        for method in methods:
+            sweep_cmd = [
+                "python",
+                script_path("run_param_sweep.py"),
+                "--results-dir",
+                sweep_dir,
+                "--model",
+                model,
+                "--method",
+                method,
+                "--nsamples",
+                str(nsamples),
+                "--solver",
+                args.solver,
+            ]
+            if args.solver_options is not None:
+                sweep_cmd.extend(["--solver-options", args.solver_options])
+            run_command(sweep_cmd, dry_run=args.dry_run)
 
-    if args.smoke:
-        summary_cmd = [
-            "python",
-            script_path("summarize_sweep_results.py"),
-            "--results-dir",
-            sweep_dir,
-            "--model",
-            "distill",
-            "--method",
-            "matching",
-        ]
-    else:
-        summary_cmd = [
-            "python",
-            script_path("summarize_sweep_results.py"),
-            "--results-dir",
-            sweep_dir,
-        ]
+    summary_cmd = [
+        "python",
+        script_path("summarize_sweep_results.py"),
+        "--results-dir",
+        sweep_dir,
+    ]
+    if len(models) == 1:
+        summary_cmd.extend(["--model", models[0]])
+    if len(methods) == 1:
+        summary_cmd.extend(["--method", methods[0]])
     run_command(summary_cmd, dry_run=args.dry_run)
 
     if not args.skip_tables and not args.smoke:
@@ -335,15 +367,7 @@ def run_convergence(args):
         run_command(table_cmd, dry_run=args.dry_run)
 
     if not args.skip_plots:
-        plot_jobs = (
-            [("distill", "matching")]
-            if args.smoke
-            else [
-                (model, method)
-                for model in SWEEP_MODELS
-                for method in SWEEP_METHODS
-            ]
-        )
+        plot_jobs = [(model, method) for model in models for method in methods]
         for model, method in plot_jobs:
             sweep_csv = os.path.join(sweep_dir, f"{model}-{method}-sweep.csv")
             plot_cmd = [
