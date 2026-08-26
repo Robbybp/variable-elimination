@@ -60,6 +60,8 @@ def main(args):
     print(f"  method={args.method}")
     print(f"  nsamples={args.nsamples}")
     print(f"  sample={args.sample}")
+    print(f"  solver={args.solver}")
+    print(f"  solver-options={args.solver_options}")
 
     # Annoyingly, the MB problem requires scaling. Because the input parameters
     # will be scaled, we need to do this scaling *after* setting these input
@@ -74,6 +76,10 @@ def main(args):
     # of storing the results in a flattened list so sweep result files for
     # individual problem-method pairs are easier to generate.
     sweep_results_lookup = {}
+
+    # Note that if we want to collect more detailed information, we could
+    # use TimedCyIpoptSolver
+    solver = config.get_solver(args.solver, args.solver_options)
 
     for problem_name, problem in problems:
         for elim_name, elim_cb in elimination_callbacks:
@@ -104,14 +110,6 @@ def main(args):
             def build_outputs(model, results):
                 # This is what we see in the runner.results["results"] column
                 return results
-
-            options = {
-                "print_user_options": "yes",
-                "max_iter": 3000,
-            }
-            # Note that if we want to collect more detailed information, we could
-            # use TimedCyIpoptSolver
-            solver = pyo.SolverFactory("cyipopt", options=options)
 
             if problem_name == "mb-steady" and elim_name == "linear-d2":
                 use_named_expressions = False
@@ -199,6 +197,11 @@ def main(args):
             sweep_data_df = {}
             for param in problem.parameters:
                 sweep_data_df[str(param)] = samples[str(param)]
+            # Record the solver in the results, since results for different solvers
+            # are distinguished only by their directory.
+            sweep_data_df["solver"] = args.solver
+            sweep_data_df["solver-version"] = solver.version()
+            sweep_data_df["solver-options"] = args.solver_options
             sweep_data_df["success"] = results_df["success"]
             sweep_data_df["error"] = results_df["error"]
             sweep_data_df["feasible"] = [res.feasible if res is not None else False for res in results_df["results"]]
