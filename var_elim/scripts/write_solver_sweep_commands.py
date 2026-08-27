@@ -18,15 +18,15 @@
 #  This software is distributed under the 3-clause BSD license.
 #  ___________________________________________________________________________
 
-"""Write one parameter sweep command per model-method pair for a single solver
+"""Write one parameter sweep command per solver-model-method triple
 
 Each command runs a full sweep, so that it may be submitted to its own node. This
 is preferable to splitting a sweep across the cores of a node with GNU parallel
 when the solver is itself multithreaded, e.g. Gurobi.
 
-Commands are written to {solver}-sweep-commands.txt, and results are written to a
-per-solver subdirectory, so that this script may be called once per solver without
-overwriting anything.
+All commands are written to a single file, so that they may be submitted as one
+job array. Results are written to a per-solver subdirectory, so that results of
+different solvers don't overwrite each other.
 
 """
 
@@ -51,16 +51,20 @@ def get_argparser():
     argparser = argparse.ArgumentParser(description=__doc__)
     solver_list_str = ", ".join(config.SOLVER_NAMES)
     argparser.add_argument(
-        "--solver",
+        "--solvers",
         default="ipopt",
-        help=f"Solver preset to use. Options are: {solver_list_str}",
+        help=(
+            f"Comma-separated solver presets to sweep. Options are:"
+            f" {solver_list_str}."
+        ),
     )
     argparser.add_argument(
         "--solver-options",
         default=None,
         help=(
             "Comma-separated solver options, e.g. Presolve=0,ScaleFlag=2. These"
-            " override the options of the --solver preset."
+            " override the options of every --solvers preset, so they are only"
+            " useful when the presets accept the same options."
         ),
     )
     model_list_str = ", ".join(config.TESTPROBLEM_LOOKUP)
@@ -101,6 +105,11 @@ def get_argparser():
         help="Directory to store the file of command lines",
     )
     argparser.add_argument(
+        "--commands-file",
+        default="sweep-commands.txt",
+        help="Name of the file of command lines",
+    )
+    argparser.add_argument(
         "--feastol",
         type=float,
         default=None,
@@ -120,11 +129,13 @@ def get_argparser():
 
 
 def main(args):
-    if args.solver not in config.SOLVER_LOOKUP:
-        raise ValueError(
-            f"Unrecognized solver '{args.solver}'. Options are:"
-            f" {', '.join(config.SOLVER_NAMES)}"
-        )
+    snames = args.solvers.split(",")
+    for sname in snames:
+        if sname not in config.SOLVER_LOOKUP:
+            raise ValueError(
+                f"Unrecognized solver '{sname}'. Options are:"
+                f" {', '.join(config.SOLVER_NAMES)}"
+            )
 
     if args.models is None:
         mnames = list(config.TESTPROBLEM_LOOKUP)
@@ -145,40 +156,41 @@ def main(args):
                     f" {', '.join(config.ELIM_NAMES)}"
                 )
 
-    # Results for different solvers are distinguished by their directory, so that
-    # we don't have to encode the solver in every result file name.
-    results_dir = os.path.join(args.results_dir, args.solver)
-
     scriptname = get_script_path(SWEEP_SCRIPT)
     command_lines = []
-    for mname in mnames:
-        for ename in enames:
-            cmd = [
-                "python",
-                scriptname,
-                f"--model={mname}",
-                f"--method={ename}",
-                f"--nsamples={args.nsamples}",
-                f"--solver={args.solver}",
-                f"--results-dir={results_dir}",
-            ]
-            if args.solver_options is not None:
-                cmd.append(f"--solver-options={args.solver_options}")
-            if args.feastol is not None:
-                cmd.append(f"--feastol={args.feastol}")
-            if args.suffix is not None:
-                cmd.append(f"--suffix={args.suffix}")
-            command_lines.append(" ".join(cmd))
+    results_dirs = {}
+    for sname in snames:
+        # Results for different solvers are distinguished by their directory, so
+        # that we don't have to encode the solver in every result file name.
+        results_dirs[sname] = os.path.join(args.results_dir, sname)
+        for mname in mnames:
+            for ename in enames:
+                cmd = [
+                    "python",
+                    scriptname,
+                    f"--model={mname}",
+                    f"--method={ename}",
+                    f"--nsamples={args.nsamples}",
+                    f"--solver={sname}",
+                    f"--results-dir={results_dirs[sname]}",
+                ]
+                if args.solver_options is not None:
+                    cmd.append(f"--solver-options={args.solver_options}")
+                if args.feastol is not None:
+                    cmd.append(f"--feastol={args.feastol}")
+                if args.suffix is not None:
+                    cmd.append(f"--suffix={args.suffix}")
+                command_lines.append(" ".join(cmd))
 
-    fname = f"{args.solver}-sweep-commands.txt"
-    fpath = os.path.join(config.validate_dir(args.commands_dir), fname)
+    fpath = os.path.join(config.validate_dir(args.commands_dir), args.commands_file)
 
     print(f"Writing the following commands to {fpath}")
     print()
     for cl in command_lines:
         print(cl)
     print()
-    print(f"Results will be written to {results_dir}")
+    for sname in snames:
+        print(f"Results for {sname} will be written to {results_dirs[sname]}")
 
     if not args.no_save:
         with open(fpath, "w") as f:
