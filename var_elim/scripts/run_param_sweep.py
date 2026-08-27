@@ -135,6 +135,7 @@ def main(args):
 
                 timer.start("solve")
                 results = solver.solve(model, tee=True)
+                print(f"TERMINATION CONDITION: {results.solver.termination_condition}")
                 solved = pyo.check_optimal_termination(results)
                 timer.stop("solve")
 

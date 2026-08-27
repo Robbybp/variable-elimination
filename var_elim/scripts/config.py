@@ -70,6 +70,31 @@ SOLVER_PRESETS = [
 SOLVER_LOOKUP = dict(SOLVER_PRESETS)
 SOLVER_NAMES = [name for name, _ in SOLVER_PRESETS]
 
+
+def _patch_gurobi_status_map():
+    """Add the LOCALLY_* Gurobi statuses to Pyomo's termination condition map
+
+    Pyomo's map predates these statuses, so they fall through to `unknown`. This
+    makes every locally optimal solve look like a failure to
+    pyo.check_optimal_termination. Note that the new-style TerminationCondition
+    enum does not distinguish local from global optimality.
+
+    This can be removed once Pyomo's map includes these statuses.
+
+    """
+    from gurobipy import GRB
+    from pyomo.contrib.solver.common.results import TerminationCondition
+    from pyomo.contrib.solver.solvers.gurobi.gurobi_direct import GurobiDirectBase
+
+    # The map is built lazily and cached on the class, so we have to construct it
+    # before we can update it.
+    tc_map = GurobiDirectBase._get_tc_map(None)
+    tc_map[GRB.LOCALLY_OPTIMAL] = TerminationCondition.convergenceCriteriaSatisfied
+    tc_map[GRB.LOCALLY_INFEASIBLE] = TerminationCondition.locallyInfeasible
+
+
+_patch_gurobi_status_map()
+
 MODEL_NAMES = [
     # These names are used in the "model" column in dataframes, or in the
     # filename of parameter sweep results.
